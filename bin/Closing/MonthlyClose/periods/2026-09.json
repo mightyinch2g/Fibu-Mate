@@ -1,7 +1,7 @@
 {
   "period": "2026-09",
   "created_at": "2026-05-13T15:59:13",
-  "closing_cutoff_date": "2026-10-01",
+  "closing_cutoff_date": "2026-10-02",
   "team_members": {
     "Hauptbuch": [
       "Julia Neuwirt",
@@ -194,7 +194,7 @@
       ],
       "done_at": null,
       "done_by": null,
-      "due_date": "2026-10-01",
+      "due_date": "2026-10-02",
       "task_uid": "M004",
       "documentation": {}
     },
@@ -311,7 +311,7 @@
       ],
       "done_at": null,
       "done_by": null,
-      "due_date": "2026-10-01",
+      "due_date": "2026-10-02",
       "task_uid": "M005",
       "documentation": {}
     },
@@ -336,7 +336,7 @@
       "subtasks": [],
       "done_at": null,
       "done_by": null,
-      "due_date": "2026-10-01",
+      "due_date": "2026-10-02",
       "task_uid": "M006",
       "documentation": {}
     },
@@ -384,7 +384,7 @@
       ],
       "done_at": null,
       "done_by": null,
-      "due_date": "2026-10-01",
+      "due_date": "2026-10-02",
       "task_uid": "M007",
       "documentation": {}
     },
@@ -432,7 +432,7 @@
       ],
       "done_at": null,
       "done_by": null,
-      "due_date": "2026-10-01",
+      "due_date": "2026-10-02",
       "task_uid": "M008",
       "documentation": {}
     },
@@ -590,7 +590,7 @@
       ],
       "done_at": null,
       "done_by": null,
-      "due_date": "2026-10-01",
+      "due_date": "2026-10-02",
       "task_uid": "M009",
       "documentation": {}
     },
@@ -704,7 +704,7 @@
       ],
       "done_at": null,
       "done_by": null,
-      "due_date": "2026-10-01",
+      "due_date": "2026-10-02",
       "task_uid": "M010",
       "documentation": {}
     }

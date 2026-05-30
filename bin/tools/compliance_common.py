@@ -368,28 +368,57 @@ def format_deadline_cutoff_de(kind: str, period: str):
     d = _parse_deadline_date(value) if '_parse_deadline_date' in globals() else None
     return d.strftime('%d.%m.%Y') if d else ''
 
-
-# ---- v0.432: zentrale Geschäftsjahr-/Zeitraumlogik ----
+# ---- v0.432 Korrektur: globale Anzeigeformate und angelegte Zeitraumlogik ----
 MIN_MONTH_PERIOD = '2026-05'
 MIN_QUARTER_PERIOD = '2026-Q2'
 MIN_YEAR_PERIOD = '2025-2026'
 FISCAL_YEAR_START_MONTH = 10
 
+
+def parse_date_de(value):
+    value = str(value or '').strip()
+    for fmt in ('%d.%m.%Y', '%Y-%m-%d', '%Y-%m-%dT%H:%M:%S'):
+        try:
+            return datetime.strptime(value[:19], fmt).date()
+        except Exception:
+            pass
+    return None
+
+
+def format_date_de(value):
+    d = value if isinstance(value, date) else parse_date_de(value)
+    return d.strftime('%d.%m.%Y') if d else ''
+
+
 def fiscal_year_start_for_date_v0432(d=None):
     d = d or date.today()
     return d.year if d.month >= FISCAL_YEAR_START_MONTH else d.year - 1
 
+
 def fiscal_year_key_v0432(start_year: int):
     return f"{start_year:04d}-{start_year + 1:04d}"
+
+
+def format_fiscal_year_v0432(key_or_start):
+    try:
+        if isinstance(key_or_start, int):
+            return f"{key_or_start:04d}/{key_or_start + 1:04d}"
+        y1, y2 = map(int, str(key_or_start).split('-'))
+        return f"{y1:04d}/{y2:04d}"
+    except Exception:
+        return str(key_or_start or '')
+
 
 def month_key_v0432(d=None):
     d = d or date.today()
     return f"{d.year:04d}-{d.month:02d}"
 
+
 def quarter_key_v0432(d=None):
     d = d or date.today()
     q = (d.month - 1) // 3 + 1
     return f"{d.year:04d}-Q{q}"
+
 
 def add_quarter_v0432(key: str, delta: int):
     y_s, q_s = str(key).split('-Q')
@@ -400,47 +429,77 @@ def add_quarter_v0432(key: str, delta: int):
         q -= 4; y += 1
     return f"{y:04d}-Q{q}"
 
+
 def add_year_v0432(key: str, delta: int):
     y1, y2 = map(int, str(key).split('-'))
     return f"{y1 + delta:04d}-{y2 + delta:04d}"
 
+
 def august_month_key_v0432(fy_start: int):
     return f"{fy_start + 1:04d}-08"
+
 
 def august_cutoff_reached_v0432(fy_start: int, today=None):
     today = today or date.today()
     august = august_month_key_v0432(fy_start)
-    cutoff = _parse_deadline_date(get_deadline_cutoff('monthly', august)) if 'get_deadline_cutoff' in globals() else None
+    cutoff = parse_date_de(get_deadline_cutoff('monthly', august)) if 'get_deadline_cutoff' in globals() else None
     if not cutoff:
         import calendar
         y, m = map(int, august.split('-'))
         cutoff = first_business_day_after(date(y, m, calendar.monthrange(y, m)[1]))
     return today >= cutoff
 
+
 def max_month_period_v0432(today=None):
-    today = today or date.today(); fy = fiscal_year_start_for_date_v0432(today)
+    today = today or date.today()
+    fy = fiscal_year_start_for_date_v0432(today)
     return f"{fy + 2:04d}-09" if august_cutoff_reached_v0432(fy, today) else f"{fy + 1:04d}-09"
 
+
 def max_quarter_period_v0432(today=None):
-    today = today or date.today(); fy = fiscal_year_start_for_date_v0432(today)
+    today = today or date.today()
+    fy = fiscal_year_start_for_date_v0432(today)
     return f"{fy + 2:04d}-Q3" if august_cutoff_reached_v0432(fy, today) else f"{fy + 1:04d}-Q3"
 
+
 def max_year_period_v0432(today=None):
-    today = today or date.today(); fy = fiscal_year_start_for_date_v0432(today)
+    today = today or date.today()
+    fy = fiscal_year_start_for_date_v0432(today)
     return fiscal_year_key_v0432(fy + 1) if august_cutoff_reached_v0432(fy, today) else fiscal_year_key_v0432(fy)
 
-def current_period_for_kind_v0432(kind: str, today=None):
-    today = today or date.today(); k = str(kind or '').lower()
-    if k in ('monthly', 'm'):
-        return min(max(month_key_v0432(today), MIN_MONTH_PERIOD), max_month_period_v0432(today))
-    if k in ('quarterly', 'q'):
-        return min(max(quarter_key_v0432(today), MIN_QUARTER_PERIOD), max_quarter_period_v0432(today))
-    if k in ('yearly', 'y', 'j'):
-        return min(max(fiscal_year_key_v0432(fiscal_year_start_for_date_v0432(today)), MIN_YEAR_PERIOD), max_year_period_v0432(today))
-    return month_key_v0432(today)
 
-def allowed_periods_for_kind_v0432(kind: str, today=None, only_started=False):
-    today = today or date.today(); k = str(kind or '').lower(); out = []
+def format_period_display(period: str, kind: str = ''):
+    period = str(period or '').strip()
+    kind = str(kind or '').lower()
+    try:
+        if kind in ('monthly', 'm') or re.fullmatch(r'\d{4}-\d{2}', period):
+            y, m = map(int, period.split('-'))
+            return f"{m:02d}/{str(y)[-2:]}"
+        if kind in ('quarterly', 'q') or re.fullmatch(r'\d{4}-Q[1-4]', period):
+            y_s, q_s = period.split('-Q')
+            return f"Q{int(q_s)}/{str(int(y_s))[-2:]}"
+        if kind in ('yearly', 'y', 'j') or re.fullmatch(r'\d{4}-\d{4}', period):
+            return format_fiscal_year_v0432(period)
+    except Exception:
+        pass
+    return period
+
+
+def closing_period_dir_for_kind_v0432(kind: str):
+    k = str(kind or '').lower()
+    if k in ('monthly', 'm'):
+        return bin_dir() / 'Closing' / 'MonthlyClose' / 'periods'
+    if k in ('quarterly', 'q'):
+        return bin_dir() / 'Closing' / 'QuarterlyClose' / 'periods'
+    if k in ('yearly', 'y', 'j'):
+        return bin_dir() / 'Closing' / 'YearlyClose' / 'periods'
+    return None
+
+
+def theoretical_periods_for_kind_v0432(kind: str, today=None, only_started=False):
+    today = today or date.today()
+    k = str(kind or '').lower()
+    out = []
     if k in ('monthly', 'm'):
         cur = MIN_MONTH_PERIOD
         max_key = min(month_key_v0432(today), max_month_period_v0432(today)) if only_started else max_month_period_v0432(today)
@@ -461,10 +520,106 @@ def allowed_periods_for_kind_v0432(kind: str, today=None, only_started=False):
         return out
     return []
 
-def period_allowed_v0432(kind: str, period: str, today=None, only_started=False):
-    return str(period) in set(allowed_periods_for_kind_v0432(kind, today, only_started=only_started))
+
+def existing_periods_for_kind_v0432(kind: str, today=None, only_started=False, create_current_if_missing=False):
+    allowed = theoretical_periods_for_kind_v0432(kind, today, only_started=only_started)
+    allowed_set = set(allowed)
+    folder = closing_period_dir_for_kind_v0432(kind)
+    existing = []
+    if folder and folder.exists():
+        existing = sorted(p.stem for p in folder.glob('*.json') if p.stem in allowed_set)
+    if create_current_if_missing and not existing and allowed:
+        existing = [current_period_for_kind_v0432(kind, today)]
+    return existing
+
+
+def current_period_for_kind_v0432(kind: str, today=None):
+    today = today or date.today()
+    k = str(kind or '').lower()
+    if k in ('monthly', 'm'):
+        return min(max(month_key_v0432(today), MIN_MONTH_PERIOD), max_month_period_v0432(today))
+    if k in ('quarterly', 'q'):
+        return min(max(quarter_key_v0432(today), MIN_QUARTER_PERIOD), max_quarter_period_v0432(today))
+    if k in ('yearly', 'y', 'j'):
+        return min(max(fiscal_year_key_v0432(fiscal_year_start_for_date_v0432(today)), MIN_YEAR_PERIOD), max_year_period_v0432(today))
+    return month_key_v0432(today)
+
+
+def allowed_periods_for_kind_v0432(kind: str, today=None, only_started=False, existing_only=True):
+    if existing_only:
+        existing = existing_periods_for_kind_v0432(kind, today, only_started=only_started)
+        if existing:
+            return existing
+    return theoretical_periods_for_kind_v0432(kind, today, only_started=only_started)
+
+
+def period_allowed_v0432(kind: str, period: str, today=None, only_started=False, existing_only=True):
+    return str(period) in set(allowed_periods_for_kind_v0432(kind, today, only_started=only_started, existing_only=existing_only))
+
 
 def all_tax_periods():
     ensure_dirs()
-    allowed = set(allowed_periods_for_kind_v0432('monthly'))
+    allowed = set(allowed_periods_for_kind_v0432('monthly', existing_only=False))
     return sorted(p.stem for p in (ensure_dirs()/"TaxReporting"/"periods").glob("*.json") if p.stem in allowed) or [current_period_for_kind_v0432('monthly')]
+
+
+# ---- v0.432 Korrektur Paket 2: finale Anzeigeformat-Helfer ----
+def parse_date_de(value):
+    value = str(value or '').strip()
+    for fmt in ('%d.%m.%Y', '%Y-%m-%d', '%Y-%m-%dT%H:%M:%S'):
+        try:
+            return datetime.strptime(value[:19], fmt).date()
+        except Exception:
+            pass
+    return None
+
+def format_date_de(value):
+    d = value if isinstance(value, date) else parse_date_de(value)
+    return d.strftime('%d.%m.%Y') if d else ''
+
+def format_fiscal_year_v0432(key_or_start):
+    try:
+        if isinstance(key_or_start, int):
+            return f"{key_or_start:04d}/{key_or_start + 1:04d}"
+        y1, y2 = map(int, str(key_or_start).split('-'))
+        return f"{y1:04d}/{y2:04d}"
+    except Exception:
+        return str(key_or_start or '')
+
+def detect_period_kind(period: str):
+    period = str(period or '').strip()
+    if re.fullmatch(r'\d{4}-\d{2}', period): return 'monthly'
+    if re.fullmatch(r'\d{4}-Q[1-4]', period): return 'quarterly'
+    if re.fullmatch(r'\d{4}-\d{4}', period): return 'yearly'
+    return ''
+
+def format_period_display(period: str, kind: str = ''):
+    period = str(period or '').strip(); kind = str(kind or '').lower()
+    try:
+        if kind in ('monthly','m') or re.fullmatch(r'\d{4}-\d{2}', period):
+            y, m = map(int, period.split('-')); return f"{m:02d}/{str(y)[-2:]}"
+        if kind in ('quarterly','q') or re.fullmatch(r'\d{4}-Q[1-4]', period):
+            y, q = period.split('-Q'); return f"Q{int(q)}/{str(int(y))[-2:]}"
+        if kind in ('yearly','y','j') or re.fullmatch(r'\d{4}-\d{4}', period):
+            return format_fiscal_year_v0432(period)
+    except Exception:
+        pass
+    return period
+
+def format_any_period_display(period: str):
+    return format_period_display(period, detect_period_kind(period))
+
+
+# ---- v0.432 Korrektur Paket 2: finale Audit-Detailanzeige ----
+def audit_entry_long_text(e):
+    return (
+        f"Zeitpunkt: {format_date_de(e.get('timestamp',''))}\n"
+        f"Ereignis: {e.get('event_type','')}\n"
+        f"Modul: {e.get('module','')}\n"
+        f"Risiko: {e.get('risk','')}\n"
+        f"Zeitraum: {format_any_period_display(e.get('period',''))}\n"
+        f"Benutzer: {e.get('user_name','')} ({e.get('user_key','')})\n\n"
+        f"Titel:\n{e.get('title','')}\n\n"
+        f"Details:\n{e.get('details','')}\n\n"
+        f"Referenz-ID: {e.get('related_id','')}"
+    )

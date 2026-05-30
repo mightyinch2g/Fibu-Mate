@@ -1114,6 +1114,7 @@ class FiBuMateApp:
             "v0.432: Monats- und Quartalszeiträume werden in der Zukunft nur bis Ende des freigegebenen Geschäftsjahres angelegt.",
             "v0.432: Folge-Geschäftsjahr wird automatisch ab dem Abschluss-Stichtag August des aktuellen Geschäftsjahres freigegeben.",
             "v0.432: Stichtagspflege verwendet das aktuelle Geschäftsjahr als Standard und arbeitet mit Geschäftsjahresperioden.",
+            "v0.432: Anzeigeformate TT.MM.JJJJ, MM/JJ und QQ/JJ sowie Auswahl nur angelegter Zeiträume ergänzt.",
             "v0.432: Vorhandene ältere Zeiträume werden nicht gelöscht, aber nicht mehr angezeigt oder automatisch angelegt.",
             "v0.432: Dokumentationszentrale zeigt nur Gegenwart/Vergangenheit, erlaubt Positionsauswahl, positionsbezogenes Anhängen und einen zentralen Exportdialog.",
         ]

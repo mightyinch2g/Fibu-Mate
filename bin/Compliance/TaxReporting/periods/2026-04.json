@@ -7,7 +7,7 @@
       "title": "ZM",
       "period": "2026-04",
       "status": "Offen",
-      "due_date": "2026-05-02",
+      "due_date": "2026-05-04",
       "due_source": "Kalender/Manuell",
       "last_due_change": "2026-05-27T14:55:23",
       "owner_user_key": "",
@@ -25,6 +25,12 @@
           "user": "System",
           "action": "Fälligkeit aus Stichtagspflege synchronisiert",
           "new_due_date": "2026-05-02"
+        },
+        {
+          "timestamp": "2026-05-30T22:50:53",
+          "user": "System",
+          "action": "Fälligkeit aus Stichtagspflege synchronisiert",
+          "new_due_date": "2026-05-04"
         }
       ],
       "evidence_required": true,
@@ -38,7 +44,7 @@
       "title": "Z4",
       "period": "2026-04",
       "status": "Offen",
-      "due_date": "2026-05-02",
+      "due_date": "2026-05-04",
       "due_source": "Kalender/Manuell",
       "last_due_change": "2026-05-27T14:55:23",
       "owner_user_key": "",
@@ -56,6 +62,12 @@
           "user": "System",
           "action": "Fälligkeit aus Stichtagspflege synchronisiert",
           "new_due_date": "2026-05-02"
+        },
+        {
+          "timestamp": "2026-05-30T22:50:53",
+          "user": "System",
+          "action": "Fälligkeit aus Stichtagspflege synchronisiert",
+          "new_due_date": "2026-05-04"
         }
       ],
       "evidence_required": true,
@@ -69,7 +81,7 @@
       "title": "Z5a",
       "period": "2026-04",
       "status": "Offen",
-      "due_date": "2026-05-02",
+      "due_date": "2026-05-04",
       "due_source": "Kalender/Manuell",
       "last_due_change": "2026-05-27T14:55:23",
       "owner_user_key": "",
@@ -87,6 +99,12 @@
           "user": "System",
           "action": "Fälligkeit aus Stichtagspflege synchronisiert",
           "new_due_date": "2026-05-02"
+        },
+        {
+          "timestamp": "2026-05-30T22:50:53",
+          "user": "System",
+          "action": "Fälligkeit aus Stichtagspflege synchronisiert",
+          "new_due_date": "2026-05-04"
         }
       ],
       "evidence_required": true,

@@ -72,6 +72,60 @@
       "report18": "",
       "recon08": "",
       "close_month": ""
+    },
+    "2026-01": {
+      "dekade_close": "",
+      "report18": "",
+      "recon08": "",
+      "close_month": ""
+    },
+    "2026-02": {
+      "dekade_close": "",
+      "report18": "",
+      "recon08": "",
+      "close_month": ""
+    },
+    "2026-03": {
+      "dekade_close": "",
+      "report18": "",
+      "recon08": "",
+      "close_month": ""
+    },
+    "2026-04": {
+      "dekade_close": "",
+      "report18": "",
+      "recon08": "",
+      "close_month": ""
+    },
+    "2026-05": {
+      "dekade_close": "02.06.2026",
+      "report18": "",
+      "recon08": "",
+      "close_month": ""
+    },
+    "2026-06": {
+      "dekade_close": "02.07.2026",
+      "report18": "",
+      "recon08": "",
+      "close_month": ""
+    },
+    "2026-07": {
+      "dekade_close": "04.08.2026",
+      "report18": "",
+      "recon08": "",
+      "close_month": ""
+    },
+    "2026-08": {
+      "dekade_close": "02.09.2026",
+      "report18": "",
+      "recon08": "",
+      "close_month": ""
+    },
+    "2026-09": {
+      "dekade_close": "02.10.2026",
+      "report18": "",
+      "recon08": "",
+      "close_month": ""
     }
   },
   "quarterly": {
@@ -98,6 +152,24 @@
       "report18": "",
       "recon08": "",
       "close_month": ""
+    },
+    "2026-Q1": {
+      "dekade_close": "",
+      "report18": "",
+      "recon08": "",
+      "close_month": ""
+    },
+    "2026-Q2": {
+      "dekade_close": "01.07.2026",
+      "report18": "",
+      "recon08": "",
+      "close_month": ""
+    },
+    "2026-Q3": {
+      "dekade_close": "01.10.2026",
+      "report18": "",
+      "recon08": "",
+      "close_month": ""
     }
   },
   "yearly": {
@@ -113,5 +185,6 @@
       "recon08": "",
       "close_month": ""
     }
-  }
+  },
+  "label": "2025/2026"
 }

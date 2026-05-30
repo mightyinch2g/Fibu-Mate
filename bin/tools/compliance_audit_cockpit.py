@@ -1,4 +1,3 @@
-
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox, simpledialog
 from pathlib import Path
@@ -14,19 +13,28 @@ class AuditCockpitUI:
         self.frame=tk.Frame(self.root,bg=cc.BG); self.app.widget_items.append(self.frame)
         self.canvas.create_window(0,132,window=self.frame,anchor="nw",width=self.canvas.winfo_width(),height=max(420,self.canvas.winfo_height()-172))
         self.render()
+    def format_ts(self, value):
+        return cc.format_date_de(value) if hasattr(cc,"format_date_de") else str(value or "")
+    def format_period(self, value):
+        return cc.format_any_period_display(value) if hasattr(cc,"format_any_period_display") else str(value or "")
     def visible_entries(self):
-        data=cc.load_audit().get("entries",[])
-        out=[]
+        data=cc.load_audit().get("entries",[]); out=[]
         for e in data:
             if e.get("archived"): continue
             if not cc.can_admin(self.app):
                 if e.get("user_key") != cc.user_key(self.app) and not e.get("public", False): continue
                 if e.get("event_type") in ("Benutzer angelegt","Benutzer gelöscht","Benutzer geändert","Berechtigung geändert"): continue
-            txt=self.filter_text.get().strip().lower()
-            blob=" ".join(str(e.get(k,"")) for k in e.keys()).lower()
+            txt=self.filter_text.get().strip().lower(); blob=" ".join(str(e.get(k,"")) for k in e.keys()).lower()
             if txt and txt not in blob: continue
             if self.risk.get()!="Alle" and e.get("risk")!=self.risk.get(): continue
             if self.event.get()!="Alle" and e.get("event_type")!=self.event.get(): continue
+            period=str(e.get("period","") or "")
+            try:
+                kind=cc.detect_period_kind(period) if hasattr(cc,"detect_period_kind") else ""
+                if kind and hasattr(cc,"period_allowed_v0432") and not cc.period_allowed_v0432(kind, period, existing_only=False):
+                    continue
+            except Exception:
+                pass
             out.append(e)
         return out
     def render(self):
@@ -53,22 +61,15 @@ class AuditCockpitUI:
         headers=["Zeitpunkt","Ereignis","Modul","Risiko","Zeitraum","Benutzer","Details"]
         for c,h in enumerate(headers): tk.Label(table,text=h,bg=cc.HEADER,fg=cc.TEXT,font=("Segoe UI",10,"bold"),padx=6,pady=6).grid(row=0,column=c,sticky="nsew",padx=1,pady=1)
         for r,e in enumerate(entries,1):
-            vals=[e.get("timestamp",""),e.get("event_type",""),e.get("module",""),e.get("risk",""),e.get("period",""),e.get("user_name","")]
+            vals=[self.format_ts(e.get("timestamp","")),e.get("event_type",""),e.get("module",""),e.get("risk",""),self.format_period(e.get("period","")),e.get("user_name","")]
             for c,v in enumerate(vals): tk.Label(table,text=v,bg=cc.WHITE,fg=cc.TEXT,padx=6,pady=5,anchor="w",wraplength=220).grid(row=r,column=c,sticky="nsew",padx=1,pady=1)
             tk.Button(table,text="öffnen",command=lambda ee=e: self.show_details(ee),bg=cc.WHITE,fg=cc.BLUE,bd=1,padx=6,pady=5).grid(row=r,column=6,sticky="nsew",padx=1,pady=1)
         self.app.active_scroll_canvas=canvas
     def show_details(self, entry):
-        win = tk.Toplevel(self.root)
-        win.title("Audit-Details")
-        win.geometry("760x520")
-        win.configure(bg=cc.BG)
-        win.transient(self.root)
-        txt = tk.Text(win, wrap="word", bg=cc.WHITE, fg=cc.TEXT, font=("Segoe UI", 10), padx=12, pady=12)
-        txt.pack(fill="both", expand=True, padx=14, pady=14)
-        txt.insert("1.0", cc.audit_entry_long_text(entry))
-        txt.configure(state="disabled")
-        tk.Button(win, text="Schließen", command=win.destroy, bg=cc.BLUE, fg="white", bd=0, padx=14, pady=7).pack(anchor="e", padx=14, pady=(0,14))
-
+        win=tk.Toplevel(self.root); win.title("Audit-Details"); win.geometry("760x520"); win.configure(bg=cc.BG); win.transient(self.root)
+        txt=tk.Text(win,wrap="word",bg=cc.WHITE,fg=cc.TEXT,font=("Segoe UI",10),padx=12,pady=12); txt.pack(fill="both",expand=True,padx=14,pady=14)
+        txt.insert("1.0", cc.audit_entry_long_text(entry)); txt.configure(state="disabled")
+        tk.Button(win,text="Schließen",command=win.destroy,bg=cc.BLUE,fg="white",bd=0,padx=14,pady=7).pack(anchor="e",padx=14,pady=(0,14))
     def archive_visible(self):
         entries=self.visible_entries()
         if not entries: messagebox.showinfo("Archivieren","Keine Einträge zum Archivieren."); return
@@ -78,8 +79,7 @@ class AuditCockpitUI:
     def export_pdf(self):
         entries=self.visible_entries(); path=filedialog.asksaveasfilename(defaultextension=".pdf",filetypes=[("PDF","*.pdf")],initialfile="Audit-Bericht.pdf")
         if not path: return
-        rows=[["Zeitpunkt","Ereignis","Modul","Risiko","Benutzer","Details"]]+[[e.get("timestamp"),e.get("event_type"),e.get("module"),e.get("risk"),e.get("user_name"),e.get("details")] for e in entries]
+        rows=[["Zeitpunkt","Ereignis","Modul","Risiko","Zeitraum","Benutzer","Details"]]+[[self.format_ts(e.get("timestamp")),e.get("event_type"),e.get("module"),e.get("risk"),self.format_period(e.get("period")),e.get("user_name"),e.get("details")] for e in entries]
         cc.write_simple_pdf(path,"Audit-Bericht",rows); cc.log_audit(self.app,"PDF-Bericht erstellt","Audit-Cockpit",Path(path).name,path,"Info",public=False)
         if messagebox.askyesno("PDF erstellt","PDF öffnen?"): cc.open_path(path)
-
 def render(app): AuditCockpitUI(app)

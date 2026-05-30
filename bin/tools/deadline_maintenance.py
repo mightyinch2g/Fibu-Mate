@@ -74,7 +74,7 @@ def fiscal_year_start_for_date(d=None):
     return d.year if d.month >= 10 else d.year - 1
 
 def fiscal_year_label(start_year: int):
-    return f"GJ {start_year}/{start_year + 1}"
+    return cc.format_fiscal_year_v0432(start_year) if hasattr(cc, "format_fiscal_year_v0432") else f"{start_year:04d}/{start_year + 1:04d}"
 
 
 def fiscal_month_keys(start_year: int):
@@ -169,6 +169,7 @@ def default_year_data(year: int):
     years = {f"{year:04d}-{year+1:04d}": _default_record()}
     return {"fiscal_year_start": year, "label": fiscal_year_label(year), "monthly": months, "quarterly": quarters, "yearly": years}
 
+
 def load_year(year: int):
     path = year_file(year)
     legacy = legacy_year_file_v0431(year)
@@ -179,7 +180,16 @@ def load_year(year: int):
             return data
         except Exception:
             pass
-    return cc.json_load(path, default_year_data(year))
+    data = cc.json_load(path, default_year_data(year))
+    # Migration alter/fehlerhafter Keys in saubere GJ-Keys
+    default = default_year_data(year)
+    for section in ('monthly', 'quarterly', 'yearly'):
+        cur = data.setdefault(section, {})
+        for k, v in default.get(section, {}).items():
+            cur.setdefault(k, v)
+    data['label'] = fiscal_year_label(year)
+    return data
+
 
 def save_year(year: int, data):
     cc.json_save(year_file(year), data)
@@ -235,6 +245,7 @@ def apply_to_period_file(module_dir: str, period: str, rec: dict):
         p.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding='utf-8')
     return changed
 
+
 def propagate(year_data):
     count = 0
     for period, rec in year_data.get('monthly', {}).items():
@@ -249,6 +260,7 @@ def propagate(year_data):
         if apply_to_period_file('YearlyClose', period, rec):
             count += 1
     return count
+
 
 def apply_to_tax_reporting_period(period: str, rec: dict):
     try:
@@ -268,12 +280,30 @@ def apply_to_tax_reporting_period(period: str, rec: dict):
         return False
 
 
+
+def allowed_fiscal_year_starts():
+    periods = cc.allowed_periods_for_kind_v0432('yearly', existing_only=False) if hasattr(cc, 'allowed_periods_for_kind_v0432') else [f"{fiscal_year_start_for_date():04d}-{fiscal_year_start_for_date()+1:04d}"]
+    starts = []
+    for p in periods:
+        try:
+            starts.append(int(str(p).split('-')[0]))
+        except Exception:
+            pass
+    return sorted(set(starts)) or [fiscal_year_start_for_date()]
+
 class DeadlineMaintenanceUI:
     def __init__(self, app):
         self.app = app
         self.root = app.root
         self.canvas = app.canvas
-        self.year = fiscal_year_start_for_date()
+        allowed_years = allowed_fiscal_year_starts()
+        current_key = cc.current_period_for_kind_v0432('yearly') if hasattr(cc, 'current_period_for_kind_v0432') else f"{fiscal_year_start_for_date():04d}-{fiscal_year_start_for_date()+1:04d}"
+        try:
+            self.year = int(str(current_key).split('-')[0])
+        except Exception:
+            self.year = fiscal_year_start_for_date()
+        if self.year not in allowed_years:
+            self.year = allowed_years[-1]
         self.data = load_year(self.year)
         self._saved_snapshot = json.dumps(self.data, sort_keys=True, ensure_ascii=False)
 
@@ -303,15 +333,14 @@ class DeadlineMaintenanceUI:
         top.pack(fill="x", padx=24, pady=(14, 8))
         tk.Label(top, text=MODULE_TITLE, bg=cc.BG, fg=cc.TEXT, font=("Segoe UI", 18, "bold")).pack(side="left")
 
-        year_box = ttk.Combobox(top, values=[str(self.year-1), str(self.year), str(self.year+1)], state="readonly", width=8)
-        year_box.set(str(self.year))
+        allowed_years = allowed_fiscal_year_starts()
+        year_labels = {fiscal_year_label(y): y for y in allowed_years}
+        year_box = ttk.Combobox(top, values=list(year_labels.keys()), state="readonly", width=14)
+        year_box.set(fiscal_year_label(self.year))
         year_box.pack(side="left", padx=10)
 
         def switch_year(_=None):
-            try:
-                self.year = int(year_box.get())
-            except Exception:
-                self.year = fiscal_year_start_for_date()
+            self.year = year_labels.get(year_box.get(), self.year)
             self.data = load_year(self.year)
             self.render()
         year_box.bind("<<ComboboxSelected>>", switch_year)
@@ -339,6 +368,9 @@ class DeadlineMaintenanceUI:
 
     def _build_period_tab(self, parent, kind):
         data = self.data.get(kind, {})
+        if hasattr(cc, 'allowed_periods_for_kind_v0432'):
+            allowed = set(cc.allowed_periods_for_kind_v0432(kind, existing_only=False))
+            data = {k: v for k, v in data.items() if k in allowed}
         canvas = tk.Canvas(parent, bg=cc.BG, highlightthickness=0)
         sb = tk.Scrollbar(parent, orient="vertical", command=canvas.yview)
         inner = tk.Frame(canvas, bg=cc.BG)
@@ -368,7 +400,7 @@ class DeadlineMaintenanceUI:
             v_cm  = tk.StringVar(value=rec.get('close_month', ''))
             self._row_vars[kind][period] = (v_dek, v_r18, v_r08, v_cm)
 
-            tk.Label(inner, text=period, bg=cc.WHITE, fg=cc.TEXT, padx=6, pady=5, anchor="w").grid(row=r, column=0, sticky="nsew", padx=1, pady=1)
+            tk.Label(inner, text=(cc.format_period_display(period, kind) if hasattr(cc, "format_period_display") else period), bg=cc.WHITE, fg=cc.TEXT, padx=6, pady=5, anchor="w").grid(row=r, column=0, sticky="nsew", padx=1, pady=1)
             tk.Entry(inner, textvariable=v_dek, bg=cc.WHITE, width=16).grid(row=r, column=1, sticky="nsew", padx=1, pady=1)
             tk.Entry(inner, textvariable=v_r18, bg=cc.WHITE, width=16).grid(row=r, column=2, sticky="nsew", padx=1, pady=1)
             tk.Entry(inner, textvariable=v_r08, bg=cc.WHITE, width=22).grid(row=r, column=3, sticky="nsew", padx=1, pady=1)
