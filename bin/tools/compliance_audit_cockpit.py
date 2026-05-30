@@ -53,9 +53,22 @@ class AuditCockpitUI:
         headers=["Zeitpunkt","Ereignis","Modul","Risiko","Zeitraum","Benutzer","Details"]
         for c,h in enumerate(headers): tk.Label(table,text=h,bg=cc.HEADER,fg=cc.TEXT,font=("Segoe UI",10,"bold"),padx=6,pady=6).grid(row=0,column=c,sticky="nsew",padx=1,pady=1)
         for r,e in enumerate(entries,1):
-            vals=[e.get("timestamp",""),e.get("event_type",""),e.get("module",""),e.get("risk",""),e.get("period",""),e.get("user_name",""),e.get("details","")]
-            for c,v in enumerate(vals): tk.Label(table,text=v,bg=cc.WHITE,fg=cc.TEXT,padx=6,pady=5,anchor="w",wraplength=260).grid(row=r,column=c,sticky="nsew",padx=1,pady=1)
+            vals=[e.get("timestamp",""),e.get("event_type",""),e.get("module",""),e.get("risk",""),e.get("period",""),e.get("user_name","")]
+            for c,v in enumerate(vals): tk.Label(table,text=v,bg=cc.WHITE,fg=cc.TEXT,padx=6,pady=5,anchor="w",wraplength=220).grid(row=r,column=c,sticky="nsew",padx=1,pady=1)
+            tk.Button(table,text="öffnen",command=lambda ee=e: self.show_details(ee),bg=cc.WHITE,fg=cc.BLUE,bd=1,padx=6,pady=5).grid(row=r,column=6,sticky="nsew",padx=1,pady=1)
         self.app.active_scroll_canvas=canvas
+    def show_details(self, entry):
+        win = tk.Toplevel(self.root)
+        win.title("Audit-Details")
+        win.geometry("760x520")
+        win.configure(bg=cc.BG)
+        win.transient(self.root)
+        txt = tk.Text(win, wrap="word", bg=cc.WHITE, fg=cc.TEXT, font=("Segoe UI", 10), padx=12, pady=12)
+        txt.pack(fill="both", expand=True, padx=14, pady=14)
+        txt.insert("1.0", cc.audit_entry_long_text(entry))
+        txt.configure(state="disabled")
+        tk.Button(win, text="Schließen", command=win.destroy, bg=cc.BLUE, fg="white", bd=0, padx=14, pady=7).pack(anchor="e", padx=14, pady=(0,14))
+
     def archive_visible(self):
         entries=self.visible_entries()
         if not entries: messagebox.showinfo("Archivieren","Keine Einträge zum Archivieren."); return

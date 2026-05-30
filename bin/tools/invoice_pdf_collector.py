@@ -45,7 +45,7 @@ ICON_DIR = Path(__file__).resolve().parent.parent / "Imgs" / "Icons" if Path(__f
 PDF_ICON = "ext_pdf_filetype_icon_176234.ico"
 SEARCH_ICON = "1486503763-bigger-enlarge-search-magnifier-magnify-zoom_81256.ico"
 
-MODULE_TITLE = "Rechnungen aus Ordner sammeln"
+MODULE_TITLE = "Nike - Rechnungs-PDFs in Sammelordner"
 INVOICE_PATTERN = re.compile(r"6\d{9}")
 
 

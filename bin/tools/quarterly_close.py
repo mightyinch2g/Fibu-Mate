@@ -198,6 +198,13 @@ def clamp_day_in_period(period, day):
     day = max(1, min(int(day or 1), calendar.monthrange(start.year, start.month)[1]))
     return date(start.year, start.month, day)
 
+
+def first_business_day_after_period_end(period):
+    cur = period_end(period) + timedelta(days=1)
+    while not is_business_day(cur):
+        cur += timedelta(days=1)
+    return cur
+
 def default_due_date(period):
     return period_end(period).strftime("%Y-%m-%d")
 
@@ -255,7 +262,7 @@ def period_path(period):
 
 
 def default_cutoff_date(period):
-    return period_end(period).strftime("%Y-%m-%d")
+    return first_business_day_after_period_end(period).strftime("%Y-%m-%d")
 
 
 def normalize_cutoff(data, period):

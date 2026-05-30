@@ -14,20 +14,6 @@
       "full_name": "Matthias Wagnerm",
       "tile_color": "#004B93"
     },
-    "fibutest": {
-      "display_name": "Fibutest",
-      "favorites": [
-        "monthly_close"
-      ],
-      "auth": {
-        "password_hash": null,
-        "enabled": false
-      },
-      "permission": "E1 - Standard",
-      "email": "matthias.wagner@intersport.de",
-      "first_name": "",
-      "full_name": "Fibutest"
-    },
     "wall": {
       "display_name": "Wall",
       "email": "olga.wall@intersport.de",
@@ -243,6 +229,18 @@
       "permission": "E1 - Standard",
       "first_name": "Christine",
       "full_name": "Christine Ungerer"
+    },
+    "wagner": {
+      "display_name": "Wagner",
+      "first_name": "Matthias",
+      "full_name": "Matthias Wagner",
+      "email": "matze.wagner1@yahoo.de",
+      "favorites": [],
+      "auth": {
+        "password_hash": null,
+        "enabled": false
+      },
+      "permission": "E3 - Administrator"
     }
   },
   "settings": {

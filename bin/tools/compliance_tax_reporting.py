@@ -222,6 +222,10 @@ class TaxReportingUI:
             win.destroy()
             self.render()
 
+        try:
+            cc.install_entry_grid_navigation(form)
+        except Exception:
+            pass
         tk.Button(form, text="Speichern", command=save, bg=cc.DARK_GREEN, fg="white", bd=0, padx=18, pady=8).grid(row=11, column=2, sticky="e", pady=14)
 
     def config_popup(self):
@@ -259,6 +263,10 @@ class TaxReportingUI:
             win.destroy()
             self.render()
 
+        try:
+            cc.install_entry_grid_navigation(frame)
+        except Exception:
+            pass
         tk.Button(frame, text="Speichern", command=save_cfg, bg=cc.BLUE, fg="white", bd=0, padx=14, pady=8).grid(row=len(rows)+1, column=0, columnspan=2, pady=12, sticky="w")
 
     def export_pdf(self):

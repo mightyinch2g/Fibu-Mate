@@ -1,7 +1,7 @@
 
 import json, os, subprocess, re, webbrowser
 from pathlib import Path
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from urllib.parse import quote
 BG="#E8EEF5"; HEADER="#D3DEE9"; BLUE="#004B93"; RED="#E30613"; ORANGE="#F59E0B"; GREEN="#16A34A"; DARK_GREEN="#047857"; TEXT="#182431"; TEXT2="#445364"; WHITE="#FFFFFF"; GREY="#B9C3CF"
 ROLE_E1="E1 - Standard"; ROLE_E2="E2 - Erweitert"; ROLE_E3="E3 - Administrator"; ROLE_E4="E4 - System-Administrator"
@@ -76,7 +76,10 @@ def next_tax_task_uid(cfg):
         uid=f"TAX{n:03d}"; n+=1
         if uid not in ex: cfg['next_task_uid']=n; return uid
 def default_due(period):
-    import calendar; y,m=map(int,period.split('-')); return f"{y:04d}-{m:02d}-{calendar.monthrange(y,m)[1]:02d}"
+    import calendar
+    y, m = map(int, period.split('-'))
+    end = date(y, m, calendar.monthrange(y, m)[1])
+    return default_closing_cutoff_after_period_end(end)
 def ensure_tax_period(period):
     cfg=load_tax_config(); d=json_load(tax_period_path(period),{"period":period,"created_at":now_iso(),"reports":[]}); d.setdefault("reports",[]); ex={r.get('type_id'):r for r in d['reports']}; ch=False
     for rt in cfg.get('report_types',[]):
@@ -113,3 +116,95 @@ def export_excel(path,headers,rows):
     wb=Workbook(); ws=wb.active; ws.title='Export'; ws.append(headers)
     for r in rows: ws.append(list(r))
     wb.save(path)
+
+
+# ---- FiBu Mate gemeinsame Stichtags-/Audit-/Tabellen-Hilfen BU31 ----
+def easter_sunday(year):
+    a = year % 19; b = year // 100; c = year % 100; d = b // 4; e = b % 4
+    f = (b + 8) // 25; g = (b - f + 1) // 3; h = (19 * a + b - d - g + 15) % 30
+    i = c // 4; k = c % 4; l = (32 + 2 * e + 2 * i - h - k) % 7
+    m = (a + 11 * h + 22 * l) // 451
+    month = (h + l - 7 * m + 114) // 31
+    day = ((h + l - 7 * m + 114) % 31) + 1
+    return date(year, month, day)
+
+def bw_holidays(year):
+    easter = easter_sunday(year)
+    return {
+        date(year, 1, 1), date(year, 1, 6), easter - timedelta(days=2), easter + timedelta(days=1),
+        date(year, 5, 1), easter + timedelta(days=39), easter + timedelta(days=50), easter + timedelta(days=60),
+        date(year, 10, 3), date(year, 11, 1), date(year, 12, 25), date(year, 12, 26),
+    }
+
+def is_business_day_bw(d):
+    return d.weekday() < 5 and d not in bw_holidays(d.year)
+
+def first_business_day_after(d):
+    cur = d + timedelta(days=1)
+    while not is_business_day_bw(cur):
+        cur += timedelta(days=1)
+    return cur
+
+def first_business_day_next_month(year, month):
+    if month >= 12:
+        y, m = year + 1, 1
+    else:
+        y, m = year, month + 1
+    cur = date(y, m, 1)
+    while not is_business_day_bw(cur):
+        cur += timedelta(days=1)
+    return cur
+
+def default_closing_cutoff_after_period_end(period_end):
+    return first_business_day_after(period_end).strftime('%Y-%m-%d')
+
+def audit_entry_long_text(e):
+    return (
+        f"Zeitpunkt: {e.get('timestamp','')}\n"
+        f"Ereignis: {e.get('event_type','')}\n"
+        f"Modul: {e.get('module','')}\n"
+        f"Risiko: {e.get('risk','')}\n"
+        f"Zeitraum: {e.get('period','')}\n"
+        f"Benutzer: {e.get('user_name','')} ({e.get('user_key','')})\n\n"
+        f"Titel:\n{e.get('title','')}\n\n"
+        f"Details:\n{e.get('details','')}\n\n"
+        f"Referenz-ID: {e.get('related_id','')}"
+    )
+
+def install_entry_grid_navigation(root):
+    def _grid_entries(master):
+        out = []
+        for w in master.winfo_children():
+            try:
+                if w.winfo_class() in ('Entry', 'TEntry', 'TCombobox'):
+                    info = w.grid_info()
+                    if info:
+                        out.append((int(info.get('row', 0)), int(info.get('column', 0)), w))
+            except Exception:
+                pass
+        return sorted(out)
+    def move(widget, dx=0, dy=0):
+        try:
+            info = widget.grid_info()
+            row = int(info.get('row', 0)); col = int(info.get('column', 0))
+            for r, c, w in _grid_entries(widget.master):
+                if r == row + dy and c == col + dx:
+                    w.focus_set(); return 'break'
+        except Exception:
+            pass
+        return None
+    def bind_one(w):
+        try:
+            if w.winfo_class() in ('Entry', 'TEntry', 'TCombobox'):
+                w.bind('<Right>', lambda e: move(e.widget, dx=1), add='+')
+                w.bind('<Left>', lambda e: move(e.widget, dx=-1), add='+')
+                w.bind('<Down>', lambda e: move(e.widget, dy=1), add='+')
+                w.bind('<Up>', lambda e: move(e.widget, dy=-1), add='+')
+                w.bind('<Tab>', lambda e: move(e.widget, dx=1), add='+')
+                w.bind('<Shift-Tab>', lambda e: move(e.widget, dx=-1), add='+')
+                w.bind('<ISO_Left_Tab>', lambda e: move(e.widget, dx=-1), add='+')
+        except Exception:
+            pass
+        for ch in getattr(w, 'winfo_children', lambda: [])():
+            bind_one(ch)
+    bind_one(root)

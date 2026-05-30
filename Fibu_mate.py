@@ -129,7 +129,7 @@ ROLE_MIGRATION = {"Standard": ROLE_E1, "Administrator": ROLE_E3, "System-Adminis
 TOOL_REGISTRY = {
     "nike_pdf_to_excel": {"title": "Nike - PDF zu Excel", "module": "bin.tools.nike_pdf_to_excel", "favorite_label": "Nike PDF"},
     "nike_op_liste_pdf_check": {"title": "Nike - OP-Liste: Vollständigkeit PDF-Rechnungen prüfen", "module": "bin.tools.nike_op_liste_pdf_check", "favorite_label": "Nike OP PDF"},
-    "invoice_pdf_collector": {"title": "Rechnungen aus Ordner sammeln", "module": "bin.tools.invoice_pdf_collector", "favorite_label": "RE sammeln"},
+    "invoice_pdf_collector": {"title": "Nike - Rechnungs-PDFs in Sammelordner", "module": "bin.tools.invoice_pdf_collector", "favorite_label": "Nike RE sammeln"},
     "monthly_close": {"title": "Monatsabschluss", "module": "bin.tools.monthly_close", "favorite_label": "Monatsabschluss"},
     "quarterly_close": {"title": "Quartalsabschluss", "module": "bin.tools.quarterly_close", "favorite_label": "Quartalsabschluss"},
     "yearly_close": {"title": "Jahresabschluss", "module": "bin.tools.yearly_close", "favorite_label": "Jahresabschluss"},
@@ -153,7 +153,7 @@ MODULE_DESCRIPTIONS = {
     "deadline_maintenance": "Pflege der Abschluss-Stichtage (Dekadenabschluss, 18-Uhr, 08-Uhr, Monatsabschluss) inkl. Feiertage BW und automatischer Übernahme in Monats-/Quartals-/Jahresabschluss.",
 "task_history": "Zentrale Aufgaben-Historie nach Aufgaben-ID mit Zeitraumverlauf und PDF-Berichten.",
     "x001_sap_test": "SAP-Scripting-Test; Scripting in SAP deaktiviert.",
-    "invoice_pdf_collector": "Rechnungsnummern aus Excel-Spalte einfügen; PDFs werden im Quellordner inkl. Unterordner gesucht und Treffer flach in den Zielordner kopiert. Rechnungsnummern werden aus PDF-Inhalten wie im Modul Nike - PDF zu Excel ausgelesen.",
+    "invoice_pdf_collector": "In Excel gefilterte Rechnungsnummern aus PDF-Verzeichnis wählen und in neuen Sammelordner kopieren.",
 }
 DESCRIPTION_FONT = ("Segoe UI", 11)
 DESCRIPTION_COLOR = TEXT2
@@ -248,6 +248,18 @@ class ArrowIndicator(tk.Canvas):
         s = self.size
         tip_y = (s - 11) if self.direction == "down" else 11
         return tip_y - (s / 2)
+        self.bump_version_once(
+            "2026-05-30_bu31_compliance_audit_deadlines_niketools_unsaved_fix",
+            [
+                "BU31: Stichtags- & Zuständigkeitspflege vollständig nach Compliance & Audit verschoben und aus Abschlusskalender entfernt.",
+                "BU31: Datenaufbereitung erhält ein funktionsfähiges Untermenü Nike-Tools mit den drei Nike-Modulen im Standard-Modul-Menü-Layout.",
+                "BU31: Modul Rechnungen aus Ordner sammeln in Nike - Rechnungs-PDFs in Sammelordner umbenannt und Modulbeschreibung aktualisiert.",
+                "BU31: Dialog für ungespeicherte Änderungen nur bei echtem Dirty-State; nach Speichern + Übernehmen wird der Status bereinigt.",
+                "BU31: Audit-Cockpit zeigt Details als öffnen mit ausführlichem Popup inklusive Zeitstempel.",
+                "BU31: Default-Abschlussstichtag auf ersten Werktag nach Periodenende mit BW-Feiertagen umgestellt und Stichtage in Abschluss-/Steuermeldungsdaten synchronisiert.",
+                "BU31: Benutzerregel angepasst: Nur Wagnerm darf Wagnerm umbenennen; E3 und niedriger dürfen sich nicht selbst umbenennen.",
+            ],
+        )
 
     def set_enabled(self, enabled: bool):
         self.enabled = bool(enabled)
@@ -1159,7 +1171,75 @@ class FiBuMateApp:
         self.user_label.config(text=f"Benutzer {self.current_user_display}" if self.current_user_display else "")
         self.root.after(1000, self.update_clock)
 
+
+    def register_unsaved_changes_provider(self, has_unsaved_callback=None, save_callback=None, discard_callback=None):
+        self._unsaved_provider = has_unsaved_callback
+        self._unsaved_save_callback = save_callback
+        self._unsaved_discard_callback = discard_callback
+
+    def clear_unsaved_changes_provider(self):
+        self._unsaved_provider = None
+        self._unsaved_save_callback = None
+        self._unsaved_discard_callback = None
+
+    def _has_unsaved_changes(self):
+        try:
+            return bool(self._unsaved_provider and self._unsaved_provider())
+        except Exception:
+            return False
+
+    def confirm_unsaved_changes(self):
+        if not self._has_unsaved_changes():
+            return True
+        dlg = tk.Toplevel(self.root)
+        dlg.title("Ungespeicherte Änderungen")
+        dlg.configure(bg=BG)
+        dlg.transient(self.root)
+        dlg.grab_set()
+        result = {"value": None}
+        tk.Label(dlg, text="Es liegen ungespeicherte Änderungen vor.", bg=BG, fg=TEXT, font=("Segoe UI", 12, "bold")).pack(anchor="w", padx=18, pady=(16, 6))
+        tk.Label(dlg, text="Möchten Sie die Änderungen speichern und übernehmen oder verwerfen?", bg=BG, fg=TEXT2, font=("Segoe UI", 10)).pack(anchor="w", padx=18, pady=(0, 14))
+        btns = tk.Frame(dlg, bg=BG)
+        btns.pack(fill="x", padx=18, pady=(0, 16))
+        def choose(v):
+            result["value"] = v
+            dlg.destroy()
+        tk.Button(btns, text="Speichern + Übernehmen", command=lambda: choose("save"), bg=BLUE, fg="white", bd=0, padx=12, pady=7).pack(side="left", padx=(0, 8))
+        discard_btn = tk.Button(btns, text="Änderungen Verwerfen", command=lambda: choose("discard"), bg=WHITE, fg=RED, bd=1, padx=12, pady=7)
+        try:
+            if PIL_AVAILABLE:
+                icon_path = os.path.join(ICON_DIR, "biggarbagebin_121980.ico")
+                if os.path.exists(icon_path):
+                    img = Image.open(icon_path).resize((18, 18))
+                    photo = ImageTk.PhotoImage(img)
+                    discard_btn.configure(image=photo, compound="left")
+                    discard_btn.image = photo
+        except Exception:
+            pass
+        discard_btn.pack(side="left", padx=(0, 8))
+        tk.Button(btns, text="Abbrechen", command=lambda: choose("cancel"), bg=WHITE, fg=TEXT, bd=1, padx=12, pady=7).pack(side="right")
+        self.root.wait_window(dlg)
+        if result["value"] == "save":
+            try:
+                if self._unsaved_save_callback:
+                    self._unsaved_save_callback()
+                self.clear_unsaved_changes_provider()
+                return True
+            except Exception as exc:
+                messagebox.showerror("FiBu Mate", "Speichern fehlgeschlagen: " + str(exc))
+                return False
+        if result["value"] == "discard":
+            try:
+                if self._unsaved_discard_callback:
+                    self._unsaved_discard_callback()
+            finally:
+                self.clear_unsaved_changes_provider()
+            return True
+        return False
+
     def show_page(self, page_name, title="", add_to_history=True):
+        if page_name != self.current_page and not self.confirm_unsaved_changes():
+            return
         if add_to_history and self.current_page:
             self.page_history.append((self.current_page, self.current_title))
         self.current_page = page_name
@@ -1179,6 +1259,8 @@ class FiBuMateApp:
             self.breadcrumb = self.breadcrumb[: existing + 1] if existing is not None else self.breadcrumb + [(page_name, title)]
 
     def jump_to_breadcrumb(self, index):
+        if not self.confirm_unsaved_changes():
+            return
         if 0 <= index < len(self.breadcrumb):
             self.current_page, self.current_title = self.breadcrumb[index]
             self.breadcrumb = self.breadcrumb[: index + 1]
@@ -1186,6 +1268,8 @@ class FiBuMateApp:
             self.render_page()
 
     def go_back(self):
+        if not self.confirm_unsaved_changes():
+            return
         if self.page_history:
             page, title = self.page_history.pop()
             self.current_page, self.current_title = page, title
@@ -1195,6 +1279,7 @@ class FiBuMateApp:
     def on_global_mousewheel(self, event):
         return self._route_mousewheel_to_canvas(event)
     def clear_content(self):
+        self.clear_unsaved_changes_provider()
         self.active_scroll_canvas = None
         if hasattr(self, "module_escape_handler"):
             delattr(self, "module_escape_handler")
@@ -1223,6 +1308,7 @@ class FiBuMateApp:
         self.draw_favorites_bar()
         if self.current_page == "main": self.render_main_menu()
         elif self.current_page == "data_prep": self.render_data_prep_menu()
+        elif self.current_page == "nike_tools": self.render_nike_tools_menu()
         elif self.current_page == "closing_calendar": self.render_closing_calendar_menu()
         elif self.current_page == "compliance_audit": self.render_compliance_audit_menu()
         elif self.current_page == "in_dev": self.render_in_dev_menu()
@@ -1521,11 +1607,21 @@ class FiBuMateApp:
         self.show_page("in_dev", "In Entwicklung", True)
 
     def render_data_prep_menu(self):
-        modules = [("Nike - PDF zu Excel", "nike_pdf_to_excel"), ("Nike - OP-Liste: Vollständigkeit PDF-Rechnungen prüfen", "nike_op_liste_pdf_check"), ("Rechnungen aus Ordner sammeln", "invoice_pdf_collector")]
-        self.render_module_menu(modules, show_descriptions=True); self.draw_bottom_logo()
+        modules = [("Nike-Tools", "page:nike_tools")]
+        self.render_module_menu(modules, show_descriptions=False)
+        self.draw_bottom_logo()
+
+    def render_nike_tools_menu(self):
+        modules = [
+            ("Nike - PDF zu Excel", "nike_pdf_to_excel"),
+            ("Nike - OP-Liste: Vollständigkeit PDF-Rechnungen prüfen", "nike_op_liste_pdf_check"),
+            ("Nike - Rechnungs-PDFs in Sammelordner", "invoice_pdf_collector"),
+        ]
+        self.render_module_menu(modules, show_descriptions=True)
+        self.draw_bottom_logo()
 
     def render_closing_calendar_menu(self):
-        modules = [("Monatsabschluss", "monthly_close"), ("Quartalsabschluss", "quarterly_close"), ("Jahresabschluss", "yearly_close"), ("Stichtags- & Zuständigkeitspflege", "deadline_maintenance"), ("Aufgaben-Historie nach ID", "task_history")]
+        modules = [("Monatsabschluss", "monthly_close"), ("Quartalsabschluss", "quarterly_close"), ("Jahresabschluss", "yearly_close"), ("Aufgaben-Historie nach ID", "task_history")]
         self.render_module_menu(modules, show_descriptions=True)
         if self.my_role() == ROLE_E4:
             text = "Auto-Mail: Ein" if self.auto_close_mail_enabled() else "Auto-Mail: Aus"
@@ -1539,6 +1635,7 @@ class FiBuMateApp:
             ("Steuermeldungs-Cockpit", "tax_reporting"),
             ("Audit-Cockpit", "audit_cockpit"),
             ("Dokumentationszentrale", "documentation_center"),
+            ("Stichtags- & Zuständigkeitspflege", "deadline_maintenance"),
         ]
         self.render_module_menu(modules, show_descriptions=True)
         self.draw_bottom_logo()
@@ -1621,11 +1718,11 @@ class FiBuMateApp:
         def save_user_row(old_key, name_var, email_var, first_name_var=None):
             if old_key not in users: return
             data = users[old_key]; data["email"] = email_var.get().strip(); data["first_name"] = first_name_var.get().strip() if first_name_var else data.get("first_name", ""); data["full_name"] = " ".join(x for x in [data.get("first_name", "").strip(), data.get("display_name", old_key).strip()] if x).strip() or data.get("display_name", old_key)
-            may_rename = self.my_role() in (ROLE_E3, ROLE_E4) and old_key not in (self.current_user_key, SUPERUSER_KEY) and can_edit_user(old_key)
+            may_rename = ((old_key == SUPERUSER_KEY and self.current_user_key == SUPERUSER_KEY) or (self.my_role() in (ROLE_E3, ROLE_E4) and old_key not in (self.current_user_key, SUPERUSER_KEY) and can_edit_user(old_key)))
             if may_rename:
                 new_name = " ".join(name_var.get().strip().split()); new_key = normalize_username(new_name)
                 if not new_key: messagebox.showwarning("FiBu Mate", "Bitte einen Benutzernamen eingeben."); return
-                if new_key == SUPERUSER_KEY: messagebox.showwarning("FiBu Mate", "Der Benutzer Wagnerm kann nicht umbenannt werden."); return
+                if old_key != SUPERUSER_KEY and new_key == SUPERUSER_KEY: messagebox.showwarning("FiBu Mate", "Der Benutzer Wagnerm kann nicht überschrieben werden."); return
                 if new_key != old_key and new_key in users: messagebox.showwarning("FiBu Mate", "Dieser Benutzername existiert bereits."); return
                 data = users.pop(old_key); data["display_name"] = new_name; data["full_name"] = " ".join(x for x in [data.get("first_name", "").strip(), new_name] if x).strip() or new_name; users[new_key] = data
             self.save_user_data(); messagebox.showinfo("FiBu Mate", "Benutzerdaten wurden gespeichert."); self.render_page()
@@ -1823,7 +1920,7 @@ class FiBuMateApp:
         w, h = self.canvas.winfo_width(), self.canvas.winfo_height(); tile_w = max(290, min(390, int(w * 0.22))); tile_h = max(120, min(160, int(h * 0.15))); gap = max(18, int(h * 0.025)); area_top = 132; area_bottom = max(area_top + 260, h - 92); view_h = int(area_bottom - area_top); first_center_x = x_pct(w, 25); first_center_y = y_pct(h, 70); left_x = max(0, first_center_x - tile_w / 2 - 8); top = max(0, first_center_y - tile_h / 2 - area_top - 8)
         container = tk.Frame(self.root, bg=BG); self.widget_items.append(container); self.canvas.create_window(0, area_top, window=container, anchor="nw", width=w, height=view_h); canvas_w = w - left_x - 10; scroll_canvas = tk.Canvas(container, bg=BG, highlightthickness=0, bd=0); scroll_canvas.place(x=left_x, y=0, width=canvas_w, height=view_h); content_h = top + len(modules) * (tile_h + gap) + 20; scroll_canvas.configure(scrollregion=(0, 0, canvas_w, content_h)); self.register_scroll_canvas(scroll_canvas); desc_x1 = tile_w + 90; desc_x2 = canvas_w - 20
         for idx, (title, module_id) in enumerate(modules):
-            y = top + idx * (tile_h + gap); cmd = (lambda mid=module_id: self.open_tool(mid)) if module_id in TOOL_REGISTRY else self.show_placeholder
+            y = top + idx * (tile_h + gap); cmd = (lambda mid=module_id: self.open_tool(mid)) if (module_id in TOOL_REGISTRY or str(module_id).startswith("page:")) else self.show_placeholder
             tile = Tile(scroll_canvas, self, module_id, title, cmd, favorite_enabled=module_id in TOOL_REGISTRY, icon_type=self.module_icon_type(module_id)); tile.resize_tile(tile_w, tile_h); self.focusable_tiles.append(tile); scroll_canvas.create_window(0, y, window=tile, anchor="nw")
             if show_descriptions: self.draw_module_description(scroll_canvas, module_id, desc_x1, y, desc_x2 - desc_x1)
             if idx < len(modules) - 1: self.draw_relief_line(scroll_canvas, y + tile_h + gap / 2, desc_x1, desc_x2)
@@ -1842,7 +1939,13 @@ class FiBuMateApp:
             messagebox.showerror("FiBu Mate", f"Fehler beim Laden des Moduls:\n\n{TOOL_REGISTRY.get(tool_id, {}).get('title', tool_id)}\n\n{e}"); self.draw_bottom_logo()
 
     def open_tool(self, tool_id):
-        if tool_id in TOOL_REGISTRY: self.show_page(f"tool:{tool_id}", TOOL_REGISTRY[tool_id]["title"], True)
+        if str(tool_id).startswith("page:"):
+            page = str(tool_id).split(":", 1)[1]
+            titles = {"nike_tools": "Nike-Tools"}
+            self.show_page(page, titles.get(page, page), True)
+            return
+        if tool_id in TOOL_REGISTRY:
+            self.show_page(f"tool:{tool_id}", TOOL_REGISTRY[tool_id]["title"], True)
 
     def show_placeholder(self): messagebox.showinfo("FiBu Mate", "Hinter diesem Widget entsteht gerade ein Modul.")
 
@@ -1922,9 +2025,21 @@ class FiBuMateApp:
         return "break"
 
     def confirm_exit(self):
-        if messagebox.askyesno("FiBu Mate beenden", "Möchtest du FiBu Mate wirklich schließen?"): self.root.destroy()
+        if not self.confirm_unsaved_changes():
+            return
+        if messagebox.askyesno(APP_NAME, "FiBu Mate wirklich schließen?"):
+            self.root.destroy()
 
-    def run(self): self.root.mainloop()
+    def run(self):
+        try:
+            self.root.deiconify()
+            self.root.lift()
+            self.root.focus_force()
+            self.root.update_idletasks()
+            self.root.update()
+        except Exception:
+            pass
+        self.root.mainloop()
 
 
 if __name__ == "__main__":

@@ -10,7 +10,7 @@ try:
 except Exception:
     import compliance_common as cc
 
-MODULE_TITLE = "Stichtags- und Zuständigkeitspflege"
+MODULE_TITLE = "Stichtags- & Zuständigkeitspflege"
 
 # ---- Feiertage BW + Ranges ----
 
@@ -55,6 +55,32 @@ def parse_date(s: str):
             pass
     return None
 
+
+def is_business_day_bw(d: date):
+    return d.weekday() < 5 and d not in {x[0] for x in bw_holidays_named(d.year)}
+
+def first_business_day_after(d: date):
+    cur = d + timedelta(days=1)
+    while not is_business_day_bw(cur):
+        cur += timedelta(days=1)
+    return cur
+
+def default_cutoff_for_period(kind: str, period: str):
+    _s, end = period_bounds(kind, period)
+    return fmt_date(first_business_day_after(end)) if end else ""
+
+def fiscal_year_start_for_date(d=None):
+    d = d or date.today()
+    return d.year if d.month >= 10 else d.year - 1
+
+def fiscal_year_label(start_year: int):
+    return f"GJ {start_year}/{start_year + 1}"
+
+def fiscal_month_keys(start_year: int):
+    return [f"{start_year:04d}-{m:02d}" for m in range(10, 13)] + [f"{start_year + 1:04d}-{m:02d}" for m in range(1, 10)]
+
+def fiscal_quarter_keys(start_year: int):
+    return [f"{start_year:04d}-Q4", f"{start_year + 1:04d}-Q1", f"{start_year + 1:04d}-Q2", f"{start_year + 1:04d}-Q3"]
 
 def period_bounds(kind: str, key: str):
     if kind == 'monthly':
@@ -125,13 +151,10 @@ def _default_record():
 
 
 def default_year_data(year: int):
-    months = {f"{year:04d}-{m:02d}": _default_record() for m in range(1, 13)}
-    quarters = {f"{year:04d}-Q{q}": _default_record() for q in range(1, 5)}
-    years = {
-        f"{year-1:04d}-{year:04d}": _default_record(),
-        f"{year:04d}-{year+1:04d}": _default_record(),
-    }
-    return {"year": year, "monthly": months, "quarterly": quarters, "yearly": years}
+    months = {key: _default_record() for key in fiscal_month_keys(year)}
+    quarters = {key: _default_record() for key in fiscal_quarter_keys(year)}
+    years = {f"{year:04d}-{year+1:04d}": _default_record()}
+    return {"fiscal_year_start": year, "label": fiscal_year_label(year), "monthly": months, "quarterly": quarters, "yearly": years}
 
 
 def load_year(year: int):
@@ -177,30 +200,59 @@ def apply_to_period_file(module_dir: str, period: str, rec: dict):
 
 
 def propagate(year_data):
-    # Monatsabschluss
+    count = 0
     for period, rec in year_data.get('monthly', {}).items():
-        apply_to_period_file('MonthlyClose', period, rec)
-    # Quartalsabschluss
+        if apply_to_period_file('MonthlyClose', period, rec):
+            count += 1
+        if apply_to_tax_reporting_period(period, rec):
+            count += 1
     for period, rec in year_data.get('quarterly', {}).items():
-        apply_to_period_file('QuarterlyClose', period, rec)
-    # Jahresabschluss (GJ über zwei Jahre)
+        if apply_to_period_file('QuarterlyClose', period, rec):
+            count += 1
     for period, rec in year_data.get('yearly', {}).items():
-        apply_to_period_file('YearlyClose', period, rec)
+        if apply_to_period_file('YearlyClose', period, rec):
+            count += 1
+    return count
 
+
+def apply_to_tax_reporting_period(period: str, rec: dict):
+    try:
+        p = cc.tax_period_path(period)
+        if not p.exists():
+            return False
+        data = json.loads(p.read_text(encoding='utf-8'))
+        changed = False
+        due = parse_date(rec.get('dekade_close')) or parse_date(default_cutoff_for_period('monthly', period))
+        due_iso = due.strftime('%Y-%m-%d') if due else ''
+        for report in data.get('reports', []):
+            if report.get('sync_with_calendar', False) and due_iso and report.get('due_date') != due_iso:
+                report['due_date'] = due_iso
+                report.setdefault('history', []).append({'timestamp': cc.now_iso(), 'user': 'System', 'action': 'Fälligkeit aus Stichtagspflege synchronisiert', 'new_due_date': due_iso})
+                changed = True
+        if changed:
+            cc.json_save(p, data)
+        return changed
+    except Exception:
+        return False
 
 class DeadlineMaintenanceUI:
     def __init__(self, app):
         self.app = app
         self.root = app.root
         self.canvas = app.canvas
-        self.year = datetime.now().year
+        self.year = fiscal_year_start_for_date()
         self.data = load_year(self.year)
+        self._saved_snapshot = json.dumps(self.data, sort_keys=True, ensure_ascii=False)
 
         self.frame = tk.Frame(self.root, bg=cc.BG)
         self.app.widget_items.append(self.frame)
         self.canvas.create_window(0, 132, window=self.frame, anchor="nw",
                                   width=self.canvas.winfo_width(), height=max(420, self.canvas.winfo_height() - 172))
         self.render()
+        try:
+            self.app.register_unsaved_changes_provider(self.has_unsaved_changes, self.save_all, self.discard_changes)
+        except Exception:
+            pass
 
     def can_open(self):
         return cc.can_admin(self.app)
@@ -226,7 +278,7 @@ class DeadlineMaintenanceUI:
             try:
                 self.year = int(year_box.get())
             except Exception:
-                self.year = datetime.now().year
+                self.year = fiscal_year_start_for_date()
             self.data = load_year(self.year)
             self.render()
         year_box.bind("<<ComboboxSelected>>", switch_year)
@@ -247,6 +299,10 @@ class DeadlineMaintenanceUI:
         self._build_period_tab(tab_m, 'monthly')
         self._build_period_tab(tab_q, 'quarterly')
         self._build_period_tab(tab_y, 'yearly')
+        try:
+            cc.install_entry_grid_navigation(nb)
+        except Exception:
+            pass
 
     def _build_period_tab(self, parent, kind):
         data = self.data.get(kind, {})
@@ -286,10 +342,10 @@ class DeadlineMaintenanceUI:
             tk.Entry(inner, textvariable=v_cm, bg=cc.WHITE, width=20).grid(row=r, column=4, sticky="nsew", padx=1, pady=1)
 
     def save_all(self):
-        # Values aus allen Tabs in self.data übernehmen
+        changed_periods = []
         for kind, per_map in getattr(self, '_row_vars', {}).items():
             for period, (v_dek, v_r18, v_r08, v_cm) in per_map.items():
-                if not v_dek.get().strip() or not parse_date(v_dek.get()):
+                if v_dek.get().strip() and not parse_date(v_dek.get()):
                     messagebox.showwarning(MODULE_TITLE, f"Ungültiges Dekadenabschluss-Datum: {v_dek.get()} ({period})")
                     return
                 for label, vv in [("Bericht ab 18 Uhr", v_r18), ("Kontenabstimmung", v_r08), ("Abschluss Monat", v_cm)]:
@@ -297,15 +353,41 @@ class DeadlineMaintenanceUI:
                         messagebox.showwarning(MODULE_TITLE, f"Ungültiges Datum ({label}): {vv.get()} ({period})")
                         return
                 rec = self.data[kind][period]
-                rec['dekade_close'] = v_dek.get().strip()
+                old = dict(rec)
+                rec['dekade_close'] = v_dek.get().strip() or default_cutoff_for_period(kind, period)
                 rec['report18'] = v_r18.get().strip()
                 rec['recon08'] = v_r08.get().strip()
                 rec['close_month'] = v_cm.get().strip()
-
+                v_dek.set(rec['dekade_close'])
+                if old != rec:
+                    changed_periods.append(f"{kind}:{period}")
         save_year(self.year, self.data)
-        propagate(self.data)
-        cc.log_audit(self.app, "Aufgabe geändert", MODULE_TITLE, "Stichtage gespeichert und übernommen", f"Jahr {self.year}", "Info", period=str(self.year), public=True)
-        messagebox.showinfo(MODULE_TITLE, "Gespeichert. Änderungen wurden in Monats-/Quartals-/Jahresabschluss übernommen.")
+        propagated = propagate(self.data)
+        self._saved_snapshot = self._current_snapshot()
+        cc.log_audit(self.app, "Aufgabe geändert", MODULE_TITLE, "Stichtage gespeichert und übernommen", f"{fiscal_year_label(self.year)}; Perioden: {', '.join(changed_periods) if changed_periods else 'keine Feldänderung'}; synchronisierte Dateien: {propagated}", "Info", period=fiscal_year_label(self.year), public=True)
+        messagebox.showinfo(MODULE_TITLE, "Gespeichert. Änderungen wurden in Monats-/Quartals-/Jahresabschluss und Steuermeldungs-Cockpit übernommen.")
+
+    def _current_snapshot(self):
+        data_copy = json.loads(json.dumps(self.data, ensure_ascii=False))
+        for kind, per_map in getattr(self, '_row_vars', {}).items():
+            for period, (v_dek, v_r18, v_r08, v_cm) in per_map.items():
+                rec = data_copy.get(kind, {}).setdefault(period, _default_record())
+                rec['dekade_close'] = v_dek.get().strip() or default_cutoff_for_period(kind, period)
+                rec['report18'] = v_r18.get().strip()
+                rec['recon08'] = v_r08.get().strip()
+                rec['close_month'] = v_cm.get().strip()
+        return json.dumps(data_copy, sort_keys=True, ensure_ascii=False)
+
+    def has_unsaved_changes(self):
+        try:
+            return self._current_snapshot() != getattr(self, '_saved_snapshot', '')
+        except Exception:
+            return False
+
+    def discard_changes(self):
+        self.data = load_year(self.year)
+        self._saved_snapshot = json.dumps(self.data, sort_keys=True, ensure_ascii=False)
+        self.render()
 
     def export_excel(self):
         path = filedialog.asksaveasfilename(defaultextension=".xlsx", filetypes=[("Excel", "*.xlsx")], initialfile=f"Fristen_{self.year}.xlsx")
