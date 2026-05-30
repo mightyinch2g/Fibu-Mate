@@ -1,6 +1,16 @@
 {
   "entries": [
     {
+      "version": "v0.433",
+      "date": "260531",
+      "bullets": [
+        "v0.433: Responsive Skalierung für kleinere Monitore ergänzt; zentrale Schrift-, Kachel- und Widgetgrößen werden an die Bildschirmgröße angepasst.",
+        "v0.433: Dokumentationszentrale-Tabelle umgebaut: Aufgabenzuordnung als erste Spalte, Dokument statt Dokumentname, Status und Pfad ausgeblendet.",
+        "v0.433: Dokumentnamen in der Dokumentationszentrale sind anklickbar und öffnen die hinterlegte Datei; Datei- und Anhang-Icons ergänzt.",
+        "v0.433: Dokumentationszentrale erhält horizontale Scroll-Unterstützung für Tabellenüberlauf und optimierte Spaltenbreiten."
+      ]
+    },
+    {
       "version": "v0.432",
       "date": "260530",
       "update_id": "2026-05-30_v0_432_period_logic_documentation_center",

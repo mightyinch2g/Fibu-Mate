@@ -1,49 +1,90 @@
 import json
+import os
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 from pathlib import Path
 try:
+    from PIL import Image, ImageTk
+    PIL_AVAILABLE = True
+except Exception:
+    PIL_AVAILABLE = False
+try:
     from . import compliance_common as cc
 except Exception:
     import compliance_common as cc
+
 DOC_TYPES=["Nachweis","Anlage","Dokumentationspfad","Abschlussbericht","Steuermeldungsbericht","Audit-Bericht","Kommentar/Notiz","Sonstiges"]
-HEADERS=["Dokumentname","Dokumenttyp","Modul","Zeitraum","Zuordnung","Status","Pfad","Hinzugefügt durch","Datum","Aktion"]
-COLUMN_SPECS={"Dokumentname":(22,170),"Dokumenttyp":(18,130),"Modul":(20,150),"Zeitraum":(10,80),"Zuordnung":(28,220),"Status":(14,110),"Pfad":(38,300),"Hinzugefügt durch":(18,140),"Datum":(12,90),"Aktion":(16,120)}
+HEADERS=["Aufgabenzuordnung","Dokument","Dokumenttyp","Modul","Zeitraum","Hinzugefügt durch","Datum","Aktion"]
+COLUMN_WEIGHTS={"Aufgabenzuordnung":26,"Dokument":22,"Dokumenttyp":12,"Modul":16,"Zeitraum":7,"Hinzugefügt durch":14,"Datum":9,"Aktion":11}
+DOC_ICON_PATH=r"C:\python\bin\Imgs\Icons\fileinterfacesymboloftextpapersheet_79740.ico"
+ATTACH_ICON_PATH=r"C:\python\bin\Imgs\Icons\-attach-file_90371.ico"
+
 def match_query(row, query):
     q=(query or "").strip().lower()
     if not q: return True
     blob=" ".join(str(v) for k,v in row.items() if not str(k).startswith("__")).lower(); q=q.replace('*','').strip()
     return all(p.strip() in blob for p in q.split(' und ') if p.strip()) if ' und ' in q else q in blob
+
 def period_kind_for_module(module):
     if module in ("Monatsabschluss","Steuermeldungs-Cockpit"): return 'monthly'
     if module=="Quartalsabschluss": return 'quarterly'
     if module=="Jahresabschluss": return 'yearly'
     return ''
+
 def period_allowed(module, period):
     try:
         k=period_kind_for_module(module)
         return cc.period_allowed_v0432(k, period, only_started=True) if k else True
     except Exception:
         return True
+
 def display_period(period,module=""):
     return cc.format_period_display(period, period_kind_for_module(module)) if hasattr(cc,'format_period_display') else str(period or '')
+
 def display_date(value):
     return cc.format_date_de(value) if hasattr(cc,'format_date_de') else str(value or '')
+
 def period_in_range(period,start,end): return str(start)<=str(period)<=str(end)
+
 class DocumentationCenterUI:
     def __init__(self, app):
         self.app=app; self.root=app.root; self.canvas=app.canvas
         self.search=tk.StringVar(); self.only_missing=tk.BooleanVar(value=False); self.only_invalid=tk.BooleanVar(value=False)
-        self.selected_row=None; self.row_frames=[]
+        self.selected_row=None; self.row_frames=[]; self._icons={}
         self.frame=tk.Frame(self.root,bg=cc.BG); self.app.widget_items.append(self.frame)
         self.canvas.create_window(0,132,window=self.frame,anchor="nw",width=self.canvas.winfo_width(),height=max(420,self.canvas.winfo_height()-172))
+        self.doc_icon=self.load_icon(DOC_ICON_PATH,18); self.attach_icon=self.load_icon(ATTACH_ICON_PATH,18)
         self.render()
+    def load_icon(self,path,size=18):
+        if not PIL_AVAILABLE: return None
+        try:
+            if os.path.exists(path):
+                img=Image.open(path).resize((size,size))
+                return ImageTk.PhotoImage(img)
+        except Exception:
+            return None
+        return None
     def _row(self, **kwargs):
-        base={h: kwargs.get(h, kwargs.get(h.replace(' ','_'), '')) for h in HEADERS}
-        if base.get('Zeitraum'): base['Zeitraum']=display_period(base.get('Zeitraum'), base.get('Modul',''))
-        if base.get('Datum'): base['Datum']=display_date(base.get('Datum'))
+        # interne Rohwerte bleiben für Öffnen/Exportfilter erhalten; sichtbare Werte werden formatiert
+        raw_period=kwargs.get('__period') or kwargs.get('Zeitraum','')
+        module=kwargs.get('Modul','')
+        assignment=kwargs.get('Aufgabenzuordnung', kwargs.get('Zuordnung',''))
+        doc_name=kwargs.get('Dokument', kwargs.get('Dokumentname',''))
+        base={
+            'Aufgabenzuordnung': assignment,
+            'Dokument': doc_name,
+            'Dokumenttyp': kwargs.get('Dokumenttyp',''),
+            'Modul': module,
+            'Zeitraum': display_period(raw_period,module) if raw_period else '',
+            'Hinzugefügt durch': kwargs.get('Hinzugefügt durch', kwargs.get('Hinzugefügt_durch','')),
+            'Datum': display_date(kwargs.get('Datum','')) if kwargs.get('Datum','') else '',
+            'Aktion': kwargs.get('Aktion',''),
+            '__raw_period': raw_period,
+            '__path': kwargs.get('Pfad', kwargs.get('__path','')) or '',
+            '__status': kwargs.get('Status',''),
+        }
         for k,v in kwargs.items():
-            if k.startswith('__'): base[k]=v
+            if str(k).startswith('__'): base[k]=v
         return base
     def collect(self):
         rows=[]
@@ -85,11 +126,14 @@ class DocumentationCenterUI:
     def filtered(self):
         out=[]
         for r in self.collect():
-            if self.only_missing.get() and r.get('Status')!='Fehlt': continue
-            if self.only_invalid.get() and r.get('Status')!='Pfad ungültig': continue
+            if self.only_missing.get() and r.get('__status')!='Fehlt': continue
+            if self.only_invalid.get() and r.get('__status')!='Pfad ungültig': continue
             if not match_query(r,self.search.get()): continue
             out.append(r)
         return out
+    def open_document(self,row):
+        path=row.get('__path','')
+        if path: cc.open_path(path)
     def select_row(self,row,frame):
         self.selected_row=row
         for fr in self.row_frames:
@@ -105,7 +149,7 @@ class DocumentationCenterUI:
     def render(self):
         for w in self.frame.winfo_children(): w.destroy()
         self.selected_row=None; self.row_frames=[]; rows=self.filtered()
-        total=len(rows); missing=sum(1 for r in rows if r.get('Status')=='Fehlt'); invalid=sum(1 for r in rows if r.get('Status')=='Pfad ungültig'); present=sum(1 for r in rows if r.get('Status')=='Vorhanden'); reports=sum(1 for r in rows if 'Bericht' in str(r.get('Dokumenttyp')))
+        total=len(rows); missing=sum(1 for r in rows if r.get('__status')=='Fehlt'); invalid=sum(1 for r in rows if r.get('__status')=='Pfad ungültig'); present=sum(1 for r in rows if r.get('__status')=='Vorhanden'); reports=sum(1 for r in rows if 'Bericht' in str(r.get('Dokumenttyp')))
         top=tk.Frame(self.frame,bg=cc.BG); top.pack(fill='x',padx=24,pady=12)
         for title,val,col in [('Dokumente gesamt',total,cc.BLUE),('Nachweise vorhanden',present,cc.DARK_GREEN),('fehlende Nachweise',missing,cc.RED),('ungültige Pfade',invalid,cc.ORANGE),('Berichte',reports,cc.GREY)]:
             card=tk.Frame(top,bg=col,width=155,height=58); card.pack(side='left',padx=5); card.pack_propagate(False)
@@ -116,30 +160,44 @@ class DocumentationCenterUI:
         tk.Checkbutton(controls,text='nur fehlende',variable=self.only_missing,bg=cc.BG,fg=cc.TEXT,command=self.render).pack(side='left')
         tk.Checkbutton(controls,text='nur ungültige Pfade',variable=self.only_invalid,bg=cc.BG,fg=cc.TEXT,command=self.render).pack(side='left')
         tk.Button(controls,text='Suchen',command=self.render,bg=cc.BLUE,fg='white',bd=0,padx=10).pack(side='left',padx=4)
-        self.add_btn=tk.Button(controls,text='Dokument hinzufügen',command=self.add_manual,bg=cc.BLUE,fg='white',bd=0,padx=10,state='disabled'); self.add_btn.pack(side='right',padx=4)
+        self.add_btn=tk.Button(controls,text='Dokument hinzufügen',image=self.attach_icon,compound='left',command=self.add_manual,bg=cc.BLUE,fg='white',bd=0,padx=10,state='disabled')
+        self.add_btn.pack(side='right',padx=4)
         tk.Button(controls,text='Export',command=self.open_export_popup,bg=cc.WHITE,fg=cc.BLUE,bd=1,padx=14).pack(side='right',padx=4)
         outer=tk.Frame(self.frame,bg=cc.WHITE,bd=1,relief='solid'); outer.pack(fill='both',expand=True,padx=24,pady=(0,12))
-        canvas=tk.Canvas(outer,bg=cc.WHITE,highlightthickness=0); sb=tk.Scrollbar(outer,orient='vertical',command=canvas.yview); table=tk.Frame(canvas,bg=cc.WHITE); win=canvas.create_window((0,0),window=table,anchor='nw')
-        def upd(e=None): canvas.itemconfigure(win,width=max(1,canvas.winfo_width())); canvas.configure(scrollregion=canvas.bbox('all'))
-        table.bind('<Configure>',upd); canvas.bind('<Configure>',upd); canvas.configure(yscrollcommand=sb.set); canvas.pack(side='left',fill='both',expand=True); sb.pack(side='right',fill='y')
+        canvas=tk.Canvas(outer,bg=cc.WHITE,highlightthickness=0); ysb=tk.Scrollbar(outer,orient='vertical',command=canvas.yview); xsb=tk.Scrollbar(outer,orient='horizontal',command=canvas.xview)
+        table=tk.Frame(canvas,bg=cc.WHITE); win=canvas.create_window((0,0),window=table,anchor='nw')
+        def upd(e=None):
+            try: canvas.itemconfigure(win,width=max(table.winfo_reqwidth(),canvas.winfo_width()))
+            except Exception: pass
+            canvas.configure(scrollregion=canvas.bbox('all'))
+        table.bind('<Configure>',upd); canvas.bind('<Configure>',upd); canvas.configure(yscrollcommand=ysb.set,xscrollcommand=xsb.set)
+        canvas.pack(side='left',fill='both',expand=True); ysb.pack(side='right',fill='y'); xsb.pack(side='bottom',fill='x')
         for c,h in enumerate(HEADERS):
-            width,wrap=COLUMN_SPECS.get(h,(18,160)); tk.Label(table,text=h,bg=cc.HEADER,fg=cc.TEXT,font=('Segoe UI',9,'bold'),padx=5,pady=6,width=width,wraplength=wrap).grid(row=0,column=c,sticky='nsew',padx=1,pady=1)
+            table.grid_columnconfigure(c, weight=COLUMN_WEIGHTS.get(h,10), minsize=70)
+            tk.Label(table,text=h,bg=cc.HEADER,fg=cc.TEXT,font=('Segoe UI',9,'bold'),padx=5,pady=6,anchor='w').grid(row=0,column=c,sticky='nsew',padx=1,pady=1)
         for r_idx,row in enumerate(rows,1):
             row_frame=tk.Frame(table,bg=cc.WHITE); row_frame.grid(row=r_idx,column=0,columnspan=len(HEADERS),sticky='nsew'); self.row_frames.append(row_frame)
+            for c,h in enumerate(HEADERS): row_frame.grid_columnconfigure(c, weight=COLUMN_WEIGHTS.get(h,10), minsize=70)
             for c,h in enumerate(HEADERS):
-                width,wrap=COLUMN_SPECS.get(h,(18,160)); lbl=tk.Label(row_frame,text=row.get(h,''),bg=cc.WHITE,fg=cc.TEXT,padx=5,pady=4,anchor='w',width=width,wraplength=wrap,justify='left')
-                lbl.grid(row=0,column=c,sticky='nsew',padx=1,pady=1); lbl.bind('<Button-1>',lambda e,rr=row,fr=row_frame:self.select_row(rr,fr))
+                if h=='Dokument':
+                    cell=tk.Frame(row_frame,bg=cc.WHITE); cell.grid(row=0,column=c,sticky='nsew',padx=1,pady=1)
+                    btn=tk.Button(cell,text=row.get(h,''),image=self.doc_icon if row.get('__path') else None,compound='right',bg=cc.WHITE,fg=cc.BLUE if row.get('__path') else cc.TEXT,bd=0,anchor='w',justify='left',wraplength=220,command=lambda rr=row:self.open_document(rr))
+                    btn.pack(fill='x',expand=True,padx=5,pady=4)
+                    btn.bind('<Button-1>',lambda e,rr=row,fr=row_frame:self.select_row(rr,fr),add='+')
+                else:
+                    lbl=tk.Label(row_frame,text=row.get(h,''),bg=cc.WHITE,fg=cc.TEXT,padx=5,pady=4,anchor='w',wraplength=220,justify='left')
+                    lbl.grid(row=0,column=c,sticky='nsew',padx=1,pady=1); lbl.bind('<Button-1>',lambda e,rr=row,fr=row_frame:self.select_row(rr,fr))
             row_frame.bind('<Button-1>',lambda e,rr=row,fr=row_frame:self.select_row(rr,fr))
         self.app.active_scroll_canvas=canvas
     def _period_options_for_selection(self,row):
         try: return cc.allowed_periods_for_kind_v0432(period_kind_for_module(row.get('Modul','')), only_started=True)
-        except Exception: return [row.get('__period') or row.get('Zeitraum','')]
+        except Exception: return [row.get('__raw_period') or row.get('Zeitraum','')]
     def add_manual(self):
         if not self.selected_row: messagebox.showinfo('Dokument hinzufügen','Bitte zuerst eine Position auswählen.'); return
         src=self.selected_row; win=tk.Toplevel(self.root); win.title('Dokument hinzufügen'); win.geometry('760x430'); win.configure(bg=cc.BG)
-        name_var=tk.StringVar(); path_var=tk.StringVar(); dtype=tk.StringVar(value='Nachweis'); module_var=tk.StringVar(value=src.get('Modul','')); period_var=tk.StringVar(value=display_period(src.get('__period') or src.get('Zeitraum',''),src.get('Modul',''))); assign_var=tk.StringVar(value=src.get('Zuordnung',''))
+        name_var=tk.StringVar(); path_var=tk.StringVar(); dtype=tk.StringVar(value='Nachweis'); module_var=tk.StringVar(value=src.get('Modul','')); period_var=tk.StringVar(value=display_period(src.get('__raw_period') or src.get('Zeitraum',''),src.get('Modul',''))); assign_var=tk.StringVar(value=src.get('Aufgabenzuordnung',''))
         raw_periods=self._period_options_for_selection(src); period_labels={display_period(p,src.get('Modul','')):p for p in raw_periods}
-        fields=[('Dokumentname',name_var,'entry'),('Dokumenttyp',dtype,DOC_TYPES),('Modul',module_var,[src.get('Modul','')]),('Zeitraum',period_var,list(period_labels.keys())),('Zuordnung',assign_var,[src.get('Zuordnung','')]),('Pfad',path_var,'path')]
+        fields=[('Dokumentname',name_var,'entry'),('Dokumenttyp',dtype,DOC_TYPES),('Modul',module_var,[src.get('Modul','')]),('Zeitraum',period_var,list(period_labels.keys())),('Aufgabenzuordnung',assign_var,[src.get('Aufgabenzuordnung','')]),('Pfad',path_var,'path')]
         for i,(lab,var,values) in enumerate(fields):
             tk.Label(win,text=lab,bg=cc.BG,fg=cc.TEXT,font=('Segoe UI',10,'bold')).grid(row=i,column=0,sticky='w',padx=12,pady=8)
             if values=='entry': tk.Entry(win,textvariable=var,width=58,bg=cc.WHITE).grid(row=i,column=1,sticky='we',padx=12,pady=8)
@@ -148,11 +206,11 @@ class DocumentationCenterUI:
         def browse():
             p=filedialog.askopenfilename()
             if p: path_var.set(p); name_var.set(name_var.get().strip() or Path(p).name)
-        tk.Button(win,text='Datei wählen',command=browse,bg=cc.WHITE,fg=cc.BLUE,bd=1).grid(row=5,column=2,padx=4)
+        tk.Button(win,text='Datei wählen',image=self.attach_icon,compound='left',command=browse,bg=cc.WHITE,fg=cc.BLUE,bd=1).grid(row=5,column=2,padx=4)
         def save():
             if not path_var.get().strip(): messagebox.showwarning('Pflichtfeld','Bitte eine Datei auswählen.'); return
             if self.attach_to_position(src,name_var.get().strip() or Path(path_var.get()).name,path_var.get().strip(),dtype.get()):
-                cc.log_audit(self.app,'Nachweis hinzugefügt/geändert/entfernt','Dokumentationszentrale','Dokument an Position angehängt',path_var.get(),'Info',period=src.get('__period') or src.get('Zeitraum',''),public=True); win.destroy(); self.render()
+                cc.log_audit(self.app,'Nachweis hinzugefügt/geändert/entfernt','Dokumentationszentrale','Dokument an Position angehängt',path_var.get(),'Info',period=src.get('__raw_period') or src.get('Zeitraum',''),public=True); win.destroy(); self.render()
         tk.Button(win,text='Speichern',command=save,bg=cc.BLUE,fg='white',bd=0,padx=14,pady=8).grid(row=7,column=1,sticky='e',padx=12,pady=14)
     def attach_to_position(self,row,name,path,doc_type):
         src=row.get('__source')
@@ -167,11 +225,11 @@ class DocumentationCenterUI:
                 data=json.loads(p.read_text(encoding='utf-8')); tasks=data.get('tasks',[]); idx=row.get('__task_index'); task=tasks[idx] if isinstance(idx,int) and idx<len(tasks) else None
                 if not task: task=next((t for t in tasks if t.get('task_uid')==row.get('__task_uid') and t.get('title')==row.get('__title')),None)
                 if task: task.setdefault('attachments',[]).append({'name':name,'path':path,'added_by':cc.user_name(self.app),'added_at':cc.now_iso(),'doc_type':doc_type}); p.write_text(json.dumps(data,ensure_ascii=False,indent=2),encoding='utf-8'); return True
-        data=cc.docs_load_manual(); data.setdefault('documents',[]).append({'name':name,'module':row.get('Modul',''),'period':row.get('__period') or row.get('Zeitraum',''),'assignment':row.get('Zuordnung',''),'path':path,'doc_type':doc_type,'added_by':cc.user_name(self.app),'added_at':cc.now_iso()}); cc.docs_save_manual(data); return True
+        data=cc.docs_load_manual(); data.setdefault('documents',[]).append({'name':name,'module':row.get('Modul',''),'period':row.get('__raw_period') or row.get('Zeitraum',''),'assignment':row.get('Aufgabenzuordnung',''),'path':path,'doc_type':doc_type,'added_by':cc.user_name(self.app),'added_at':cc.now_iso()}); cc.docs_save_manual(data); return True
     def export_rows(self, rows=None):
         src=rows if rows is not None else self.filtered(); return HEADERS, [[r.get(h,'') for h in HEADERS] for r in src]
     def open_export_popup(self):
-        rows=self.filtered(); raw_periods=sorted(set(str(r.get('__period') or r.get('Zeitraum','')) for r in rows if (r.get('__period') or r.get('Zeitraum')))); period_labels={display_period(p):p for p in raw_periods}; periods=list(period_labels.keys())
+        rows=self.filtered(); raw_periods=sorted(set(str(r.get('__raw_period') or r.get('Zeitraum','')) for r in rows if (r.get('__raw_period') or r.get('Zeitraum')))); period_labels={display_period(p):p for p in raw_periods}; periods=list(period_labels.keys())
         if not periods: messagebox.showinfo('Export','Es sind keine exportierbaren Positionen vorhanden.'); return
         win=tk.Toplevel(self.root); win.title('Export'); win.geometry('560x310'); win.configure(bg=cc.BG); mode=tk.StringVar(value='all'); fmt=tk.StringVar(value='Excel'); from_var=tk.StringVar(value=periods[0]); to_var=tk.StringVar(value=periods[-1])
         tk.Label(win,text='Exportumfang',bg=cc.BG,fg=cc.TEXT,font=('Segoe UI',11,'bold')).pack(anchor='w',padx=18,pady=(16,6))
@@ -179,8 +237,8 @@ class DocumentationCenterUI:
         row=tk.Frame(win,bg=cc.BG); row.pack(fill='x',padx=18,pady=12); tk.Label(row,text='Von',bg=cc.BG,fg=cc.TEXT).pack(side='left'); ttk.Combobox(row,textvariable=from_var,values=periods,state='readonly',width=16).pack(side='left',padx=8); tk.Label(row,text='Bis',bg=cc.BG,fg=cc.TEXT).pack(side='left'); ttk.Combobox(row,textvariable=to_var,values=periods,state='readonly',width=16).pack(side='left',padx=8); tk.Label(row,text='Format',bg=cc.BG,fg=cc.TEXT).pack(side='left',padx=(18,4)); ttk.Combobox(row,textvariable=fmt,values=['PDF','Excel'],state='readonly',width=10).pack(side='left')
         def run_export():
             start=period_labels.get(from_var.get(),from_var.get()); end=period_labels.get(to_var.get(),to_var.get()); selected=rows
-            if mode.get()=='include': selected=[r for r in rows if period_in_range(str(r.get('__period') or r.get('Zeitraum','')),start,end)]
-            elif mode.get()=='exclude': selected=[r for r in rows if not period_in_range(str(r.get('__period') or r.get('Zeitraum','')),start,end)]
+            if mode.get()=='include': selected=[r for r in rows if period_in_range(str(r.get('__raw_period') or r.get('Zeitraum','')),start,end)]
+            elif mode.get()=='exclude': selected=[r for r in rows if not period_in_range(str(r.get('__raw_period') or r.get('Zeitraum','')),start,end)]
             self.export_excel(selected) if fmt.get()=='Excel' else self.export_pdf(selected); win.destroy()
         tk.Button(win,text='Export starten',command=run_export,bg=cc.BLUE,fg='white',bd=0,padx=14,pady=8).pack(anchor='e',padx=18,pady=18)
     def export_excel(self, rows=None):

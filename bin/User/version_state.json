@@ -1,5 +1,5 @@
 {
-  "build": 32,
+  "build": 33,
   "applied_updates": [
     "2026-05-12_monthly_close_editmode_statusbar",
     "2026-05-12_monthly_close_recurring_workday_catalog_due_visibility",
@@ -35,6 +35,7 @@
     "2026-05-30_bu33a_force_version_429",
     "2026-05-30_bu33b_closing_deadline_sync_version_430",
     "2026-05-30_v0_431_calendar_cutoff_readonly_deadline_source",
-    "2026-05-30_v0_432_period_logic_documentation_center"
+    "2026-05-30_v0_432_period_logic_documentation_center",
+    "2026-05-30_v0433_responsive_scaling_documentation_center_table"
   ]
 }

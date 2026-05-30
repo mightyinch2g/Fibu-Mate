@@ -101,6 +101,25 @@ FONT_MENU = ("Segoe UI", 27, "bold")
 FONT_TILE = ("Segoe UI", 18, "bold")
 FONT_TILE_SMALL = ("Segoe UI", 15, "bold")
 FONT_SMALL = ("Segoe UI", 10)
+BASE_FONT_TITLE = FONT_TITLE
+BASE_FONT_MENU = FONT_MENU
+BASE_FONT_TILE = FONT_TILE
+BASE_FONT_TILE_SMALL = FONT_TILE_SMALL
+BASE_FONT_SMALL = FONT_SMALL
+UI_SCALE = 1.0
+
+def ui_s(value):
+    try:
+        return max(1, int(round(float(value) * UI_SCALE)))
+    except Exception:
+        return value
+
+def scaled_font(font_tuple):
+    try:
+        family, size, *rest = font_tuple
+        return tuple([family, max(7, int(round(size * UI_SCALE)))] + rest)
+    except Exception:
+        return font_tuple
 MINI_WIDGET_W = 174
 MINI_WIDGET_H = 30
 MINI_WIDGET_GAP = 8
@@ -317,8 +336,8 @@ class Tile(tk.Canvas):
         self.center_text = center_text
         self.icon_type = icon_type
         self.corner_fold = corner_fold
-        self.tile_width = 300
-        self.tile_height = 150
+        self.tile_width = ui_s(300)
+        self.tile_height = ui_s(150)
         self.hovered = False
         self.pressed = False
         self.star_bounds = None
@@ -353,7 +372,7 @@ class Tile(tk.Canvas):
         return FONT_TILE_SMALL if len(self.title) > 28 else FONT_TILE
 
     def _draw_corner_fold(self, x1, y0):
-        size = min(30, max(18, int(self.tile_height * 0.20)))
+        size = min(ui_s(30), max(18, int(self.tile_height * 0.20)))
         self.create_polygon(x1 - size, y0, x1, y0, x1, y0 + size, fill="#D6DCE4", outline="#C2CAD5")
         self.create_line(x1 - size, y0, x1, y0 + size, fill="#EEF2F6", width=1)
 
@@ -454,8 +473,8 @@ class Tile(tk.Canvas):
 
     def draw(self):
         self.delete("all")
-        pad = 8
-        off = 1 if self.pressed else 0
+        pad = ui_s(8)
+        off = ui_s(1) if self.pressed else 0
         x0, y0 = pad + off, pad + off
         x1, y1 = x0 + self.tile_width - off * 2, y0 + self.tile_height - off * 2
         if not self.pressed:
@@ -463,15 +482,15 @@ class Tile(tk.Canvas):
         self.create_rectangle(x0, y0, x1, y1, fill=self.current_color(), outline=self.current_color())
         if self.corner_fold:
             self._draw_corner_fold(x1, y0)
-        title_y = y0 + 22
-        icon_y = y1 - 42
+        title_y = y0 + ui_s(18)
+        icon_y = y1 - ui_s(34)
         title_font = FONT_TILE_SMALL if len(self.title) > 28 else self.title_font()
         title_color = BLUE if self.lock_tile else "white"
         icon_to_draw = "lock" if self.lock_tile else self.icon_type
         if self.center_text and not icon_to_draw:
-            self.create_text((x0 + x1) / 2, (y0 + y1) / 2, text=self.title, anchor="center", fill=title_color, font=self.title_font(), width=max(120, self.tile_width - 44), justify="center")
+            self.create_text((x0 + x1) / 2, (y0 + y1) / 2, text=self.title, anchor="center", fill=title_color, font=self.title_font(), width=max(ui_s(110), self.tile_width - ui_s(44)), justify="center")
         else:
-            self.create_text((x0 + x1) / 2, title_y, text=self.title, anchor="n", fill=title_color, font=title_font, width=max(120, self.tile_width - 44), justify="center")
+            self.create_text((x0 + x1) / 2, title_y, text=self.title, anchor="n", fill=title_color, font=title_font, width=max(ui_s(110), self.tile_width - ui_s(44)), justify="center")
             if icon_to_draw:
                 close_period = self.app.current_close_period_label(self.tile_id) if hasattr(self.app, "current_close_period_label") else ""
                 if close_period and self.tile_id in ("monthly_close", "quarterly_close", "yearly_close"):
@@ -526,6 +545,27 @@ class Tile(tk.Canvas):
 
 
 class FiBuMateApp:
+    def init_responsive_scaling(self):
+        """v0.433: Skaliert zentrale Schrift-/Kachelwerte für kleinere Monitore."""
+        global UI_SCALE, FONT_TITLE, FONT_MENU, FONT_TILE, FONT_TILE_SMALL, FONT_SMALL, MINI_WIDGET_W, MINI_WIDGET_H, MINI_WIDGET_GAP
+        try:
+            sw = max(1, self.root.winfo_screenwidth())
+            sh = max(1, self.root.winfo_screenheight())
+            UI_SCALE = max(0.72, min(1.12, min(sw / 1920.0, sh / 1080.0)))
+            self.ui_scale = UI_SCALE
+            FONT_TITLE = scaled_font(BASE_FONT_TITLE)
+            FONT_MENU = scaled_font(BASE_FONT_MENU)
+            FONT_TILE = scaled_font(BASE_FONT_TILE)
+            FONT_TILE_SMALL = scaled_font(BASE_FONT_TILE_SMALL)
+            FONT_SMALL = scaled_font(BASE_FONT_SMALL)
+            MINI_WIDGET_W = ui_s(174); MINI_WIDGET_H = ui_s(30); MINI_WIDGET_GAP = ui_s(8)
+            try:
+                self.root.tk.call('tk', 'scaling', max(0.85, min(1.15, UI_SCALE)))
+            except Exception:
+                pass
+        except Exception:
+            self.ui_scale = 1.0
+
     def __init__(self):
         self.root = tk.Tk()
         self.root.title(APP_NAME)
@@ -737,6 +777,7 @@ class FiBuMateApp:
         self.ensure_version_430_once()
         self.ensure_version_431_once()
         self.ensure_version_432_once()
+        self.ensure_version_433_once()
         self.create_footer()
         self.canvas = tk.Canvas(self.root, highlightthickness=0, bg=BG, cursor="arrow")
         self.canvas.pack(side="top", fill="both", expand=True)
@@ -2195,6 +2236,18 @@ class FiBuMateApp:
             return
         if messagebox.askyesno(APP_NAME, "FiBu Mate wirklich schließen?"):
             self.root.destroy()
+
+
+    def ensure_version_433_once(self):
+        self.bump_version_once(
+            "2026-05-30_v0433_responsive_scaling_documentation_center_table",
+            [
+                "v0.433: Responsive Skalierung für kleinere Monitore ergänzt; zentrale Schrift-, Kachel- und Widgetgrößen werden an die Bildschirmgröße angepasst.",
+                "v0.433: Dokumentationszentrale-Tabelle umgebaut: Aufgabenzuordnung als erste Spalte, Dokument statt Dokumentname, Status und Pfad ausgeblendet.",
+                "v0.433: Dokumentnamen in der Dokumentationszentrale sind anklickbar und öffnen die hinterlegte Datei; Datei- und Anhang-Icons ergänzt.",
+                "v0.433: Dokumentationszentrale erhält horizontale Scroll-Unterstützung für Tabellenüberlauf und optimierte Spaltenbreiten.",
+            ],
+        )
 
     def run(self):
         try:
