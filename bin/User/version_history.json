@@ -1,6 +1,18 @@
 {
   "entries": [
     {
+      "version": "v0.430",
+      "date": "260530",
+      "update_id": "2026-05-30_bu33b_closing_deadline_sync_version_430",
+      "bullets": [
+        "BU33b: Abschlusskalender-Synchronisation versioniert.",
+        "BU33b: Monatsabschluss übernimmt gepflegte Stichtage aus der Stichtags- & Zuständigkeitspflege und aktualisiert Aufgaben mit Abschluss-Stichtag.",
+        "BU33b: Quartalsabschluss übernimmt gepflegte Stichtage aus der Stichtags- & Zuständigkeitspflege und aktualisiert Aufgaben mit Abschluss-Stichtag.",
+        "BU33b: Jahresabschluss übernimmt gepflegte Stichtage aus der Stichtags- & Zuständigkeitspflege und aktualisiert Aufgaben mit Abschluss-Stichtag.",
+        "BU33b: Bestehende Periodendateien aktualisieren closing_cutoff_date und die Fälligkeiten betroffener Aufgaben."
+      ]
+    },
+    {
       "version": "v0.4429",
       "date": "260530",
       "update_id": "2026-05-30_bu33a_force_version_429",
