@@ -1,5 +1,5 @@
 {
-  "build": 28,
+  "build": 29,
   "applied_updates": [
     "2026-05-12_monthly_close_editmode_statusbar",
     "2026-05-12_monthly_close_recurring_workday_catalog_due_visibility",
@@ -31,6 +31,7 @@
     "2026-05-27_v04_compliance_audit_tax_doc_modules",
     "2026-05-27_v04_scroll_audit_sync_fix",
     "2026-05-27_v04_ui_module_settings_tax_popup_fix",
-    "2026-05-27_scroll_modal_dropdown_shell_fix"
+    "2026-05-27_scroll_modal_dropdown_shell_fix",
+    "2026-05-30_bu33a_force_version_429"
   ]
 }

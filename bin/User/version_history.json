@@ -1,6 +1,15 @@
 {
   "entries": [
     {
+      "version": "v0.4429",
+      "date": "260530",
+      "update_id": "2026-05-30_bu33a_force_version_429",
+      "bullets": [
+        "BU33a: Versionierung robust korrigiert; sichtbare Version wird mindestens auf v0.429 gesetzt.",
+        "BU33a: Versionsverlauf-Eintrag ergänzt, auch wenn vorherige Update-Marker bereits als angewendet gespeichert waren."
+      ]
+    },
+    {
       "version": "v0.428",
       "date": "260527",
       "bullets": [

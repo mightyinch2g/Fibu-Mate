@@ -733,6 +733,7 @@ class FiBuMateApp:
         logo_path = find_intersport_logo()
         self.intersport_logo = load_image(logo_path) if logo_path else None
         self.image_refs = []
+        self.ensure_version_429_once()
         self.create_footer()
         self.canvas = tk.Canvas(self.root, highlightthickness=0, bg=BG, cursor="arrow")
         self.canvas.pack(side="top", fill="both", expand=True)
@@ -986,6 +987,44 @@ class FiBuMateApp:
     def version_label_text(self) -> str:
         build = int(self.version_state.get("build", DEFAULT_BUILD))
         return f"v{VERSION_PREFIX}{build}.{now_date_str()}"
+
+
+    def ensure_version_429_once(self):
+        """BU33a: Version v0.429 und Versionsverlauf robust sicherstellen.
+        VERSION_PREFIX ist "0.4"; daher entspricht v0.429 dem Build 29,
+        nicht 429. Diese Methode korrigiert auch bereits falsch gespeicherte
+        Builds wie 429, die als v0.4429 angezeigt werden.
+        """
+        update_id = "2026-05-30_bu33a_force_version_429"
+        bullets = [
+            "BU33a: Versionierung robust korrigiert; sichtbare Version wird auf v0.429 gesetzt.",
+            "BU33a: Falsch gespeicherter Build 429 wird auf Build 29 korrigiert, damit nicht v0.4429 angezeigt wird.",
+            "BU33a: Versionsverlauf-Eintrag ergänzt, auch wenn vorherige Update-Marker bereits als angewendet gespeichert waren.",
+        ]
+        try:
+            self.version_state.setdefault("applied_updates", [])
+            changed = False
+            current_build = int(self.version_state.get("build", DEFAULT_BUILD))
+            if current_build < 29 or current_build > 100:
+                self.version_state["build"] = 29
+                changed = True
+            if update_id not in self.version_state["applied_updates"]:
+                history = self.load_version_history()
+                history.setdefault("entries", [])
+                if not any(e.get("update_id") == update_id for e in history.get("entries", [])):
+                    history["entries"].insert(0, {
+                        "version": "v0.429",
+                        "date": now_date_str(),
+                        "update_id": update_id,
+                        "bullets": bullets,
+                    })
+                    self.save_version_history(history)
+                self.version_state["applied_updates"].append(update_id)
+                changed = True
+            if changed:
+                self.save_version_state()
+        except Exception:
+            pass
 
     def load_version_state(self):
         os.makedirs(USER_DIR, exist_ok=True)
