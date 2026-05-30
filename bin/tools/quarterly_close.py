@@ -45,6 +45,70 @@ DUE_VALUE_TO_LABEL = {v: k for k, v in DUE_LABEL_TO_VALUE.items()}
 WARN_YELLOW_DAYS = 10
 WARN_ORANGE_DAYS = 5
 MIN_PERIOD = "2026-Q2"
+MIN_FISCAL_YEAR_PERIOD = "2025-2026"
+FISCAL_YEAR_START_MONTH = 10
+
+
+def fiscal_year_start_for_date(d=None):
+    d = d or date.today()
+    return d.year if d.month >= FISCAL_YEAR_START_MONTH else d.year - 1
+
+
+def fiscal_year_end_quarter_key(start_year):
+    return f"{start_year + 1:04d}-Q3"
+
+
+def august_month_key(start_year):
+    return f"{start_year + 1:04d}-08"
+
+
+def august_cutoff_reached(start_year, today=None):
+    today = today or date.today()
+    cutoff = None
+    try:
+        synced = cc.get_deadline_cutoff('monthly', august_month_key(start_year)) if cc is not None and hasattr(cc, 'get_deadline_cutoff') else ''
+        cutoff = parse_date(synced)
+    except Exception:
+        cutoff = None
+    if not cutoff:
+        y, m = map(int, august_month_key(start_year).split('-'))
+        end = date(y, m, calendar.monthrange(y, m)[1])
+        cur = end + timedelta(days=1)
+        while not is_business_day(cur):
+            cur += timedelta(days=1)
+        cutoff = cur
+    return today >= cutoff
+
+
+def max_period_key(today=None):
+    today = today or date.today()
+    fy_start = fiscal_year_start_for_date(today)
+    if august_cutoff_reached(fy_start, today):
+        return fiscal_year_end_quarter_key(fy_start + 1)
+    return fiscal_year_end_quarter_key(fy_start)
+
+
+def bounded_current_period_key(today=None):
+    today = today or date.today()
+    current = quarter_key(today)
+    if current < MIN_PERIOD:
+        return MIN_PERIOD
+    max_key = max_period_key(today)
+    return min(current, max_key)
+
+
+def period_allowed(period, today=None):
+    return MIN_PERIOD <= period <= max_period_key(today)
+
+
+def iter_allowed_periods(today=None):
+    periods = []
+    cur = MIN_PERIOD
+    max_key = max_period_key(today)
+    while cur <= max_key:
+        periods.append(cur)
+        cur = add_quarter(cur, 1)
+    return periods
 COLORS = {
     "bg": "#E8EEF5", "header": "#D3DEE9", "blue": "#004B93", "red": "#E30613",
     "orange": "#F59E0B", "yellow": "#FACC15", "green": "#16A34A", "dark_green": "#047857",
@@ -91,7 +155,8 @@ def quarter_key(d=None):
     return f"{d.year:04d}-Q{q}"
 
 def current_period_key():
-    return max(quarter_key(), MIN_PERIOD)
+    return bounded_current_period_key()
+
 
 def add_quarter(key, delta):
     year_str, q_str = key.split("-Q"); year = int(year_str); quarter = int(q_str) + delta
@@ -465,20 +530,21 @@ def apply_catalog_to_period(period):
 
 def cleanup_old_periods():
     ensure_storage()
-    for path in PERIOD_DIR.glob("*.json"):
-        if path.stem < MIN_PERIOD:
-            try: path.unlink()
-            except Exception: pass
+    # v0.432: Alte/vorzeitige Periodendateien werden nicht gelöscht, aber nicht mehr angezeigt oder automatisch angelegt.
+    return
+
 
 def ensure_period_window():
-    ensure_storage(); cleanup_old_periods(); current = current_period_key()
-    for offset in range(0, 3):
-        p = add_quarter(current, offset); load_period(p); apply_catalog_to_period(p)
+    ensure_storage(); cleanup_old_periods()
+    for p in iter_allowed_periods():
+        load_period(p)
+        apply_catalog_to_period(p)
+
 
 def list_periods():
     ensure_period_window()
-    return sorted(p.stem for p in PERIOD_DIR.glob("*.json") if p.stem >= MIN_PERIOD)
-
+    allowed = set(iter_allowed_periods())
+    return sorted(p.stem for p in PERIOD_DIR.glob("*.json") if p.stem in allowed)
 
 
 def warning_level(task, today=None):
@@ -1515,8 +1581,8 @@ class QuarterlyCloseUI:
             tk.Button(row, text="Diesen Zeitraum als Vorlage für Folgequartale verwenden", command=self.cleanup_following_periods, bg=COLORS["red"], fg="white", bd=0, padx=12, pady=5).pack(side="left", padx=8)
 
     def change_period(self, period):
-        if period < MIN_PERIOD:
-            messagebox.showinfo("Quartalsabschluss", "Der Quartalsabschluss kann nicht weiter zurück als Q2 2026 geöffnet werden.")
+        if not period_allowed(period):
+            messagebox.showinfo("Quartalsabschluss", "Dieser Zeitraum liegt außerhalb der freigegebenen Zeitraumlogik ab Q2 2026 bzw. außerhalb des zulässigen Geschäftsjahres.")
             return
         self.period = period; self.reload(); self.selected_team = None; self.render_dashboard()
 

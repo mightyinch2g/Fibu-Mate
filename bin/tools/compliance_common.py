@@ -367,3 +367,104 @@ def format_deadline_cutoff_de(kind: str, period: str):
     value = get_deadline_cutoff(kind, period) if 'get_deadline_cutoff' in globals() else ''
     d = _parse_deadline_date(value) if '_parse_deadline_date' in globals() else None
     return d.strftime('%d.%m.%Y') if d else ''
+
+
+# ---- v0.432: zentrale Geschäftsjahr-/Zeitraumlogik ----
+MIN_MONTH_PERIOD = '2026-05'
+MIN_QUARTER_PERIOD = '2026-Q2'
+MIN_YEAR_PERIOD = '2025-2026'
+FISCAL_YEAR_START_MONTH = 10
+
+def fiscal_year_start_for_date_v0432(d=None):
+    d = d or date.today()
+    return d.year if d.month >= FISCAL_YEAR_START_MONTH else d.year - 1
+
+def fiscal_year_key_v0432(start_year: int):
+    return f"{start_year:04d}-{start_year + 1:04d}"
+
+def month_key_v0432(d=None):
+    d = d or date.today()
+    return f"{d.year:04d}-{d.month:02d}"
+
+def quarter_key_v0432(d=None):
+    d = d or date.today()
+    q = (d.month - 1) // 3 + 1
+    return f"{d.year:04d}-Q{q}"
+
+def add_quarter_v0432(key: str, delta: int):
+    y_s, q_s = str(key).split('-Q')
+    y = int(y_s); q = int(q_s) + delta
+    while q < 1:
+        q += 4; y -= 1
+    while q > 4:
+        q -= 4; y += 1
+    return f"{y:04d}-Q{q}"
+
+def add_year_v0432(key: str, delta: int):
+    y1, y2 = map(int, str(key).split('-'))
+    return f"{y1 + delta:04d}-{y2 + delta:04d}"
+
+def august_month_key_v0432(fy_start: int):
+    return f"{fy_start + 1:04d}-08"
+
+def august_cutoff_reached_v0432(fy_start: int, today=None):
+    today = today or date.today()
+    august = august_month_key_v0432(fy_start)
+    cutoff = _parse_deadline_date(get_deadline_cutoff('monthly', august)) if 'get_deadline_cutoff' in globals() else None
+    if not cutoff:
+        import calendar
+        y, m = map(int, august.split('-'))
+        cutoff = first_business_day_after(date(y, m, calendar.monthrange(y, m)[1]))
+    return today >= cutoff
+
+def max_month_period_v0432(today=None):
+    today = today or date.today(); fy = fiscal_year_start_for_date_v0432(today)
+    return f"{fy + 2:04d}-09" if august_cutoff_reached_v0432(fy, today) else f"{fy + 1:04d}-09"
+
+def max_quarter_period_v0432(today=None):
+    today = today or date.today(); fy = fiscal_year_start_for_date_v0432(today)
+    return f"{fy + 2:04d}-Q3" if august_cutoff_reached_v0432(fy, today) else f"{fy + 1:04d}-Q3"
+
+def max_year_period_v0432(today=None):
+    today = today or date.today(); fy = fiscal_year_start_for_date_v0432(today)
+    return fiscal_year_key_v0432(fy + 1) if august_cutoff_reached_v0432(fy, today) else fiscal_year_key_v0432(fy)
+
+def current_period_for_kind_v0432(kind: str, today=None):
+    today = today or date.today(); k = str(kind or '').lower()
+    if k in ('monthly', 'm'):
+        return min(max(month_key_v0432(today), MIN_MONTH_PERIOD), max_month_period_v0432(today))
+    if k in ('quarterly', 'q'):
+        return min(max(quarter_key_v0432(today), MIN_QUARTER_PERIOD), max_quarter_period_v0432(today))
+    if k in ('yearly', 'y', 'j'):
+        return min(max(fiscal_year_key_v0432(fiscal_year_start_for_date_v0432(today)), MIN_YEAR_PERIOD), max_year_period_v0432(today))
+    return month_key_v0432(today)
+
+def allowed_periods_for_kind_v0432(kind: str, today=None, only_started=False):
+    today = today or date.today(); k = str(kind or '').lower(); out = []
+    if k in ('monthly', 'm'):
+        cur = MIN_MONTH_PERIOD
+        max_key = min(month_key_v0432(today), max_month_period_v0432(today)) if only_started else max_month_period_v0432(today)
+        while cur <= max_key:
+            out.append(cur); cur = add_month(cur, 1)
+        return out
+    if k in ('quarterly', 'q'):
+        cur = MIN_QUARTER_PERIOD
+        max_key = min(quarter_key_v0432(today), max_quarter_period_v0432(today)) if only_started else max_quarter_period_v0432(today)
+        while cur <= max_key:
+            out.append(cur); cur = add_quarter_v0432(cur, 1)
+        return out
+    if k in ('yearly', 'y', 'j'):
+        cur = MIN_YEAR_PERIOD
+        max_key = min(fiscal_year_key_v0432(fiscal_year_start_for_date_v0432(today)), max_year_period_v0432(today)) if only_started else max_year_period_v0432(today)
+        while cur <= max_key:
+            out.append(cur); cur = add_year_v0432(cur, 1)
+        return out
+    return []
+
+def period_allowed_v0432(kind: str, period: str, today=None, only_started=False):
+    return str(period) in set(allowed_periods_for_kind_v0432(kind, today, only_started=only_started))
+
+def all_tax_periods():
+    ensure_dirs()
+    allowed = set(allowed_periods_for_kind_v0432('monthly'))
+    return sorted(p.stem for p in (ensure_dirs()/"TaxReporting"/"periods").glob("*.json") if p.stem in allowed) or [current_period_for_kind_v0432('monthly')]

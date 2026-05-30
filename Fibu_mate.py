@@ -736,6 +736,7 @@ class FiBuMateApp:
         self.ensure_version_429_once()
         self.ensure_version_430_once()
         self.ensure_version_431_once()
+        self.ensure_version_432_once()
         self.create_footer()
         self.canvas = tk.Canvas(self.root, highlightthickness=0, bg=BG, cursor="arrow")
         self.canvas.pack(side="top", fill="both", expand=True)
@@ -1095,6 +1096,39 @@ class FiBuMateApp:
                         "update_id": update_id,
                         "bullets": bullets,
                     })
+                    self.save_version_history(history)
+                self.version_state["applied_updates"].append(update_id)
+                changed = True
+            if changed:
+                self.save_version_state()
+        except Exception:
+            pass
+
+    def ensure_version_432_once(self):
+        """v0.432: Zeitraumlogik und Dokumentationszentrale vorbereitet.
+        VERSION_PREFIX ist "0.4"; daher entspricht v0.432 dem Build 32.
+        """
+        update_id = "2026-05-30_v0_432_period_logic_documentation_center"
+        bullets = [
+            "v0.432: Abschlusszeiträume starten ab 05/2026; Jahresabschluss beginnt mit GJ 2025/2026.",
+            "v0.432: Monats- und Quartalszeiträume werden in der Zukunft nur bis Ende des freigegebenen Geschäftsjahres angelegt.",
+            "v0.432: Folge-Geschäftsjahr wird automatisch ab dem Abschluss-Stichtag August des aktuellen Geschäftsjahres freigegeben.",
+            "v0.432: Stichtagspflege verwendet das aktuelle Geschäftsjahr als Standard und arbeitet mit Geschäftsjahresperioden.",
+            "v0.432: Vorhandene ältere Zeiträume werden nicht gelöscht, aber nicht mehr angezeigt oder automatisch angelegt.",
+            "v0.432: Dokumentationszentrale zeigt nur Gegenwart/Vergangenheit, erlaubt Positionsauswahl, positionsbezogenes Anhängen und einen zentralen Exportdialog.",
+        ]
+        try:
+            self.version_state.setdefault("applied_updates", [])
+            changed = False
+            current_build = int(self.version_state.get("build", DEFAULT_BUILD))
+            if current_build < 32 or current_build > 100:
+                self.version_state["build"] = 32
+                changed = True
+            if update_id not in self.version_state["applied_updates"]:
+                history = self.load_version_history()
+                history.setdefault("entries", [])
+                if not any(e.get("update_id") == update_id for e in history.get("entries", [])):
+                    history["entries"].insert(0, {"version": "v0.432", "date": now_date_str(), "update_id": update_id, "bullets": bullets})
                     self.save_version_history(history)
                 self.version_state["applied_updates"].append(update_id)
                 changed = True

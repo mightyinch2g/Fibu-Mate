@@ -76,11 +76,14 @@ def fiscal_year_start_for_date(d=None):
 def fiscal_year_label(start_year: int):
     return f"GJ {start_year}/{start_year + 1}"
 
+
 def fiscal_month_keys(start_year: int):
     return [f"{start_year:04d}-{m:02d}" for m in range(10, 13)] + [f"{start_year + 1:04d}-{m:02d}" for m in range(1, 10)]
 
+
 def fiscal_quarter_keys(start_year: int):
     return [f"{start_year:04d}-Q4", f"{start_year + 1:04d}-Q1", f"{start_year + 1:04d}-Q2", f"{start_year + 1:04d}-Q3"]
+
 
 def period_bounds(kind: str, key: str):
     if kind == 'monthly':
@@ -150,6 +153,7 @@ def year_file(year: int):
 def legacy_year_file_v0431(year: int):
     return legacy_storage_dir_v0431() / f"deadlines_{year:04d}.json"
 
+
 def _default_record():
     return {
         "dekade_close": "",          # Pflichtfeld
@@ -165,7 +169,6 @@ def default_year_data(year: int):
     years = {f"{year:04d}-{year+1:04d}": _default_record()}
     return {"fiscal_year_start": year, "label": fiscal_year_label(year), "monthly": months, "quarterly": quarters, "yearly": years}
 
-
 def load_year(year: int):
     path = year_file(year)
     legacy = legacy_year_file_v0431(year)
@@ -177,7 +180,6 @@ def load_year(year: int):
         except Exception:
             pass
     return cc.json_load(path, default_year_data(year))
-
 
 def save_year(year: int, data):
     cc.json_save(year_file(year), data)
@@ -223,19 +225,15 @@ def apply_to_period_file(module_dir: str, period: str, rec: dict):
     for k, v in extra.items():
         if v:
             if data.get(k) != v:
-                data[k] = v
-                changed = True
+                data[k] = v; changed = True
         elif k in data:
-            data.pop(k, None)
-            changed = True
+            data.pop(k, None); changed = True
     for task in data.get('tasks', []) or []:
         if task.get('due_mode') == 'closing_cutoff' and task.get('due_date') != cutoff_iso:
-            task['due_date'] = cutoff_iso
-            changed = True
+            task['due_date'] = cutoff_iso; changed = True
     if changed:
         p.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding='utf-8')
     return changed
-
 
 def propagate(year_data):
     count = 0
@@ -251,7 +249,6 @@ def propagate(year_data):
         if apply_to_period_file('YearlyClose', period, rec):
             count += 1
     return count
-
 
 def apply_to_tax_reporting_period(period: str, rec: dict):
     try:
