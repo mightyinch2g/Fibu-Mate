@@ -734,6 +734,7 @@ class FiBuMateApp:
         self.intersport_logo = load_image(logo_path) if logo_path else None
         self.image_refs = []
         self.ensure_version_429_once()
+        self.ensure_version_430_once()
         self.create_footer()
         self.canvas = tk.Canvas(self.root, highlightthickness=0, bg=BG, cursor="arrow")
         self.canvas.pack(side="top", fill="both", expand=True)
@@ -1014,6 +1015,45 @@ class FiBuMateApp:
                 if not any(e.get("update_id") == update_id for e in history.get("entries", [])):
                     history["entries"].insert(0, {
                         "version": "v0.429",
+                        "date": now_date_str(),
+                        "update_id": update_id,
+                        "bullets": bullets,
+                    })
+                    self.save_version_history(history)
+                self.version_state["applied_updates"].append(update_id)
+                changed = True
+            if changed:
+                self.save_version_state()
+        except Exception:
+            pass
+
+    def ensure_version_430_once(self):
+        """BU33b: Version v0.430 und Versionsverlauf robust sicherstellen.
+        VERSION_PREFIX ist "0.4"; daher entspricht v0.430 dem Build 30.
+        Diese Methode wird nach allen regulären bump_version_once-Blöcken und vor
+        create_footer() ausgeführt, damit das Versionslabel direkt korrekt ist.
+        """
+        update_id = "2026-05-30_bu33b_closing_deadline_sync_version_430"
+        bullets = [
+            "BU33b: Abschlusskalender-Synchronisation versioniert.",
+            "BU33b: Monatsabschluss übernimmt gepflegte Stichtage aus der Stichtags- & Zuständigkeitspflege und aktualisiert Aufgaben mit Abschluss-Stichtag.",
+            "BU33b: Quartalsabschluss übernimmt gepflegte Stichtage aus der Stichtags- & Zuständigkeitspflege und aktualisiert Aufgaben mit Abschluss-Stichtag.",
+            "BU33b: Jahresabschluss übernimmt gepflegte Stichtage aus der Stichtags- & Zuständigkeitspflege und aktualisiert Aufgaben mit Abschluss-Stichtag.",
+            "BU33b: Bestehende Periodendateien aktualisieren closing_cutoff_date und die Fälligkeiten betroffener Aufgaben.",
+        ]
+        try:
+            self.version_state.setdefault("applied_updates", [])
+            changed = False
+            current_build = int(self.version_state.get("build", DEFAULT_BUILD))
+            if current_build < 30 or current_build > 100:
+                self.version_state["build"] = 30
+                changed = True
+            if update_id not in self.version_state["applied_updates"]:
+                history = self.load_version_history()
+                history.setdefault("entries", [])
+                if not any(e.get("update_id") == update_id for e in history.get("entries", [])):
+                    history["entries"].insert(0, {
+                        "version": "v0.430",
                         "date": now_date_str(),
                         "update_id": update_id,
                         "bullets": bullets,

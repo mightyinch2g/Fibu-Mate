@@ -270,6 +270,7 @@ def deadline_cutoff_date(period):
         pass
     return ''
 
+
 def default_cutoff_date(period):
     synced = deadline_cutoff_date(period)
     if synced:

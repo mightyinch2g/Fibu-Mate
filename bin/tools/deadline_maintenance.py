@@ -176,6 +176,23 @@ def period_file(module_dir: str, period: str):
 
 
 def apply_to_period_file(module_dir: str, period: str, rec: dict):
+    dek = parse_date(rec.get('dekade_close'))
+    if not dek:
+        return False
+    cutoff_iso = dek.strftime('%Y-%m-%d')
+    extra = {}
+    for k in ('report18', 'recon08', 'close_month'):
+        v = rec.get(k, '')
+        if v:
+            d = parse_date(v)
+            extra[k] = d.strftime('%Y-%m-%d') if d else v
+        else:
+            extra[k] = ''
+    try:
+        if hasattr(cc, 'update_close_period_file_from_deadline'):
+            return cc.update_close_period_file_from_deadline(module_dir, period, cutoff_iso, extra)
+    except Exception:
+        pass
     p = period_file(module_dir, period)
     if not p.exists():
         return False
@@ -183,20 +200,23 @@ def apply_to_period_file(module_dir: str, period: str, rec: dict):
         data = json.loads(p.read_text(encoding='utf-8'))
     except Exception:
         return False
-    # Federführend: closing_cutoff_date übernehmen
-    dek = parse_date(rec.get('dekade_close'))
-    if dek:
-        data['closing_cutoff_date'] = dek.strftime('%Y-%m-%d')
-    # Zusatzfelder optional in Close-JSON ablegen (für spätere Anzeige/Logik)
-    for k in ('report18','recon08','close_month'):
-        v = rec.get(k, '')
+    changed = data.get('closing_cutoff_date') != cutoff_iso
+    data['closing_cutoff_date'] = cutoff_iso
+    for k, v in extra.items():
         if v:
-            d = parse_date(v)
-            data[k] = d.strftime('%Y-%m-%d') if d else v
-        else:
+            if data.get(k) != v:
+                data[k] = v
+                changed = True
+        elif k in data:
             data.pop(k, None)
-    p.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding='utf-8')
-    return True
+            changed = True
+    for task in data.get('tasks', []) or []:
+        if task.get('due_mode') == 'closing_cutoff' and task.get('due_date') != cutoff_iso:
+            task['due_date'] = cutoff_iso
+            changed = True
+    if changed:
+        p.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding='utf-8')
+    return changed
 
 
 def propagate(year_data):

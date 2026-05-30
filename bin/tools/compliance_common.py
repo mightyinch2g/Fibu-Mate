@@ -307,3 +307,35 @@ def sync_tax_period_with_deadlines(period: str, data: dict):
             })
             changed = True
     return changed
+
+
+# ---- BU33b: Abschlusskalender-Stichtagssynchronisation ----
+def deadline_period_file_path(module_dir: str, period: str):
+    return bin_dir() / 'Closing' / module_dir / 'periods' / f'{period}.json'
+
+def update_close_period_file_from_deadline(module_dir: str, period: str, cutoff_iso: str, extra_fields=None):
+    """Aktualisiert eine bestehende Abschluss-Periodendatei und alle Aufgaben mit Abschluss-Stichtag."""
+    p = deadline_period_file_path(module_dir, period)
+    if not p.exists() or not cutoff_iso:
+        return False
+    try:
+        data = json.loads(p.read_text(encoding='utf-8'))
+    except Exception:
+        return False
+    changed = data.get('closing_cutoff_date') != cutoff_iso
+    data['closing_cutoff_date'] = cutoff_iso
+    for k, v in (extra_fields or {}).items():
+        if v:
+            if data.get(k) != v:
+                data[k] = v
+                changed = True
+        elif k in data:
+            data.pop(k, None)
+            changed = True
+    for task in data.get('tasks', []) or []:
+        if task.get('due_mode') == 'closing_cutoff' and task.get('due_date') != cutoff_iso:
+            task['due_date'] = cutoff_iso
+            changed = True
+    if changed:
+        p.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding='utf-8')
+    return changed
