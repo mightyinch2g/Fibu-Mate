@@ -1,0 +1,12 @@
+{
+  "teams": [
+    "Hauptbuch",
+    "Kreditoren",
+    "Debitoren",
+    "Controlling"
+  ],
+  "warning_days": {
+    "yellow": 10,
+    "orange": 5
+  }
+}

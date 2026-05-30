@@ -1,0 +1,55 @@
+{
+  "tasks": [
+    {
+      "catalog_id": "rec_20260513093058667545",
+      "team": "Zentralregulierung",
+      "title": "Otto Gruppe - Manuell erfasste Belastungen",
+      "owner": "Zentralregulierung",
+      "owner_user_key": "",
+      "due_date": "2026-06-30",
+      "due_mode": "fixed_date",
+      "due_day": null,
+      "due_workday": null,
+      "due_fixed_date": "2026-06-30",
+      "deadline_type": "intern",
+      "priority": "normal",
+      "required": true,
+      "recurring": true,
+      "start_period": "2026-Q2"
+    },
+    {
+      "catalog_id": "rec_20260513155206274835",
+      "team": "Treasury",
+      "title": "Aufgabenpool M. Bartenbach",
+      "owner": "Bartenbachm",
+      "owner_user_key": "bartenbachm",
+      "due_date": "2026-07-08",
+      "due_mode": "closing_cutoff",
+      "due_day": null,
+      "due_workday": null,
+      "due_fixed_date": "",
+      "deadline_type": "intern",
+      "priority": "normal",
+      "required": true,
+      "recurring": true,
+      "start_period": "2026-Q2"
+    },
+    {
+      "catalog_id": "rec_20260526165717298491",
+      "team": "Hauptbuch",
+      "title": "Aufgabenpool - Olga Wall",
+      "owner": "Wall",
+      "owner_user_key": "wall",
+      "due_date": "2026-07-08",
+      "due_mode": "closing_cutoff",
+      "due_day": null,
+      "due_workday": null,
+      "due_fixed_date": "",
+      "deadline_type": "intern",
+      "priority": "normal",
+      "required": true,
+      "recurring": true,
+      "start_period": "2026-Q2"
+    }
+  ]
+}

@@ -1,0 +1,616 @@
+{
+  "entries": [
+    {
+      "version": "v0.428",
+      "date": "260527",
+      "bullets": [
+        "UI-Interaktion zentral verbessert: Scrollbereiche reagieren nur noch, wenn tatsächlich mehr Inhalt vorhanden ist als angezeigt werden kann.",
+        "Popup- und Dialogfenster werden modal behandelt; ESC schließt bevorzugt das aktive Dialogfenster statt den Hintergrund zu bedienen.",
+        "Mousewheel-Routing angepasst: Dropdowns und aktive Dialoge erhalten Vorrang, damit nicht versehentlich Menüs im Hintergrund scrollen."
+      ]
+    },
+    {
+      "version": "v0.427",
+      "date": "260527",
+      "bullets": [
+        "Anpassung der Benutzeroberfläche",
+        "Moduleinstellungen ergänzt und Auto-Mail-Schalter in Einstellungen > Moduleinstellungen > Abschlusskalender verschoben.",
+        "Steuermeldungs- und Meldearten-Popups vergrößert, Datumsformat und Stammdaten-Spalten angepasst.",
+        "Delegierungslisten zeigen vollständige Benutzernamen und Popups arbeiten modal."
+      ]
+    },
+    {
+      "version": "v0.426",
+      "date": "260527",
+      "bullets": [
+        "Globales Scroll-Verhalten korrigiert.",
+        "Audit-Log-Pfad und Abschluss-Audit-Hooks ergänzt.",
+        "Bidirektionale Monatsabschluss-Synchronisation für Z4/ZM/Z5a über MQ001/MQ002/MQ003 ergänzt."
+      ]
+    },
+    {
+      "version": "v0.425",
+      "date": "260527",
+      "bullets": [
+        "Major-Version auf v0.4 angehoben.",
+        "Neues Hauptmenü Compliance & Audit ergänzt und Hauptmenü-Anordnung angepasst.",
+        "Neues Modul Steuermeldungs-Cockpit mit Meldearten, Status, Nachweisen, Freigabe, Historie, PDF-Bericht und Audit-Anbindung ergänzt.",
+        "Neues Modul Audit-Cockpit mit zentralem Audit-Log, Risikostufen, Filterung, PDF-Bericht und manuellem Archivierungsbutton für E3/E4 ergänzt.",
+        "Neue Dokumentationszentrale mit Suche, Pfadprüfung, manuellen Dokumenten, PDF-/Excel-Export und Fehlende-Dokumentation-Bericht ergänzt."
+      ]
+    },
+    {
+      "version": "v0.324",
+      "date": "260527",
+      "bullets": [
+        "Benutzeranmeldung korrigiert: Unbekannte Benutzernamen werden endgültig nicht mehr automatisch angelegt.",
+        "Benutzerverwaltung angepasst: Speichern- und Löschen-Buttons sind getrennt, gleich groß und ohne Aktionsspalten-Überschrift dargestellt.",
+        "Mini-Widgets angepasst: Änderung-vorschlagen-Icon wurde auf die neue Icon-Datei umgestellt.",
+        "Abschlusskalender angepasst: Monats-, Quartals- und Jahresabschluss-Kacheln zeigen den aktuellen Zeitraum direkt neben dem Kalendericon.",
+        "Abschlusskalender erweitert: E4 kann Auto-Mail kompakt ein- und ausschalten; Abschluss- und Wiederöffnungs-Mails beachten diese Einstellung."
+      ]
+    },
+    {
+      "version": "v0.323",
+      "date": "260527",
+      "bullets": [
+        "Berechtigungen auf E1 bis E4 migriert: E1 Standard, E2 Erweitert, E3 Administrator, E4 System-Administrator; unbekannte Logins legen keine Benutzer mehr automatisch an.",
+        "Benutzerverwaltung erweitert: Vorname und vollständiger Name werden für Ansprache und E-Mail-Kommunikation vorbereitet.",
+        "Abschlusskalender erweitert: Zeiträume können ab E3 nach Ablauf des Abschluss-Stichtags geschlossen und wieder geöffnet werden; Wiederöffnung erfordert Begründung und automatische E-Mail-Benachrichtigung an E3/E4.",
+        "Abschlussberichte erweitert: Berichtsdialog mit Signatur-/Freigabeoption, ausführlichere Inhalte, Änderungsprotokoll und ReportLab-Unterstützung mit einfachem Fallback."
+      ]
+    },
+    {
+      "version": "v0.322",
+      "date": "260527",
+      "bullets": [
+        "Aufgaben-Historie nach ID erweitert: Dezenter Reiter „Aufgaben verknüpfen“ ergänzt, inklusive Vorschlägen für gleichnamige Aufgaben in Monats-, Quartals- und Jahresabschluss.",
+        "Abschlusskalender erweitert: Aufgaben-Verknüpfung setzt gemeinsame IDs automatisch nach Priorität M > Q > J und archiviert alte Aufgaben-IDs mit Deaktivierungsdatum.",
+        "Monats-, Quartals- und Jahresabschluss erweitert: Bei Delegierung wird eine E-Mail an die neu zuständige Person vorbereitet; bei permanenter Delegierung mit Hinweis „bis auf Weiteres“."
+      ]
+    },
+    {
+      "version": "v0.321",
+      "date": "260527",
+      "bullets": [
+        "Abschlusskalender erweitert: Jahresabschluss und Aufgaben-Historie nach ID wurden eingebunden.",
+        "Monats-, Quartals- und Jahresabschluss erweitert: Aufgaben-IDs sind im Bearbeitungsdialog sichtbar und für Administrator/System-Administrator editierbar; bestehende fachliche Aufgaben erhalten initial QM001 bis QM016.",
+        "Monats-, Quartals- und Jahresabschluss erweitert: Aufgaben werden über identische Aufgaben-ID verknüpft; bei ID-Änderung wird die alte ID mit Deaktivierungsdatum archiviert.",
+        "Monats-, Quartals- und Jahresabschluss erweitert: Delegierungen können einmalig oder permanent auf Folgezeiträume übertragen werden.",
+        "PDF-Berichte korrigiert: Export funktioniert ohne externe reportlab-Abhängigkeit über einen integrierten einfachen PDF-Generator."
+      ]
+    },
+    {
+      "version": "v0.320",
+      "date": "260526",
+      "bullets": [
+        "Abschlusskalender erweitert: Jahresabschluss-Modul für Geschäftsjahre vom 01.10. bis 30.09. ergänzt.",
+        "Monats-, Quartals- und Jahresabschluss erweitert: Aufgaben erhalten dauerhaft eindeutige Aufgaben-IDs inklusive Unteraufgaben-Postfix -uX.",
+        "Monats-, Quartals- und Jahresabschluss erweitert: Delegierungen können einmalig oder permanent für Folgezeiträume erfolgen; permanente Delegierung läuft über die Aufgaben-ID.",
+        "Abschlusskalender erweitert: Aufgaben-Historie nach ID mit Zeitraumdetails und PDF-Berichten ergänzt.",
+        "Abschlusskalender erweitert: Abschlussberichte und Aufgaben-ID-Gesamtberichte können als PDF erstellt werden.",
+        "Abschlusskalender angepasst: Folgezeiträume können über „Diesen Zeitraum als Vorlage … verwenden“ vollständig anhand der Aufgaben-ID synchronisiert werden."
+      ]
+    },
+    {
+      "version": "v0.319",
+      "date": "260526",
+      "bullets": [
+        "Monats- und Quartalsabschluss korrigiert: Beim Löschen wird die ausgewählte Aufgabe eindeutig über die konkrete Aufgabeninstanz bzw. eine stabile Aufgabenkennung identifiziert, damit keine falschen Aufgaben gelöscht werden.",
+        "Monats- und Quartalsabschluss erweitert: Beim Löschen kann gewählt werden, ob die Aufgabe nur im aktuellen Zeitraum oder auch in allen folgenden Zeiträumen gelöscht wird.",
+        "Monats- und Quartalsabschluss erweitert: Im Bearbeitungsmodus gibt es den Button „Alle Folgezeiträume bereinigen“, der folgende Perioden an den aktuellen Aufgabenbestand anpasst.",
+        "Monats- und Quartalsabschluss angepasst: Aufgaben und Unteraufgaben werden alphabetisch nach Titel sortiert angezeigt."
+      ]
+    },
+    {
+      "version": "v0.318",
+      "date": "260515",
+      "bullets": [
+        "Monats- und Quartalsabschluss angepasst: Der Bearbeitungsmodus-Button verwendet nun das Stift-Icon als direkte Schaltfläche ohne blaue Kachel.",
+        "Monats- und Quartalsabschluss erweitert: Administratoren und System-Administratoren können die Zuständigkeit einer Aufgabe im geöffneten Zeitraum per Delegieren-Button ändern.",
+        "Monats- und Quartalsabschluss erweitert: Wird eine Aufgabe mit Unteraufgaben delegiert, werden alle Unteraufgaben im betreffenden Zeitraum mitdelegiert."
+      ]
+    },
+    {
+      "version": "v0.317",
+      "date": "260515",
+      "bullets": [
+        "Anpassung der Benutzeroberfläche"
+      ]
+    },
+    {
+      "version": "v0.316",
+      "date": "260515",
+      "bullets": [
+        "Monats- und Quartalsabschluss erweitert: Im Dokumentations-Popup kann ein hinterlegter Dokumentationspfad über ein Papierkorb-Icon entfernt werden.",
+        "Monats- und Quartalsabschluss erweitert: Das Entfernen einer Dokumentation ist durch die Sicherheitsabfrage „Dokumentation entfernen?“ mit Ja/Nein geschützt."
+      ]
+    },
+    {
+      "version": "v0.315",
+      "date": "260515",
+      "bullets": [
+        "Anpassung der Benutzeroberfläche"
+      ]
+    },
+    {
+      "version": "v0.314",
+      "date": "260515",
+      "bullets": [
+        "Anpassung der Benutzeroberfläche"
+      ]
+    },
+    {
+      "version": "v0.313",
+      "date": "260515",
+      "bullets": [
+        "Abschlusskalender erweitert: In den Aufgaben-Detailansichten von Monats- und Quartalsabschluss wurde eine neue Spalte Dokumentation ergänzt; je Aufgabe und Unteraufgabe kann ein Dokumentationspfad als Leitfaden bzw. Aufgabenbeschreibung hinterlegt, geöffnet und geändert werden.",
+        "Abschlusskalender erweitert: Das Anlagen-Popup unterstützt mehrere Anlagenpfade je Aufgabe und Unteraufgabe, manuelle Pfadeingabe, Auswahl per Dateidialog und Bemerkungen/Informationen zur Bearbeitung für alle Rollen.",
+        "Abschlusskalender angepasst: Spaltenbreiten, Ausrichtungen und Fälligkeitsdarstellung in den Detailtabellen wurden optimiert; Fällig wird nun als Datum plus Fälligkeitsart angezeigt."
+      ]
+    },
+    {
+      "version": "v0.312",
+      "date": "260515",
+      "bullets": [
+        "Anpassung der Benutzeroberfläche"
+      ]
+    },
+    {
+      "version": "v0.311",
+      "date": "260515",
+      "bullets": [
+        "Anpassung der Benutzeroberfläche"
+      ]
+    },
+    {
+      "version": "v0.310",
+      "date": "260515",
+      "bullets": [
+        "Anpassung der Benutzeroberfläche"
+      ]
+    },
+    {
+      "version": "v0.39",
+      "date": "260515",
+      "bullets": [
+        "Anpassung der Benutzeroberfläche"
+      ]
+    },
+    {
+      "version": "v0.38",
+      "date": "260515",
+      "bullets": [
+        "Anpassung der Benutzeroberfläche"
+      ]
+    },
+    {
+      "version": "v0.37",
+      "date": "260515",
+      "bullets": [
+        "Monats- und Quartalsabschluss erweitert: Unteraufgaben sind in der Team-Detailsansicht standardmäßig zugeklappt und können je Aufgabe über „Unteraufgaben ausklappen >“ ein- und ausgeblendet werden.",
+        "Monats- und Quartalsabschluss korrigiert: Beim Übernehmen einer Aufgabe in den jeweils anderen Abschluss wird der Status Wiederkehrend mit übernommen.",
+        "Monats- und Quartalsabschluss erweitert: Aufgabenübersichten in den Team-Detailsichten sind scrollbar."
+      ]
+    },
+    {
+      "version": "v0.36",
+      "date": "260515",
+      "bullets": [
+        "Benutzerverwaltung erweitert: Standardbenutzer sehen nur eigene Benutzerdaten, dürfen die eigene E-Mail-Adresse pflegen und die Benutzerliste ist scrollbar mit sichtbarer Neuanlage für System-Administrator.",
+        "Berechtigungen angepasst: Rolle Wagnerm heißt nun System-Administrator, Standardbenutzer können das Berechtigungsmenü nicht mehr öffnen und das Berechtigungsmenü ist scrollbar.",
+        "Monats- und Quartalsabschluss erweitert: Aufgaben können inklusive Unteraufgaben in den jeweils anderen Abschluss übernommen werden.",
+        "Monats- und Quartalsabschluss angepasst: Standardbenutzer dürfen Aufgaben nur als erledigt markieren, wenn sie selbst als zuständig eingetragen sind.",
+        "Teammitglieder werden auf folgende Perioden übertragen und zwischen Monats- und Quartalsabschluss synchronisiert.",
+        "Fristart keine entfernt; Standard-Fristart ist intern."
+      ]
+    },
+    {
+      "version": "v0.35",
+      "date": "260513",
+      "bullets": [
+        "Abschlusskalender angepasst: Kreditoren heißt nun Zentralregulierung, Controlling heißt nun Treasury.",
+        "Monats- und Quartalsabschluss erweitert: Team-Mitglieder können im Bearbeitungsmodus je Übersichtskachel gepflegt und unter der nächsten Frist angezeigt werden.",
+        "Monats- und Quartalsabschluss erweitert: Aufgaben können Unteraufgaben erhalten; Unteraufgaben sind separat abhakbar und steuern den Erledigt-Status der Hauptaufgabe.",
+        "Fälligkeitsarten im Monats- und Quartalsabschluss auf Abschluss-Stichtag, x. Werktag des Folgemonats, x. Tag des Kalendermonats und Konkretes Datum umgestellt.",
+        "Abschluss-Stichtag kann in der Abschlussübersicht gepflegt werden und wird automatisch auf Aufgaben mit Fälligkeitsart Abschluss-Stichtag übertragen."
+      ]
+    },
+    {
+      "version": "v0.34",
+      "date": "260512",
+      "bullets": [
+        "Versionsverlauf scrollbar gemacht.",
+        "Nike OP-Liste Modul angepasst: Exportpfad wird nicht mehr automatisch aus dem OP-Liste-Pfad übernommen und der vorgeschlagene Exportdateiname lautet Nike_OPL-Abgleich_JJMMTT.",
+        "Nike OP-Liste Modul verbessert: „Export öffnen“ bleibt nutzbar, sobald ein exportierter Bericht vorhanden ist.",
+        "Quartalsabschluss als eigenständiges Modul auf Basis der Monatsabschluss-Struktur wiederhergestellt."
+      ]
+    },
+    {
+      "version": "v0.33",
+      "date": "260512",
+      "bullets": [
+        "Nike OP-Liste Modul stabilisiert: Export läuft im Hintergrund, damit FiBu Mate während großer .xlsx-Auswertungen nicht einfriert.",
+        "Nike OP-Liste Modul optimiert: OP-Liste wird performanter über Zeilen-Iteratoren eingelesen.",
+        "Nike OP-Liste Modul verbessert: Export-Button wird während der Verarbeitung gesperrt und Fortschritt/Fehler werden sauber zurückgemeldet."
+      ]
+    },
+    {
+      "version": "v0.32",
+      "date": "260512",
+      "bullets": [
+        "Nike-Module bereinigt: „Nike - Differenzen: PDF vs ZMIR6“ wurde entfernt, da das Modul obsolet ist.",
+        "Nike-Module bereinigt: „Nike - Differenzbericht Sales und Lager“ wurde entfernt, da das Modul obsolet ist.",
+        "Neues Modul ergänzt: „Nike - OP-Liste: Vollständigkeit PDF-Rechnungen prüfen“.",
+        "Neues Nike-Modul vergleicht Rechnungsnummern aus OP-Liste Excel Spalte B mit Rechnungsnummern aus PDF-Dateinamen und exportiert zwei Auswertungsblätter."
+      ]
+    },
+    {
+      "version": "v0.31",
+      "date": "260512",
+      "bullets": [
+        "Versionierung auf Minor v0.3 umgestellt; Start der neuen Logik bei v0.31.#JJMMTT.",
+        "Benutzerverwaltung erweitert: Benutzer können umbenannt und gelöscht werden.",
+        "Quartalsabschluss ergänzt und strukturell an den Monatsabschluss angelehnt.",
+        "Abschlussmodule stellen Datumsangaben in der Oberfläche im Format TT.MM.JJJJ dar.",
+        "Standard-Frist ohne gesonderte Fälligkeitsangabe ist der letzte Kalendertag des jeweiligen Monats bzw. Quartals."
+      ]
+    },
+    {
+      "version": "v0.359",
+      "date": "260512",
+      "bullets": [
+        "Abschlussmodule begrenzt: Monatsabschlüsse können nicht vor April 2026 und Quartalsabschlüsse nicht vor Q2 2026 geöffnet werden; ältere Periodendateien werden bereinigt.",
+        "Benutzerverwaltung erweitert: pro Benutzer kann eine E-Mail-Adresse für zukünftige Reporting-Features hinterlegt werden.",
+        "FiBu Mate erweitert: Button „Änderung vorschlagen“ mit Glühbirnen-Icon links neben Hilfe ergänzt.",
+        "Änderungsvorschläge öffnen nach Hinweisdialog eine vorbereitete Outlook-Mail an die definierten Empfänger."
+      ]
+    },
+    {
+      "version": "v0.258",
+      "date": "260512",
+      "bullets": [
+        "Monatsabschluss erweitert: Aufgaben können im Bearbeitungsmodus als wiederkehrend markiert werden.",
+        "Monatsabschluss erweitert: zentraler Aufgabenkatalog für wiederkehrende Aufgaben eingeführt.",
+        "Monatsabschluss erweitert: wiederkehrende Aufgaben werden automatisch in Folgemonate ab dem aktuellen Monat übernommen.",
+        "Monatsabschluss erweitert: Fälligkeit kann als konkretes Datum, x. Werktag des Monats oder x. Werktag des Folgemonats gepflegt werden.",
+        "Monatsabschluss erweitert: Werktagsberechnung berücksichtigt Montag bis Freitag sowie Feiertage Baden-Württemberg und verschiebt auf den nächsten Werktag.",
+        "Monatsabschluss verbessert: berechnetes Fälligkeitsdatum wird im Aufgaben-Dialog direkt als Vorschau angezeigt.",
+        "Monatsabschluss verbessert: bei Werktags-Fälligkeit wird das Eingabefeld für ein konkretes Fälligkeitsdatum ausgeblendet.",
+        "Monatsabschluss verbessert: Tabelle zeigt bei regelbasierter Fälligkeit zusätzlich den Regelhinweis an.",
+        "Monatsabschluss angepasst: ZM/Z4/Z5a bleiben vorerst manuell über Aufgabe, Fristart, Priorität und Fälligkeitsregel pflegbar."
+      ]
+    },
+    {
+      "version": "v0.257",
+      "date": "260512",
+      "bullets": [
+        "Monatsabschluss erweitert: Statusleiste für kurzfristig fällige und überfällige Aufgaben aus verstrichenen Monaten ergänzt.",
+        "Monatsabschluss erweitert: automatische Anlage des aktuellen Monats sowie der zwei Folgemonate umgesetzt.",
+        "Monatsabschluss verbessert: Teamübersichtskacheln sind vollständig klickbar; separater Details-Button wurde entfernt.",
+        "Monatsabschluss verbessert: Teamübersichtskacheln zeigen nächste relevante Frist und nutzen den verfügbaren Platz besser aus.",
+        "Monatsabschluss erweitert: Escape führt aus der Teamdetailansicht zurück zur Monatsübersicht.",
+        "Monatsabschluss erweitert: Bearbeitungsmodus ab Administrator mit Stift-Button und Hover-Hinweis eingeführt.",
+        "Monatsabschluss erweitert: Aufgaben können im Bearbeitungsmodus angelegt, bearbeitet und gelöscht werden.",
+        "Monatsabschluss erweitert: Zuständigkeit, Fristart, Priorität und Fälligkeit sind im Bearbeitungsmodus pflegbar.",
+        "Monatsabschluss erweitert: temporäre Funktion „Aufgaben dieses Monats allen Monaten zuweisen“ ergänzt.",
+        "Login-Routing stabilisiert: Nach Anmeldung wird zuverlässig das Hauptmenü geöffnet."
+      ]
+    },
+    {
+      "version": "v0.256",
+      "date": "260511",
+      "bullets": [
+        "Farbschema geändert"
+      ]
+    },
+    {
+      "version": "v0.255",
+      "date": "260511",
+      "bullets": [
+        "Farbschema geändert"
+      ]
+    },
+    {
+      "version": "v0.254",
+      "date": "260511",
+      "bullets": [
+        "Modul geöffnet: Nike - PDF zu Excel"
+      ]
+    },
+    {
+      "version": "v0.253",
+      "date": "260511",
+      "bullets": [
+        "Modul geöffnet: Nike - PDF zu Excel"
+      ]
+    },
+    {
+      "version": "v0.252",
+      "date": "260511",
+      "bullets": [
+        "Modul geöffnet: Nike - PDF zu Excel"
+      ]
+    },
+    {
+      "version": "v0.251",
+      "date": "260511",
+      "bullets": [
+        "Modul geöffnet: Nike - PDF zu Excel"
+      ]
+    },
+    {
+      "version": "v0.250",
+      "date": "260511",
+      "bullets": [
+        "Modul geöffnet: Nike - Differenzen: PDF vs ZMIR6 (Excel)"
+      ]
+    },
+    {
+      "version": "v0.249",
+      "date": "260511",
+      "bullets": [
+        "Modul geöffnet: Nike - Differenzabgleich: Rechnungen & SAP"
+      ]
+    },
+    {
+      "version": "v0.248",
+      "date": "260511",
+      "bullets": [
+        "Modul geöffnet: Nike - PDF zu Excel"
+      ]
+    },
+    {
+      "version": "v0.247",
+      "date": "260510",
+      "bullets": [
+        "Modul geöffnet: Nike - PDF zu Excel"
+      ]
+    },
+    {
+      "version": "v0.246",
+      "date": "260510",
+      "bullets": [
+        "Farbschema geändert"
+      ]
+    },
+    {
+      "version": "v0.245",
+      "date": "260510",
+      "bullets": [
+        "Farbschema geändert"
+      ]
+    },
+    {
+      "version": "v0.244",
+      "date": "260510",
+      "bullets": [
+        "Farbschema geändert"
+      ]
+    },
+    {
+      "version": "v0.243",
+      "date": "260510",
+      "bullets": [
+        "Farbschema geändert"
+      ]
+    },
+    {
+      "version": "v0.242",
+      "date": "260510",
+      "bullets": [
+        "Farbschema geändert"
+      ]
+    },
+    {
+      "version": "v0.241",
+      "date": "260510",
+      "bullets": [
+        "Farbschema geändert"
+      ]
+    },
+    {
+      "version": "v0.240",
+      "date": "260510",
+      "bullets": [
+        "Farbschema geändert"
+      ]
+    },
+    {
+      "version": "v0.239",
+      "date": "260510",
+      "bullets": [
+        "Farbschema geändert"
+      ]
+    },
+    {
+      "version": "v0.238",
+      "date": "260510",
+      "bullets": [
+        "Farbschema geändert"
+      ]
+    },
+    {
+      "version": "v0.237",
+      "date": "260510",
+      "bullets": [
+        "Farbschema geändert"
+      ]
+    },
+    {
+      "version": "v0.236",
+      "date": "260510",
+      "bullets": [
+        "Farbschema geändert"
+      ]
+    },
+    {
+      "version": "v0.235",
+      "date": "260510",
+      "bullets": [
+        "Farbschema geändert"
+      ]
+    },
+    {
+      "version": "v0.234",
+      "date": "260510",
+      "bullets": [
+        "Modul geöffnet: Nike - PDF zu Excel"
+      ]
+    },
+    {
+      "version": "v0.233",
+      "date": "260510",
+      "bullets": [
+        "Modul geöffnet: Nike - Differenzen: PDF vs ZMIR6 (Excel)"
+      ]
+    },
+    {
+      "version": "v0.232",
+      "date": "260510",
+      "bullets": [
+        "Modul geöffnet: Nike - PDF zu Excel"
+      ]
+    },
+    {
+      "version": "v0.231",
+      "date": "260510",
+      "bullets": [
+        "Modul geöffnet: Nike - Differenzen: PDF vs ZMIR6 (Excel)"
+      ]
+    },
+    {
+      "version": "v0.230",
+      "date": "260510",
+      "bullets": [
+        "Modul geöffnet: Nike - Differenzabgleich: Rechnungen & SAP"
+      ]
+    },
+    {
+      "version": "v0.229",
+      "date": "260510",
+      "bullets": [
+        "Modul geöffnet: Nike - PDF zu Excel"
+      ]
+    },
+    {
+      "version": "v0.228",
+      "date": "260510",
+      "bullets": [
+        "Modul geöffnet: Nike - PDF zu Excel"
+      ]
+    },
+    {
+      "version": "v0.227",
+      "date": "260510",
+      "bullets": [
+        "Modul geöffnet: Nike - PDF zu Excel"
+      ]
+    },
+    {
+      "version": "v0.226",
+      "date": "260510",
+      "bullets": [
+        "Modul geöffnet: Nike - PDF zu Excel"
+      ]
+    },
+    {
+      "version": "v0.225",
+      "date": "260510",
+      "bullets": [
+        "Modul geöffnet: Nike - PDF zu Excel"
+      ]
+    },
+    {
+      "version": "v0.224",
+      "date": "260510",
+      "bullets": [
+        "Modul geöffnet: Nike - PDF zu Excel"
+      ]
+    },
+    {
+      "version": "v0.223",
+      "date": "260510",
+      "bullets": [
+        "Modul geöffnet: Nike - Differenzen: PDF vs ZMIR6 (Excel)"
+      ]
+    },
+    {
+      "version": "v0.222",
+      "date": "260510",
+      "bullets": [
+        "Modul geöffnet: Nike - PDF zu Excel"
+      ]
+    },
+    {
+      "version": "v0.215",
+      "date": "26.05.09",
+      "bullets": [
+        "Transaktion: Modul geöffnet (Nike - Differenzabgleich: Rechnungen & SAP)"
+      ]
+    },
+    {
+      "version": "v0.214",
+      "date": "26.05.09",
+      "bullets": [
+        "Transaktion: Modul geöffnet (Nike - PDF zu Excel)"
+      ]
+    },
+    {
+      "version": "v0.213",
+      "date": "26.05.09",
+      "bullets": [
+        "Transaktion: Kachelfarbe geändert"
+      ]
+    },
+    {
+      "version": "v0.212",
+      "date": "26.05.09",
+      "bullets": [
+        "Transaktion: Modul geöffnet (Nike - PDF zu Excel)"
+      ]
+    },
+    {
+      "version": "v0.211",
+      "date": "26.05.09",
+      "bullets": [
+        "Transaktion: Kachelfarbe geändert"
+      ]
+    },
+    {
+      "version": "v0.210",
+      "date": "26.05.09",
+      "bullets": [
+        "Transaktion: Kachelfarbe zurückgesetzt"
+      ]
+    },
+    {
+      "version": "v0.29",
+      "date": "26.05.09",
+      "bullets": [
+        "Transaktion: Kachelfarbe geändert"
+      ]
+    },
+    {
+      "version": "v0.28",
+      "date": "26.05.09",
+      "bullets": [
+        "Transaktion: Kachelfarbe geändert"
+      ]
+    },
+    {
+      "version": "v0.27",
+      "date": "26.05.09",
+      "bullets": [
+        "Transaktion: Kachelfarbe geändert"
+      ]
+    },
+    {
+      "version": "v0.26",
+      "date": "26.05.09",
+      "bullets": [
+        "Transaktion: Kachelfarbe geändert"
+      ]
+    }
+  ]
+}

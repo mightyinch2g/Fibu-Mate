@@ -1,0 +1,251 @@
+{
+  "last_username_prefill": "Wagnerm",
+  "users": {
+    "wagnerm": {
+      "display_name": "Wagnerm",
+      "favorites": [],
+      "auth": {
+        "password_hash": null,
+        "enabled": false
+      },
+      "permission": "E4 - System-Administrator",
+      "email": "",
+      "first_name": "Matthias",
+      "full_name": "Matthias Wagnerm",
+      "tile_color": "#004B93"
+    },
+    "fibutest": {
+      "display_name": "Fibutest",
+      "favorites": [
+        "monthly_close"
+      ],
+      "auth": {
+        "password_hash": null,
+        "enabled": false
+      },
+      "permission": "E1 - Standard",
+      "email": "matthias.wagner@intersport.de",
+      "first_name": "",
+      "full_name": "Fibutest"
+    },
+    "wall": {
+      "display_name": "Wall",
+      "email": "olga.wall@intersport.de",
+      "favorites": [],
+      "auth": {
+        "password_hash": null,
+        "enabled": false
+      },
+      "permission": "E1 - Standard",
+      "first_name": "Olga",
+      "full_name": "Olga Wall"
+    },
+    "bartenbach": {
+      "display_name": "Bartenbach",
+      "favorites": [],
+      "auth": {
+        "password_hash": null,
+        "enabled": false
+      },
+      "permission": "E1 - Standard",
+      "email": "moritz.bartenbach@intersport.de",
+      "first_name": "Moritz",
+      "full_name": "Moritz Bartenbach"
+    },
+    "damaschke": {
+      "display_name": "Damaschke",
+      "email": "susanne.damaschke@intersport.de",
+      "favorites": [],
+      "auth": {
+        "password_hash": null,
+        "enabled": false
+      },
+      "permission": "E1 - Standard",
+      "first_name": "Susanne",
+      "full_name": "Susanne Damaschke"
+    },
+    "degener": {
+      "display_name": "Degener",
+      "email": "birgit.degener@intersport.de",
+      "favorites": [],
+      "auth": {
+        "password_hash": null,
+        "enabled": false
+      },
+      "permission": "E1 - Standard",
+      "first_name": "Birgit",
+      "full_name": "Birgit Degener"
+    },
+    "fellhauer": {
+      "display_name": "Fellhauer",
+      "email": "denise.fellhauer@intersport.de",
+      "favorites": [],
+      "auth": {
+        "password_hash": null,
+        "enabled": false
+      },
+      "permission": "E1 - Standard",
+      "first_name": "Denise",
+      "full_name": "Denise Fellhauer"
+    },
+    "gligor": {
+      "display_name": "Gligor",
+      "email": "ramona.gligor@intersport.de",
+      "favorites": [],
+      "auth": {
+        "password_hash": null,
+        "enabled": false
+      },
+      "permission": "E1 - Standard",
+      "first_name": "Ramona",
+      "full_name": "Ramona Gligor"
+    },
+    "kern": {
+      "display_name": "Kern",
+      "email": "grit.kern@intersport.de",
+      "favorites": [],
+      "auth": {
+        "password_hash": null,
+        "enabled": false
+      },
+      "permission": "E1 - Standard",
+      "first_name": "Grit",
+      "full_name": "Grit Kern"
+    },
+    "knobloch": {
+      "display_name": "Knobloch",
+      "favorites": [],
+      "auth": {
+        "password_hash": null,
+        "enabled": false
+      },
+      "permission": "E1 - Standard",
+      "email": "nicole.knobloch@intersport.de",
+      "first_name": "Nicole",
+      "full_name": "Nicole Knobloch"
+    },
+    "kraiss": {
+      "display_name": "Kraiss",
+      "email": "manuela.kraiss@intersport.de",
+      "favorites": [],
+      "auth": {
+        "password_hash": null,
+        "enabled": false
+      },
+      "permission": "E1 - Standard",
+      "first_name": "Manuela",
+      "full_name": "Manuela Kraiss"
+    },
+    "kull": {
+      "display_name": "Kull",
+      "email": "regina.kull@intersport.de",
+      "favorites": [],
+      "auth": {
+        "password_hash": null,
+        "enabled": false
+      },
+      "permission": "E1 - Standard",
+      "first_name": "Regina",
+      "full_name": "Regina Kull"
+    },
+    "laukhuf": {
+      "display_name": "Laukhuf",
+      "email": "katharina.laukhuf@intersport.de",
+      "favorites": [],
+      "auth": {
+        "password_hash": null,
+        "enabled": false
+      },
+      "permission": "E1 - Standard",
+      "first_name": "Katharina",
+      "full_name": "Katharina Laukhuf"
+    },
+    "lämmerer": {
+      "display_name": "Lämmerer",
+      "email": "nadine.lämmerer@intersport.de",
+      "favorites": [],
+      "auth": {
+        "password_hash": null,
+        "enabled": false
+      },
+      "permission": "E1 - Standard",
+      "first_name": "Nadine",
+      "full_name": "Nadine Lämmerer"
+    },
+    "mueller": {
+      "display_name": "Mueller",
+      "email": "carolin.mueller@intersport.de",
+      "favorites": [],
+      "auth": {
+        "password_hash": null,
+        "enabled": false
+      },
+      "permission": "E1 - Standard",
+      "first_name": "Carolin",
+      "full_name": "Carolin Mueller"
+    },
+    "neuwirth": {
+      "display_name": "Neuwirth",
+      "favorites": [],
+      "auth": {
+        "password_hash": null,
+        "enabled": false
+      },
+      "permission": "E1 - Standard",
+      "email": "julia.neuwirth@intersport.de",
+      "first_name": "Julia",
+      "full_name": "Julia Neuwirth"
+    },
+    "reichert": {
+      "display_name": "Reichert",
+      "email": "daniela.reichert@intersport.de",
+      "favorites": [],
+      "auth": {
+        "password_hash": null,
+        "enabled": false
+      },
+      "permission": "E1 - Standard",
+      "first_name": "Daniela",
+      "full_name": "Daniela Reichert"
+    },
+    "traub": {
+      "display_name": "Traub",
+      "email": "jutta.traub@intersport.de",
+      "favorites": [],
+      "auth": {
+        "password_hash": null,
+        "enabled": false
+      },
+      "permission": "E1 - Standard",
+      "first_name": "Jutta",
+      "full_name": "Jutta Traub"
+    },
+    "trübenbach": {
+      "display_name": "Trübenbach",
+      "email": "silvia.truebenbach@intersport.de",
+      "favorites": [],
+      "auth": {
+        "password_hash": null,
+        "enabled": false
+      },
+      "permission": "E1 - Standard",
+      "first_name": "Silvia",
+      "full_name": "Silvia Trübenbach"
+    },
+    "ungerer": {
+      "display_name": "Ungerer",
+      "email": "christine.ungerer@intersport.de",
+      "favorites": [],
+      "auth": {
+        "password_hash": null,
+        "enabled": false
+      },
+      "permission": "E1 - Standard",
+      "first_name": "Christine",
+      "full_name": "Christine Ungerer"
+    }
+  },
+  "settings": {
+    "auto_close_mail_enabled": false
+  }
+}

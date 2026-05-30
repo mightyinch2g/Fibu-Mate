@@ -1,0 +1,68 @@
+{
+  "report_types": [
+    {
+      "id": "ZM",
+      "title": "ZM",
+      "active": true,
+      "task_uid": "MQ002",
+      "evidence_required": true,
+      "approval_required": true,
+      "four_eye": false,
+      "owner_user_key": "wall",
+      "reviewer_user_key": "",
+      "sync_with_calendar": true
+    },
+    {
+      "id": "Z4",
+      "title": "Z4",
+      "active": true,
+      "task_uid": "MQ001",
+      "evidence_required": true,
+      "approval_required": true,
+      "four_eye": false,
+      "owner_user_key": "wall",
+      "reviewer_user_key": "",
+      "sync_with_calendar": true
+    },
+    {
+      "id": "Z5a",
+      "title": "Z5a",
+      "active": true,
+      "task_uid": "MQ003",
+      "evidence_required": true,
+      "approval_required": true,
+      "four_eye": false,
+      "owner_user_key": "wall",
+      "reviewer_user_key": "",
+      "sync_with_calendar": true
+    },
+    {
+      "id": "Intrastat",
+      "title": "Intrastat",
+      "active": true,
+      "evidence_required": true,
+      "approval_required": true,
+      "four_eye": false,
+      "owner_user_key": "",
+      "reviewer_user_key": "",
+      "sync_with_calendar": false,
+      "task_uid": ""
+    },
+    {
+      "id": "UStVA",
+      "title": "UStVA",
+      "active": true,
+      "evidence_required": true,
+      "approval_required": true,
+      "four_eye": false,
+      "owner_user_key": "",
+      "reviewer_user_key": "",
+      "sync_with_calendar": false,
+      "task_uid": ""
+    }
+  ],
+  "warning_days": {
+    "yellow": 10,
+    "orange": 5
+  }
+}
