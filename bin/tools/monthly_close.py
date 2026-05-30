@@ -263,12 +263,25 @@ def period_path(period):
     return PERIOD_DIR / f"{period}.json"
 
 
+
+def deadline_cutoff_date(period):
+    try:
+        if cc is not None and hasattr(cc, 'get_deadline_cutoff'):
+            return cc.get_deadline_cutoff('monthly', period)
+    except Exception:
+        pass
+    return ''
+
 def default_cutoff_date(period):
+    synced = deadline_cutoff_date(period)
+    if synced:
+        return synced
     return first_business_day_after_period_end(period).strftime("%Y-%m-%d")
 
 
 def normalize_cutoff(data, period):
-    cutoff = parse_date(data.get("closing_cutoff_date", ""))
+    synced = deadline_cutoff_date(period)
+    cutoff = parse_date(synced) if synced else parse_date(data.get("closing_cutoff_date", ""))
     if not cutoff:
         cutoff = parse_date(default_cutoff_date(period))
     data["closing_cutoff_date"] = cutoff.strftime("%Y-%m-%d")
@@ -383,8 +396,9 @@ def load_period(period):
     data = json.loads(path.read_text(encoding="utf-8"))
     data.setdefault("tasks", [])
     normalize_team_members(data)
+    old_cutoff = data.get("closing_cutoff_date", "")
     normalize_cutoff(data, period)
-    changed = False
+    changed = old_cutoff != data.get("closing_cutoff_date", "")
     for task in data["tasks"]:
         old_team = task.get("team")
         normalize_task(task, data, period)

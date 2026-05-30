@@ -7,7 +7,7 @@
       "title": "ZM",
       "period": "2026-05",
       "status": "Offen",
-      "due_date": "2026-05-31",
+      "due_date": "2026-06-19",
       "due_source": "Kalender/Manuell",
       "last_due_change": "2026-05-27T13:51:32",
       "owner_user_key": "",
@@ -19,7 +19,20 @@
       "not_relevant_reason": "",
       "comments": [],
       "attachments": [],
-      "history": [],
+      "history": [
+        {
+          "timestamp": "2026-05-30T20:11:25",
+          "user": "System",
+          "action": "Fälligkeit aus Stichtagspflege synchronisiert",
+          "new_due_date": "2026-06-01"
+        },
+        {
+          "timestamp": "2026-05-30T20:12:55",
+          "user": "System",
+          "action": "Fälligkeit aus Stichtagspflege synchronisiert",
+          "new_due_date": "2026-06-19"
+        }
+      ],
       "evidence_required": true,
       "approval_required": true,
       "four_eye": false,
@@ -31,7 +44,7 @@
       "title": "Z4",
       "period": "2026-05",
       "status": "Offen",
-      "due_date": "2026-05-31",
+      "due_date": "2026-06-19",
       "due_source": "Kalender/Manuell",
       "last_due_change": "2026-05-27T13:51:32",
       "owner_user_key": "",
@@ -43,7 +56,20 @@
       "not_relevant_reason": "",
       "comments": [],
       "attachments": [],
-      "history": [],
+      "history": [
+        {
+          "timestamp": "2026-05-30T20:11:25",
+          "user": "System",
+          "action": "Fälligkeit aus Stichtagspflege synchronisiert",
+          "new_due_date": "2026-06-01"
+        },
+        {
+          "timestamp": "2026-05-30T20:12:55",
+          "user": "System",
+          "action": "Fälligkeit aus Stichtagspflege synchronisiert",
+          "new_due_date": "2026-06-19"
+        }
+      ],
       "evidence_required": true,
       "approval_required": true,
       "four_eye": false,
@@ -55,7 +81,7 @@
       "title": "Z5a",
       "period": "2026-05",
       "status": "Offen",
-      "due_date": "2026-05-31",
+      "due_date": "2026-06-19",
       "due_source": "Kalender/Manuell",
       "last_due_change": "2026-05-27T13:51:32",
       "owner_user_key": "",
@@ -67,7 +93,20 @@
       "not_relevant_reason": "",
       "comments": [],
       "attachments": [],
-      "history": [],
+      "history": [
+        {
+          "timestamp": "2026-05-30T20:11:25",
+          "user": "System",
+          "action": "Fälligkeit aus Stichtagspflege synchronisiert",
+          "new_due_date": "2026-06-01"
+        },
+        {
+          "timestamp": "2026-05-30T20:12:55",
+          "user": "System",
+          "action": "Fälligkeit aus Stichtagspflege synchronisiert",
+          "new_due_date": "2026-06-19"
+        }
+      ],
       "evidence_required": true,
       "approval_required": true,
       "four_eye": false,

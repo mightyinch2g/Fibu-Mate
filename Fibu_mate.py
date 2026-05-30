@@ -260,6 +260,16 @@ class ArrowIndicator(tk.Canvas):
                 "BU31: Benutzerregel angepasst: Nur Wagnerm darf Wagnerm umbenennen; E3 und niedriger dürfen sich nicht selbst umbenennen.",
             ],
         )
+        self.bump_version_once(
+            "2026-05-30_bu32_icons_deadline_sync_version_429",
+            [
+                "BU32: Nike-Tools-Kacheln zeigen wieder PDF- bzw. PDF/Excel-Icons im Untermenü Nike-Tools.",
+                "BU32: Stichtags- & Zuständigkeitspflege synchronisiert gepflegte Abschluss-Stichtage verbindlich in Monats-, Quartals- und Jahresabschluss.",
+                "BU32: Steuermeldungs-Cockpit übernimmt bei Kalender-Sync die gepflegten Stichtage als Fälligkeit je Zeitraum.",
+                "BU32: Versionierung auf v0.429 fortgeschrieben und Versionsverlauf ergänzt.",
+            ],
+        )
+
 
     def set_enabled(self, enabled: bool):
         self.enabled = bool(enabled)
@@ -1900,20 +1910,25 @@ class FiBuMateApp:
             return "audit"
         if module_id == "documentation_center":
             return "documentation"
-        if self.current_page == "data_prep":
+        if self.current_page in ("data_prep", "nike_tools"):
+            if module_id in ("nike_pdf_to_excel", "nike_op_liste_pdf_check"):
+                return "pdf_xls"
+            if module_id == "invoice_pdf_collector":
+                return "pdf_xls"
+            if str(module_id).startswith("page:"):
+                return "pdf_xls"
             return "pdf_xls"
         if self.current_page == "compliance_audit":
             return "compliance"
         if self.current_page == "closing_calendar":
             return "calendar"
         if module_id in ("monthly_close", "quarterly_close", "yearly_close", "deadline_maintenance", "task_history"):
-
             if module_id == "deadline_maintenance" and self.role_rank() < 3:
                 messagebox.showwarning("Keine Berechtigung", "Dieses Modul ist erst ab E3 verfügbar.")
                 return
             return "calendar"
-        if module_id.startswith("nike_"):
-            return "worksheet"
+        if str(module_id).startswith("nike_") or module_id == "invoice_pdf_collector":
+            return "pdf_xls"
         return "modules"
 
     def render_module_menu(self, modules, show_descriptions=True):

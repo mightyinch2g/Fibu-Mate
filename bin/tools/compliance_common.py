@@ -76,6 +76,9 @@ def next_tax_task_uid(cfg):
         uid=f"TAX{n:03d}"; n+=1
         if uid not in ex: cfg['next_task_uid']=n; return uid
 def default_due(period):
+    synced = get_deadline_cutoff('monthly', period) if 'get_deadline_cutoff' in globals() else ''
+    if synced:
+        return synced
     import calendar
     y, m = map(int, period.split('-'))
     end = date(y, m, calendar.monthrange(y, m)[1])
@@ -87,6 +90,8 @@ def ensure_tax_period(period):
         rid=rt.get('id') or rt.get('title')
         if rid not in ex:
             d['reports'].append({"type_id":rid,"title":rt.get('title',rid),"period":period,"status":"Offen","due_date":default_due(period),"owner_user_key":rt.get('owner_user_key',''),"reviewer_user_key":rt.get('reviewer_user_key',''),"reported_at":"","approved_at":"","comments":[],"attachments":[],"history":[],"evidence_required":rt.get('evidence_required',True),"approval_required":rt.get('approval_required',True),"four_eye":rt.get('four_eye',False),"sync_with_calendar":rt.get('sync_with_calendar',False),"task_uid":rt.get('task_uid','')}); ch=True
+    if sync_tax_period_with_deadlines(period, d):
+        ch = True
     if ch: json_save(tax_period_path(period),d)
     return d
 def save_tax_period(period,data): json_save(tax_period_path(period),data)
@@ -208,3 +213,97 @@ def install_entry_grid_navigation(root):
         for ch in getattr(w, 'winfo_children', lambda: [])():
             bind_one(ch)
     bind_one(root)
+
+
+# ---- BU32: zentrale Stichtagspflege-Synchronisation ----
+def _parse_deadline_date(value):
+    value = str(value or '').strip()
+    for fmt in ('%d.%m.%Y', '%Y-%m-%d'):
+        try:
+            return datetime.strptime(value, fmt).date()
+        except Exception:
+            pass
+    return None
+
+def _deadline_iso(value):
+    d = _parse_deadline_date(value)
+    return d.strftime('%Y-%m-%d') if d else ''
+
+def deadline_year_file(year: int):
+    return bin_dir() / 'Deadlines' / 'years' / f'deadlines_{int(year):04d}.json'
+
+def deadline_fiscal_year_start(kind: str, period: str):
+    try:
+        kind = str(kind or '').strip().lower()
+        period = str(period or '').strip()
+        if kind in ('monthly', 'm'):
+            y, m = map(int, period.split('-'))
+            return y if m >= 10 else y - 1
+        if kind in ('quarterly', 'q'):
+            y_s, q_s = period.split('-Q')
+            y = int(y_s); q = int(q_s)
+            return y if q == 4 else y - 1
+        if kind in ('yearly', 'j', 'y'):
+            return int(period.split('-')[0])
+    except Exception:
+        pass
+    d = date.today()
+    return d.year if d.month >= 10 else d.year - 1
+
+def deadline_kind_name(kind: str):
+    k = str(kind or '').strip().lower()
+    if k in ('m', 'month', 'monthly'):
+        return 'monthly'
+    if k in ('q', 'quarter', 'quarterly'):
+        return 'quarterly'
+    if k in ('j', 'y', 'year', 'yearly'):
+        return 'yearly'
+    return k
+
+def load_deadline_year_for_period(kind: str, period: str):
+    year = deadline_fiscal_year_start(kind, period)
+    path = deadline_year_file(year)
+    if not path.exists():
+        return {}
+    try:
+        return json.loads(path.read_text(encoding='utf-8'))
+    except Exception:
+        return {}
+
+def get_deadline_record(kind: str, period: str):
+    data = load_deadline_year_for_period(kind, period)
+    k = deadline_kind_name(kind)
+    return data.get(k, {}).get(str(period), {}) if isinstance(data, dict) else {}
+
+def get_deadline_cutoff(kind: str, period: str):
+    rec = get_deadline_record(kind, period)
+    return _deadline_iso(rec.get('dekade_close'))
+
+def apply_deadline_cutoff_to_close_data(kind: str, period: str, data: dict):
+    cutoff = get_deadline_cutoff(kind, period)
+    if not cutoff or not isinstance(data, dict):
+        return False
+    changed = data.get('closing_cutoff_date') != cutoff
+    data['closing_cutoff_date'] = cutoff
+    for task in data.get('tasks', []) or []:
+        if task.get('due_mode') == 'closing_cutoff' and task.get('due_date') != cutoff:
+            task['due_date'] = cutoff
+            changed = True
+    return changed
+
+def sync_tax_period_with_deadlines(period: str, data: dict):
+    cutoff = get_deadline_cutoff('monthly', period)
+    if not cutoff or not isinstance(data, dict):
+        return False
+    changed = False
+    for report in data.get('reports', []) or []:
+        if report.get('sync_with_calendar', False) and report.get('due_date') != cutoff:
+            report['due_date'] = cutoff
+            report.setdefault('history', []).append({
+                'timestamp': now_iso(),
+                'user': 'System',
+                'action': 'Fälligkeit aus Stichtagspflege synchronisiert',
+                'new_due_date': cutoff,
+            })
+            changed = True
+    return changed

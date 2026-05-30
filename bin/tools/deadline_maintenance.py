@@ -217,23 +217,21 @@ def propagate(year_data):
 
 def apply_to_tax_reporting_period(period: str, rec: dict):
     try:
-        p = cc.tax_period_path(period)
-        if not p.exists():
-            return False
-        data = json.loads(p.read_text(encoding='utf-8'))
-        changed = False
+        data = cc.ensure_tax_period(period)
         due = parse_date(rec.get('dekade_close')) or parse_date(default_cutoff_for_period('monthly', period))
         due_iso = due.strftime('%Y-%m-%d') if due else ''
+        changed = False
         for report in data.get('reports', []):
             if report.get('sync_with_calendar', False) and due_iso and report.get('due_date') != due_iso:
                 report['due_date'] = due_iso
                 report.setdefault('history', []).append({'timestamp': cc.now_iso(), 'user': 'System', 'action': 'Fälligkeit aus Stichtagspflege synchronisiert', 'new_due_date': due_iso})
                 changed = True
         if changed:
-            cc.json_save(p, data)
+            cc.save_tax_period(period, data)
         return changed
     except Exception:
         return False
+
 
 class DeadlineMaintenanceUI:
     def __init__(self, app):

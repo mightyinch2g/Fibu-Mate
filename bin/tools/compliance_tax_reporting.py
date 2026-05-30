@@ -17,6 +17,7 @@ class TaxReportingUI:
         self.canvas = app.canvas
         self.period = cc.current_month_key()
         self.data = cc.ensure_tax_period(self.period)
+        self.sync_deadline_due_dates()
 
         self.frame = tk.Frame(self.root, bg=cc.BG)
         self.app.widget_items.append(self.frame)
@@ -24,6 +25,13 @@ class TaxReportingUI:
                                   width=self.canvas.winfo_width(),
                                   height=max(420, self.canvas.winfo_height() - 172))
         self.render()
+
+    def sync_deadline_due_dates(self):
+        try:
+            if hasattr(cc, 'sync_tax_period_with_deadlines') and cc.sync_tax_period_with_deadlines(self.period, self.data):
+                cc.save_tax_period(self.period, self.data)
+        except Exception:
+            pass
 
     def clear(self):
         for w in self.frame.winfo_children():

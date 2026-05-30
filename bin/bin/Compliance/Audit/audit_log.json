@@ -1,6 +1,48 @@
 {
   "entries": [
     {
+      "timestamp": "2026-05-30T20:12:55",
+      "event_type": "Aufgabe geändert",
+      "module": "Stichtags- & Zuständigkeitspflege",
+      "title": "Stichtage gespeichert und übernommen",
+      "details": "GJ 2026/2027; Perioden: monthly:2026-05; synchronisierte Dateien: 1",
+      "risk": "Info",
+      "period": "GJ 2026/2027",
+      "related_id": "",
+      "user_key": "wagnerm",
+      "user_name": "Matthias Wagnerm",
+      "public": true,
+      "archived": false
+    },
+    {
+      "timestamp": "2026-05-30T20:12:13",
+      "event_type": "Aufgabe geändert",
+      "module": "Stichtags- & Zuständigkeitspflege",
+      "title": "Stichtage gespeichert und übernommen",
+      "details": "GJ 2026/2027; Perioden: monthly:2026-04; synchronisierte Dateien: 1",
+      "risk": "Info",
+      "period": "GJ 2026/2027",
+      "related_id": "",
+      "user_key": "wagnerm",
+      "user_name": "Matthias Wagnerm",
+      "public": true,
+      "archived": false
+    },
+    {
+      "timestamp": "2026-05-30T20:11:25",
+      "event_type": "Aufgabe geändert",
+      "module": "Stichtags- & Zuständigkeitspflege",
+      "title": "Stichtage gespeichert und übernommen",
+      "details": "GJ 2026/2027; Perioden: monthly:2026-04; synchronisierte Dateien: 4",
+      "risk": "Info",
+      "period": "GJ 2026/2027",
+      "related_id": "",
+      "user_key": "wagnerm",
+      "user_name": "Matthias Wagnerm",
+      "public": true,
+      "archived": false
+    },
+    {
       "timestamp": "2026-05-30T05:59:46",
       "event_type": "Aufgabe geändert",
       "module": "Stichtags- & Zuständigkeitspflege",
