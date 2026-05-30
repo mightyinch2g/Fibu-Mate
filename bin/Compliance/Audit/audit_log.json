@@ -1,6 +1,48 @@
 {
   "entries": [
     {
+      "timestamp": "2026-05-30T21:22:13",
+      "event_type": "PDF-Bericht erstellt",
+      "module": "Dokumentationszentrale",
+      "title": "Dokumentationsindex.xlsx",
+      "details": "C:/Users/wagnerm/OneDrive - INTERSPORT Deutschland/Desktop/108 Nike PDF/NIKE GS_6008591952.pdf/Dokumentationsindex.xlsx",
+      "risk": "Info",
+      "period": "",
+      "related_id": "",
+      "user_key": "wagnerm",
+      "user_name": "Matthias Wagnerm",
+      "public": true,
+      "archived": false
+    },
+    {
+      "timestamp": "2026-05-30T21:19:31",
+      "event_type": "PDF-Bericht erstellt",
+      "module": "Dokumentationszentrale",
+      "title": "NIKE GS_6008591952-005.pdf",
+      "details": "C:/Users/wagnerm/OneDrive - INTERSPORT Deutschland/Desktop/108 Nike PDF/NIKE GS_6008591952.pdf/NIKE GS_6008591952-005.pdf",
+      "risk": "Mittel",
+      "period": "",
+      "related_id": "",
+      "user_key": "wagnerm",
+      "user_name": "Matthias Wagnerm",
+      "public": true,
+      "archived": false
+    },
+    {
+      "timestamp": "2026-05-30T21:08:57",
+      "event_type": "Aufgabe geändert",
+      "module": "Stichtags- & Zuständigkeitspflege",
+      "title": "Stichtage gespeichert und übernommen",
+      "details": "GJ 2026/2027; Perioden: keine Feldänderung; synchronisierte Dateien: 17",
+      "risk": "Info",
+      "period": "GJ 2026/2027",
+      "related_id": "",
+      "user_key": "wagnerm",
+      "user_name": "Matthias Wagnerm",
+      "public": true,
+      "archived": false
+    },
+    {
       "timestamp": "2026-05-27T15:36:53",
       "event_type": "Auto-Mail ein-/ausgeschaltet",
       "module": "Moduleinstellungen",

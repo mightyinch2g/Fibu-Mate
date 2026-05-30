@@ -10,7 +10,14 @@ EVENT_ORDER=["Aufgabe geändert","Aufgabe gelöscht","Aufgaben-ID geändert","F�
 CRITICAL_EVENTS={"Zeitraum wieder geöffnet","Änderungen nach Wiederöffnung","fehlgeschlagener Pflicht-E-Mail","Nachweis nach Abschluss geändert"}
 def script_dir():
     here=Path(__file__).resolve(); return here.parent.parent if here.parent.name.lower()=="tools" else here.parent
-def bin_dir(): return script_dir()/"bin"
+def bin_dir():
+    base = script_dir()
+    return base if base.name.lower() == "bin" else base/"bin"
+def legacy_bin_dir_v0431():
+    """Fallback auf den früher versehentlich verwendeten bin/bin-Pfad."""
+    base = script_dir()
+    return base/"bin" if base.name.lower() == "bin" else base/"bin"/"bin"
+
 def ensure_dirs():
     base=bin_dir()/"Compliance"
     for p in [base,base/"TaxReporting"/"periods",base/"Audit"/"archive",base/"Documentation"/"exports",bin_dir()/"Deadlines"/"years"]: p.mkdir(parents=True,exist_ok=True)
@@ -232,6 +239,9 @@ def _deadline_iso(value):
 def deadline_year_file(year: int):
     return bin_dir() / 'Deadlines' / 'years' / f'deadlines_{int(year):04d}.json'
 
+def legacy_deadline_year_file_v0431(year: int):
+    return legacy_bin_dir_v0431() / 'Deadlines' / 'years' / f'deadlines_{int(year):04d}.json'
+
 def deadline_fiscal_year_start(kind: str, period: str):
     try:
         kind = str(kind or '').strip().lower()
@@ -262,13 +272,24 @@ def deadline_kind_name(kind: str):
 
 def load_deadline_year_for_period(kind: str, period: str):
     year = deadline_fiscal_year_start(kind, period)
-    path = deadline_year_file(year)
-    if not path.exists():
-        return {}
+    paths = [deadline_year_file(year)]
     try:
-        return json.loads(path.read_text(encoding='utf-8'))
+        legacy = legacy_deadline_year_file_v0431(year)
+        if legacy not in paths:
+            paths.append(legacy)
     except Exception:
-        return {}
+        pass
+    for path in paths:
+        if not path.exists():
+            continue
+        try:
+            data = json.loads(path.read_text(encoding='utf-8'))
+            if isinstance(data, dict):
+                return data
+        except Exception:
+            pass
+    return {}
+
 
 def get_deadline_record(kind: str, period: str):
     data = load_deadline_year_for_period(kind, period)
@@ -339,3 +360,10 @@ def update_close_period_file_from_deadline(module_dir: str, period: str, cutoff_
     if changed:
         p.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding='utf-8')
     return changed
+
+
+def format_deadline_cutoff_de(kind: str, period: str):
+    """Liefert den gepflegten Abschluss-Stichtag im Format TT.MM.JJJJ für Anzeigen."""
+    value = get_deadline_cutoff(kind, period) if 'get_deadline_cutoff' in globals() else ''
+    d = _parse_deadline_date(value) if '_parse_deadline_date' in globals() else None
+    return d.strftime('%d.%m.%Y') if d else ''

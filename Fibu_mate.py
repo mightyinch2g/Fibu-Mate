@@ -735,6 +735,7 @@ class FiBuMateApp:
         self.image_refs = []
         self.ensure_version_429_once()
         self.ensure_version_430_once()
+        self.ensure_version_431_once()
         self.create_footer()
         self.canvas = tk.Canvas(self.root, highlightthickness=0, bg=BG, cursor="arrow")
         self.canvas.pack(side="top", fill="both", expand=True)
@@ -1054,6 +1055,42 @@ class FiBuMateApp:
                 if not any(e.get("update_id") == update_id for e in history.get("entries", [])):
                     history["entries"].insert(0, {
                         "version": "v0.430",
+                        "date": now_date_str(),
+                        "update_id": update_id,
+                        "bullets": bullets,
+                    })
+                    self.save_version_history(history)
+                self.version_state["applied_updates"].append(update_id)
+                changed = True
+            if changed:
+                self.save_version_state()
+        except Exception:
+            pass
+
+    def ensure_version_431_once(self):
+        """v0.431: Abschluss-Stichtag in Kalendern nur noch aus Stichtagspflege.
+        VERSION_PREFIX ist "0.4"; daher entspricht v0.431 dem Build 31.
+        """
+        update_id = "2026-05-30_v0_431_calendar_cutoff_readonly_deadline_source"
+        bullets = [
+            "v0.431: Abschluss-Stichtag in Monats-, Quartals- und Jahresabschluss wird in den Zeitraumsübersichten nur noch aus der Stichtags- & Zuständigkeitspflege angezeigt.",
+            "v0.431: Die manuelle Änderung des Abschluss-Stichtags in den Kalender-Zeitraumsübersichten wurde entfernt.",
+            "v0.431: Aufgaben mit Fälligkeitsart Abschluss-Stichtag verwenden den zentral gepflegten Stichtag aus der Stichtagspflege als Basis.",
+            "v0.431: Bestehende Periodendaten werden beim Öffnen der Kalender erneut gegen die Stichtagspflege normalisiert.",
+        ]
+        try:
+            self.version_state.setdefault("applied_updates", [])
+            changed = False
+            current_build = int(self.version_state.get("build", DEFAULT_BUILD))
+            if current_build < 31 or current_build > 100:
+                self.version_state["build"] = 31
+                changed = True
+            if update_id not in self.version_state["applied_updates"]:
+                history = self.load_version_history()
+                history.setdefault("entries", [])
+                if not any(e.get("update_id") == update_id for e in history.get("entries", [])):
+                    history["entries"].insert(0, {
+                        "version": "v0.431",
                         "date": now_date_str(),
                         "update_id": update_id,
                         "bullets": bullets,

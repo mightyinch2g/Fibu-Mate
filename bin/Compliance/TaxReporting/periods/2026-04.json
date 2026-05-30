@@ -7,7 +7,7 @@
       "title": "ZM",
       "period": "2026-04",
       "status": "Offen",
-      "due_date": "2026-04-30",
+      "due_date": "2026-05-02",
       "due_source": "Kalender/Manuell",
       "last_due_change": "2026-05-27T14:55:23",
       "owner_user_key": "",
@@ -19,7 +19,14 @@
       "not_relevant_reason": "",
       "comments": [],
       "attachments": [],
-      "history": [],
+      "history": [
+        {
+          "timestamp": "2026-05-30T21:08:57",
+          "user": "System",
+          "action": "Fälligkeit aus Stichtagspflege synchronisiert",
+          "new_due_date": "2026-05-02"
+        }
+      ],
       "evidence_required": true,
       "approval_required": true,
       "four_eye": false,
@@ -31,7 +38,7 @@
       "title": "Z4",
       "period": "2026-04",
       "status": "Offen",
-      "due_date": "2026-04-30",
+      "due_date": "2026-05-02",
       "due_source": "Kalender/Manuell",
       "last_due_change": "2026-05-27T14:55:23",
       "owner_user_key": "",
@@ -43,7 +50,14 @@
       "not_relevant_reason": "",
       "comments": [],
       "attachments": [],
-      "history": [],
+      "history": [
+        {
+          "timestamp": "2026-05-30T21:08:57",
+          "user": "System",
+          "action": "Fälligkeit aus Stichtagspflege synchronisiert",
+          "new_due_date": "2026-05-02"
+        }
+      ],
       "evidence_required": true,
       "approval_required": true,
       "four_eye": false,
@@ -55,7 +69,7 @@
       "title": "Z5a",
       "period": "2026-04",
       "status": "Offen",
-      "due_date": "2026-04-30",
+      "due_date": "2026-05-02",
       "due_source": "Kalender/Manuell",
       "last_due_change": "2026-05-27T14:55:23",
       "owner_user_key": "",
@@ -67,7 +81,14 @@
       "not_relevant_reason": "",
       "comments": [],
       "attachments": [],
-      "history": [],
+      "history": [
+        {
+          "timestamp": "2026-05-30T21:08:57",
+          "user": "System",
+          "action": "Fälligkeit aus Stichtagspflege synchronisiert",
+          "new_due_date": "2026-05-02"
+        }
+      ],
       "evidence_required": true,
       "approval_required": true,
       "four_eye": false,

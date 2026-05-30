@@ -12,6 +12,13 @@ from urllib.parse import quote
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 
+try:
+    from . import compliance_common as cc
+except Exception:
+    try:
+        import compliance_common as cc
+    except Exception:
+        cc = None
 STATUS_OPEN = "Offen"
 STATUS_IN_PROGRESS = "In Bearbeitung"
 STATUS_DONE = "Erledigt"
@@ -1515,33 +1522,28 @@ class MonthlyCloseUI:
             return
         self.period = period; self.reload(); self.selected_team = None; self.render_dashboard()
 
-    def save_cutoff_from_entry(self, entry_var):
-        if not self.require_unlocked("Der Abschluss-Stichtag kann nicht geändert werden"):
-            return
-        d = parse_date(entry_var.get())
-        if not d:
-            messagebox.showwarning("Monatsabschluss", "Bitte einen gültigen Abschluss-Stichtag im Format TT.MM.JJJJ eingeben.")
-            return
-        old = self.data.get("closing_cutoff_date")
-        self.data["closing_cutoff_date"] = d.strftime("%Y-%m-%d")
-        for task in self.data.get("tasks", []):
-            if task.get("due_mode") == DUE_CUTOFF:
-                task["due_date"] = d.strftime("%Y-%m-%d")
-        self.log_change("Abschluss-Stichtag geändert", field="closing_cutoff_date", old=old, new=d.strftime("%Y-%m-%d"))
-        self.save(); self.reload(); self.render_dashboard()
+    def save_cutoff_from_entry(self, entry_var=None):
+        messagebox.showinfo(
+            "FiBu Mate",
+            "Der Abschluss-Stichtag wird zentral in der Stichtags- & Zuständigkeitspflege gepflegt.\n\n"
+            "Eine manuelle Änderung in der Zeitraumsübersicht ist nicht mehr möglich."
+        )
 
     def render_dashboard(self):
         self.ensure_close_metadata()
+        old_cutoff = self.data.get("closing_cutoff_date", "")
+        normalize_cutoff(self.data, self.period)
+        if old_cutoff != self.data.get("closing_cutoff_date", ""):
+            save_period(self.period, self.data)
+            self.data = load_period(self.period)
         self.selected_team = None; self.clear_frame(); self.render_period_controls(self.frame); self.render_edit_tools(self.frame)
         stats = calc_stats(self.tasks())
         top = tk.Frame(self.frame, bg=COLORS["white"], bd=1, relief="solid"); top.pack(fill="x", padx=24, pady=(8, 10))
         title_row = tk.Frame(top, bg=COLORS["white"]); title_row.pack(fill="x", padx=14, pady=(6, 2))
         tk.Label(title_row, text=f"Monatsabschluss {period_label(self.period)}", bg=COLORS["white"], fg=COLORS["text"], font=("Segoe UI", 22, "bold")).pack(side="left")
-        cutoff_var = tk.StringVar(value=format_date_de(self.data.get("closing_cutoff_date")))
+        cutoff_text = format_date_de(self.data.get("closing_cutoff_date")) or "nicht gepflegt"
         tk.Label(title_row, text="Abschluss-Stichtag", bg=COLORS["white"], fg=COLORS["text2"], font=("Segoe UI", 10, "bold")).pack(side="left", padx=(24, 6))
-        cutoff_entry = tk.Entry(title_row, textvariable=cutoff_var, width=12, bg="#F8FAFC", fg=COLORS["text"], relief="solid", bd=1, state="normal" if not self.is_period_closed() else "disabled")
-        cutoff_entry.pack(side="left")
-        tk.Button(title_row, text="Speichern", command=lambda: self.save_cutoff_from_entry(cutoff_var), bg=COLORS["blue"] if not self.is_period_closed() else "#CBD5E1", fg="white", bd=0, padx=10, pady=4, state="normal" if not self.is_period_closed() else "disabled").pack(side="left", padx=6)
+        tk.Label(title_row, text=cutoff_text, bg="#F8FAFC", fg=COLORS["text"], font=("Segoe UI", 10, "bold"), relief="solid", bd=1, padx=8, pady=3).pack(side="left")
         toggle_text = f"{period_label(self.period)} {'öffnen' if self.is_period_closed() else 'abschließen'}"
         enabled = self.can_toggle_period_close() and (self.is_period_closed() or self.is_after_cutoff())
         tooltip = "Abschluss erst nach Ablauf des Abschluss-Stichtags möglich" if self.can_toggle_period_close() and not self.is_period_closed() and not self.is_after_cutoff() else ""

@@ -153,7 +153,7 @@
       ],
       "done_at": null,
       "done_by": null,
-      "due_date": "2026-06-09",
+      "due_date": "2026-06-19",
       "task_uid": "M004",
       "documentation": {}
     },
@@ -256,7 +256,7 @@
       ],
       "done_at": null,
       "done_by": null,
-      "due_date": "2026-06-09",
+      "due_date": "2026-06-19",
       "task_uid": "M005",
       "documentation": {}
     },
@@ -281,7 +281,7 @@
       "subtasks": [],
       "done_at": null,
       "done_by": null,
-      "due_date": "2026-06-09",
+      "due_date": "2026-06-19",
       "task_uid": "M006"
     },
     {
@@ -324,7 +324,7 @@
       ],
       "done_at": null,
       "done_by": null,
-      "due_date": "2026-06-09",
+      "due_date": "2026-06-19",
       "task_uid": "M007",
       "documentation": {}
     },
@@ -368,7 +368,7 @@
       ],
       "done_at": null,
       "done_by": null,
-      "due_date": "2026-06-09",
+      "due_date": "2026-06-19",
       "task_uid": "M008",
       "documentation": {}
     },
@@ -502,7 +502,7 @@
       ],
       "done_at": null,
       "done_by": null,
-      "due_date": "2026-06-09",
+      "due_date": "2026-06-19",
       "task_uid": "M009",
       "documentation": {}
     },
@@ -600,7 +600,7 @@
       ],
       "done_at": null,
       "done_by": null,
-      "due_date": "2026-06-09",
+      "due_date": "2026-06-19",
       "task_uid": "M010",
       "documentation": {}
     }
@@ -635,7 +635,7 @@
       "Moritz Bartenbach"
     ]
   },
-  "closing_cutoff_date": "2026-06-09",
+  "closing_cutoff_date": "2026-06-19",
   "closed": false,
   "closed_at": null,
   "closed_by": "",

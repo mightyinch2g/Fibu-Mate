@@ -1,5 +1,5 @@
 {
-  "build": 30,
+  "build": 31,
   "applied_updates": [
     "2026-05-12_monthly_close_editmode_statusbar",
     "2026-05-12_monthly_close_recurring_workday_catalog_due_visibility",
@@ -33,6 +33,7 @@
     "2026-05-27_v04_ui_module_settings_tax_popup_fix",
     "2026-05-27_scroll_modal_dropdown_shell_fix",
     "2026-05-30_bu33a_force_version_429",
-    "2026-05-30_bu33b_closing_deadline_sync_version_430"
+    "2026-05-30_bu33b_closing_deadline_sync_version_430",
+    "2026-05-30_v0_431_calendar_cutoff_readonly_deadline_source"
   ]
 }

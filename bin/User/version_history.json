@@ -1,6 +1,17 @@
 {
   "entries": [
     {
+      "version": "v0.431",
+      "date": "260530",
+      "update_id": "2026-05-30_v0_431_calendar_cutoff_readonly_deadline_source",
+      "bullets": [
+        "v0.431: Abschluss-Stichtag in Monats-, Quartals- und Jahresabschluss wird in den Zeitraumsübersichten nur noch aus der Stichtags- & Zuständigkeitspflege angezeigt.",
+        "v0.431: Die manuelle Änderung des Abschluss-Stichtags in den Kalender-Zeitraumsübersichten wurde entfernt.",
+        "v0.431: Aufgaben mit Fälligkeitsart Abschluss-Stichtag verwenden den zentral gepflegten Stichtag aus der Stichtagspflege als Basis.",
+        "v0.431: Bestehende Periodendaten werden beim Öffnen der Kalender erneut gegen die Stichtagspflege normalisiert."
+      ]
+    },
+    {
       "version": "v0.430",
       "date": "260530",
       "update_id": "2026-05-30_bu33b_closing_deadline_sync_version_430",

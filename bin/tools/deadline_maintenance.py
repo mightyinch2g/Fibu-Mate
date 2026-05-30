@@ -137,9 +137,18 @@ def storage_dir():
     return base
 
 
+def legacy_storage_dir_v0431():
+    try:
+        return cc.legacy_bin_dir_v0431() / "Deadlines" / "years"
+    except Exception:
+        return storage_dir()
+
 def year_file(year: int):
     return storage_dir() / f"deadlines_{year:04d}.json"
 
+
+def legacy_year_file_v0431(year: int):
+    return legacy_storage_dir_v0431() / f"deadlines_{year:04d}.json"
 
 def _default_record():
     return {
@@ -158,7 +167,16 @@ def default_year_data(year: int):
 
 
 def load_year(year: int):
-    return cc.json_load(year_file(year), default_year_data(year))
+    path = year_file(year)
+    legacy = legacy_year_file_v0431(year)
+    if not path.exists() and legacy.exists():
+        try:
+            data = json.loads(legacy.read_text(encoding='utf-8'))
+            cc.json_save(path, data)
+            return data
+        except Exception:
+            pass
+    return cc.json_load(path, default_year_data(year))
 
 
 def save_year(year: int, data):

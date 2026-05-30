@@ -1,0 +1,117 @@
+{
+  "year": 2025,
+  "monthly": {
+    "2025-01": {
+      "dekade_close": "03.02.2025",
+      "report18": "",
+      "recon08": "",
+      "close_month": ""
+    },
+    "2025-02": {
+      "dekade_close": "03.03.2025",
+      "report18": "",
+      "recon08": "",
+      "close_month": ""
+    },
+    "2025-03": {
+      "dekade_close": "01.04.2025",
+      "report18": "",
+      "recon08": "",
+      "close_month": ""
+    },
+    "2025-04": {
+      "dekade_close": "02.05.2025",
+      "report18": "",
+      "recon08": "",
+      "close_month": ""
+    },
+    "2025-05": {
+      "dekade_close": "02.06.2025",
+      "report18": "",
+      "recon08": "",
+      "close_month": ""
+    },
+    "2025-06": {
+      "dekade_close": "01.07.2025",
+      "report18": "",
+      "recon08": "",
+      "close_month": ""
+    },
+    "2025-07": {
+      "dekade_close": "01.08.2025",
+      "report18": "",
+      "recon08": "",
+      "close_month": ""
+    },
+    "2025-08": {
+      "dekade_close": "01.09.2025",
+      "report18": "",
+      "recon08": "",
+      "close_month": ""
+    },
+    "2025-09": {
+      "dekade_close": "01.10.2025",
+      "report18": "",
+      "recon08": "",
+      "close_month": ""
+    },
+    "2025-10": {
+      "dekade_close": "03.11.2025",
+      "report18": "",
+      "recon08": "",
+      "close_month": ""
+    },
+    "2025-11": {
+      "dekade_close": "01.12.2025",
+      "report18": "",
+      "recon08": "",
+      "close_month": ""
+    },
+    "2025-12": {
+      "dekade_close": "02.01.2026",
+      "report18": "",
+      "recon08": "",
+      "close_month": ""
+    }
+  },
+  "quarterly": {
+    "2025-Q1": {
+      "dekade_close": "01.04.2025",
+      "report18": "",
+      "recon08": "",
+      "close_month": ""
+    },
+    "2025-Q2": {
+      "dekade_close": "01.07.2025",
+      "report18": "",
+      "recon08": "",
+      "close_month": ""
+    },
+    "2025-Q3": {
+      "dekade_close": "01.10.2025",
+      "report18": "",
+      "recon08": "",
+      "close_month": ""
+    },
+    "2025-Q4": {
+      "dekade_close": "02.01.2026",
+      "report18": "",
+      "recon08": "",
+      "close_month": ""
+    }
+  },
+  "yearly": {
+    "2024-2025": {
+      "dekade_close": "01.10.2025",
+      "report18": "",
+      "recon08": "",
+      "close_month": ""
+    },
+    "2025-2026": {
+      "dekade_close": "01.10.2026",
+      "report18": "",
+      "recon08": "",
+      "close_month": ""
+    }
+  }
+}

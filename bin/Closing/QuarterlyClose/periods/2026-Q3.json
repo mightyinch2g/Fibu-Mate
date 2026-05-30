@@ -47,7 +47,7 @@
       "subtasks": [],
       "done_at": null,
       "done_by": null,
-      "due_date": "2026-09-30",
+      "due_date": "2026-10-01",
       "task_uid": "Q002"
     },
     {
@@ -71,7 +71,7 @@
       "subtasks": [],
       "done_at": null,
       "done_by": null,
-      "due_date": "2026-09-30",
+      "due_date": "2026-10-01",
       "task_uid": "Q006"
     }
   ],
@@ -103,7 +103,7 @@
       "Moritz Bartenbach"
     ]
   },
-  "closing_cutoff_date": "2026-09-30",
+  "closing_cutoff_date": "2026-10-01",
   "updated_from_period": "2026-Q2",
   "updated_at": "2026-05-26T16:57:25",
   "cleaned_from_period": "2026-Q2",

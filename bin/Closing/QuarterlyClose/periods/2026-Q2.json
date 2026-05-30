@@ -112,7 +112,7 @@
       ],
       "done_at": null,
       "done_by": null,
-      "due_date": "2026-07-08",
+      "due_date": "2026-07-01",
       "task_uid": "Q002"
     },
     {
@@ -227,7 +227,7 @@
       ],
       "done_at": null,
       "done_by": null,
-      "due_date": "2026-07-08",
+      "due_date": "2026-07-01",
       "task_uid": "Q006"
     }
   ],
@@ -259,7 +259,7 @@
       "Moritz Bartenbach"
     ]
   },
-  "closing_cutoff_date": "2026-07-08",
+  "closing_cutoff_date": "2026-07-01",
   "updated_from_period": "2026-Q2",
   "updated_at": "2026-05-26T16:57:25"
 }
