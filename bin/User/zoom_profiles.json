@@ -12,7 +12,10 @@
       "closing_calendar": 1.0,
       "versions": 0.975,
       "permissions": 1.1,
-      "tile_colors": 1.1
+      "tile_colors": 1.1,
+      "data_prep": 1.0,
+      "tool:nike_pdf_to_excel": 1.05,
+      "tool:nike_op_liste_pdf_check": 0.95
     }
   }
 }
