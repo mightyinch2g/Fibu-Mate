@@ -108,6 +108,7 @@ BASE_FONT_TILE_SMALL = FONT_TILE_SMALL
 BASE_FONT_SMALL = FONT_SMALL
 UI_SCALE = 1.0
 UI_TEXT_SCALE = 2.00  # v0.433 Korrektur Paket 1e: Schriftgröße um 100% erhöht; Icon-Skalierung bleibt unverändert.
+UI_BODY_TEXT_SCALE = 1.00  # v0.433 Korrektur Paket 1g: 1920x1080 ist Body-Referenz; dynamische Lesbarkeit über body_font().
 
 def ui_s(value):
     try:
@@ -128,6 +129,30 @@ def ui_icon_size(base=36):
         return max(14, int(round(float(base) * UI_SCALE)))
     except Exception:
         return base
+
+def body_scale_value():
+    """v0.433 Korrektur Paket 1g: Dynamische Body-Skalierung.
+    Referenz: 1920x1080 => Faktor 1.00. Kleinere Displays schrumpfen Body-/Tabellentexte nicht weiter,
+    größere Displays dürfen moderat wachsen. Kacheln/Überschriften bleiben über scaled_font() getrennt.
+    """
+    try:
+        return max(1.0, min(1.18, float(UI_SCALE))) * UI_BODY_TEXT_SCALE
+    except Exception:
+        return 1.0
+
+
+def body_font(size=10, weight=None, underline=False, scale=1.0):
+    """Schrift für Pfadleiste, Fußleiste, Modulbeschreibungen, Modul-/Tabellentexte und Bedienbuttons."""
+    try:
+        scaled = max(8, int(round(float(size) * UI_TEXT_SCALE * body_scale_value() * float(scale))))
+    except Exception:
+        scaled = size
+    style = []
+    if weight:
+        style.append(weight)
+    if underline:
+        style.append('underline')
+    return tuple(['Segoe UI', scaled] + style)
 MINI_WIDGET_W = 174
 MINI_WIDGET_H = 30
 MINI_WIDGET_GAP = 8
@@ -1367,14 +1392,14 @@ class FiBuMateApp:
         return None
 
     def create_footer(self):
-        self.footer = tk.Frame(self.root, bg="black", height=40)
+        self.footer = tk.Frame(self.root, bg="black", height=ui_s(58))
         self.footer.pack(side="bottom", fill="x")
         self.footer.pack_propagate(False)
-        self.user_label = tk.Label(self.footer, bg="black", fg="white", font=FONT_SMALL)
+        self.user_label = tk.Label(self.footer, bg="black", fg="white", font=body_font(10))
         self.user_label.place(relx=0, rely=0.5, anchor="w", x=12)
-        self.version_label = tk.Label(self.footer, text=self.version_label_text(), bg="black", fg="white", font=FONT_SMALL)
+        self.version_label = tk.Label(self.footer, text=self.version_label_text(), bg="black", fg="white", font=body_font(10))
         self.version_label.place(relx=0.5, rely=0.5, anchor="center")
-        self.clock_label = tk.Label(self.footer, bg="black", fg="white", font=FONT_SMALL)
+        self.clock_label = tk.Label(self.footer, bg="black", fg="white", font=body_font(10))
         self.clock_label.place(relx=1, rely=0.5, anchor="e", x=-12)
         self.update_clock()
 
@@ -1579,7 +1604,7 @@ class FiBuMateApp:
         x = x1 + 112
         for idx, (page, title) in enumerate(self.breadcrumb):
             current = idx == len(self.breadcrumb) - 1
-            tid = self.canvas.create_text(x, 55, text=title, font=("Segoe UI", 10, "bold") if current else ("Segoe UI", 10), fill=TEXT if current else BLUE, anchor="w")
+            tid = self.canvas.create_text(x, 55, text=title, font=body_font(10, "bold") if current else body_font(10), fill=TEXT if current else BLUE, anchor="w")
             bbox = self.canvas.bbox(tid); tw = bbox[2] - bbox[0] if bbox else 70
             if not current:
                 self.canvas.tag_bind(tid, "<Button-1>", lambda e, i=idx: self.jump_to_breadcrumb(i))
@@ -1609,14 +1634,14 @@ class FiBuMateApp:
 
     def draw_back_control(self):
         frame = tk.Frame(self.root, bg=HEADER, cursor="hand2")
-        arrow = tk.Label(frame, text="←", fg=RED, bg=HEADER, font=("Segoe UI", 14, "bold"), cursor="hand2")
-        txt = tk.Label(frame, text="zurück", fg=BLUE, bg=HEADER, font=("Segoe UI", 10, "underline"), cursor="hand2")
+        arrow = tk.Label(frame, text="←", fg=RED, bg=HEADER, font=body_font(14, "bold"), cursor="hand2")
+        txt = tk.Label(frame, text="zurück", fg=BLUE, bg=HEADER, font=body_font(10, underline=True), cursor="hand2")
         arrow.pack(side="left"); txt.pack(side="left", padx=5)
         arrow.bind("<Button-1>", lambda e: self.go_back()); txt.bind("<Button-1>", lambda e: self.go_back())
         self.widget_items.append(frame); self.canvas.create_window(14, 7, window=frame, anchor="nw")
 
     def draw_logout_control(self):
-        btn = tk.Button(self.root, text="Abmelden", command=self.logout, bg=self.current_tile_color() or BLUE, fg="white", bd=0, cursor="hand2")
+        btn = tk.Button(self.root, text="Abmelden", command=self.logout, bg=self.current_tile_color() or BLUE, fg="white", font=body_font(10, "bold", scale=0.75), bd=0, cursor="hand2", padx=ui_s(9), pady=ui_s(4))
         self.widget_items.append(btn); self.canvas.create_window(14, 7, window=btn, anchor="nw")
 
     def draw_mini_bulb_icon(self, canvas, x, y):
@@ -1734,11 +1759,11 @@ class FiBuMateApp:
                 popup.update_idletasks(); img = resize_keep_ratio(self.help_image, max(600, popup.winfo_width() - 70), max(400, popup.winfo_height() - 150)); ph = ImageTk.PhotoImage(img)
                 label = tk.Label(content, image=ph, bg=BG); label.image = ph; label.pack(expand=True)
             except Exception as error:
-                tk.Label(content, text=f"Das Hilfe-Bild konnte nicht geladen werden:\n\n{error}", bg=BG, fg=TEXT, font=("Segoe UI", 11), justify="left").pack(anchor="nw")
+                tk.Label(content, text=f"Das Hilfe-Bild konnte nicht geladen werden:\n\n{error}", bg=BG, fg=TEXT, font=body_font(11), justify="left").pack(anchor="nw")
         else:
-            tk.Label(content, text=("Das Hilfe-Menü ist vorbereitet, aber das Hilfe-Bild konnte nicht geladen werden.\n\n" f"Erwarteter Pfad:\n{HELP_IMAGE_PATH}"), bg=BG, fg=TEXT, font=("Segoe UI", 11), justify="left").pack(anchor="nw")
+            tk.Label(content, text=("Das Hilfe-Menü ist vorbereitet, aber das Hilfe-Bild konnte nicht geladen werden.\n\n" f"Erwarteter Pfad:\n{HELP_IMAGE_PATH}"), bg=BG, fg=TEXT, font=body_font(11), justify="left").pack(anchor="nw")
         footer = tk.Frame(popup, bg=BG); footer.pack(side="bottom", fill="x", padx=16, pady=(0, 16))
-        tk.Button(footer, text="Schließen", command=popup.destroy, bg=BLUE, fg="white", bd=0, padx=18, pady=8, cursor="hand2").pack(side="right")
+        tk.Button(footer, text="Schließen", command=popup.destroy, bg=BLUE, fg="white", font=body_font(10, "bold"), bd=0, padx=ui_s(24), pady=ui_s(10), cursor="hand2").pack(side="right")
 
     def draw_bottom_logo(self):
         w, h = self.canvas.winfo_width(), self.canvas.winfo_height()
@@ -1768,8 +1793,8 @@ class FiBuMateApp:
         panel = tk.Frame(self.root, bg=BG); username_var = tk.StringVar(value="")
         tk.Label(panel, text="Benutzername", bg=BG, fg=TEXT, font=("Segoe UI", 11, "bold")).pack(anchor="w", pady=(0, 6))
         row = tk.Frame(panel, bg=BG); row.pack(fill="x", pady=(0, 18))
-        entry = tk.Entry(row, textvariable=username_var, font=("Segoe UI", 13), width=37, bg="#E8EEF5", fg=TEXT, relief="solid", bd=1); entry.pack(side="left", ipady=4)
-        btn = tk.Button(row, text="Anmelden", command=lambda: self.login_user(username_var.get()), bg=BLUE, fg="white", bd=0, cursor="hand2"); btn.pack(side="left", padx=(12, 0), ipady=6)
+        entry = tk.Entry(row, textvariable=username_var, font=body_font(13), width=37, bg="#E8EEF5", fg=TEXT, relief="solid", bd=1); entry.pack(side="left", ipady=ui_s(7))
+        btn = tk.Button(row, text="Anmelden", command=lambda: self.login_user(username_var.get()), bg=BLUE, fg="white", font=body_font(11, "bold", scale=0.75), bd=0, cursor="hand2"); btn.pack(side="left", padx=(12, 0), ipady=6)
         self.widget_items.append(panel); self.canvas.create_window(x_pct(w, 50), y_pct(h, 39), window=panel, anchor="center")
         entry.focus_set(); entry.bind("<Return>", lambda e: self.login_user_from_entry(username_var.get()))
         self.draw_bottom_logo(); self.draw_close_control()
@@ -2081,7 +2106,7 @@ class FiBuMateApp:
             bullets = entry.get("bullets", [])
             tk.Label(entry_frame, text=f"{ver}.{date}", bg=BG, fg=TEXT, font=("Segoe UI", 12, "bold"), anchor="w").pack(fill="x", anchor="w")
             for bullet in bullets:
-                tk.Label(entry_frame, text=f"• {bullet}", bg=BG, fg=TEXT2, font=("Segoe UI", 11), justify="left", anchor="w", wraplength=max(300, w - 110)).pack(fill="x", anchor="w", padx=(16, 0), pady=(2, 0))
+                tk.Label(entry_frame, text=f"• {bullet}", bg=BG, fg=TEXT2, font=body_font(11), justify="left", anchor="w", wraplength=max(300, w - 110)).pack(fill="x", anchor="w", padx=(16, 0), pady=(2, 0))
             separator = tk.Canvas(content, bg=BG, height=18, highlightthickness=0, bd=0)
             separator.pack(fill="x", padx=10, pady=(8, 0))
             try:
@@ -2104,7 +2129,7 @@ class FiBuMateApp:
 
     def draw_module_description(self, canvas, module_id, x1, y_top, width):
         txt = MODULE_DESCRIPTIONS.get(module_id, "")
-        if txt: canvas.create_text(x1 + DESCRIPTION_X_OFFSET, y_top + DESCRIPTION_Y_OFFSET, text=txt, anchor="nw", fill=DESCRIPTION_COLOR, font=DESCRIPTION_FONT, width=max(120, int(width) - 2 * DESCRIPTION_X_OFFSET), justify="left")
+        if txt: canvas.create_text(x1 + DESCRIPTION_X_OFFSET, y_top + DESCRIPTION_Y_OFFSET, text=txt, anchor="nw", fill=DESCRIPTION_COLOR, font=body_font(11), width=max(120, int(width) - 2 * DESCRIPTION_X_OFFSET), justify="left")
 
     def module_icon_type(self, module_id):
         if module_id == "tax_reporting":

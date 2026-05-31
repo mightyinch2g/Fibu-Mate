@@ -21,6 +21,30 @@ DOC_ICON_PATH=r"C:\python\bin\Imgs\Icons\fileinterfacesymboloftextpapersheet_797
 ATTACH_ICON_PATH=r"C:\python\bin\Imgs\Icons\-attach-file_90371.ico"
 DELETE_ICON_PATH=r"C:\python\bin\Imgs\Icons\biggarbagebin_121980.ico"
 
+BODY_TEXT_SCALE = 2.00  # v0.433 Korrektur Paket 1g: Modul-/Tabellentext-Referenz 1920x1080; dynamisch nach unten nicht kleiner.
+
+def body_font(size=10, weight=None, underline=False, scale=1.0):
+    try:
+        screen_scale = 1.0
+        try:
+            import tkinter as _tk
+            root = _tk._default_root
+            if root is not None:
+                sw = max(1, root.winfo_screenwidth())
+                sh = max(1, root.winfo_screenheight())
+                screen_scale = max(1.0, min(1.18, min(sw / 1920.0, sh / 1080.0)))
+        except Exception:
+            screen_scale = 1.0
+        scaled = max(8, int(round(float(size) * BODY_TEXT_SCALE * screen_scale * float(scale))))
+    except Exception:
+        scaled = size
+    style = []
+    if weight:
+        style.append(weight)
+    if underline:
+        style.append('underline')
+    return tuple(['Segoe UI', scaled] + style)
+
 
 def ellipsize(value, max_chars):
     text=" ".join(str(value or "").split())
@@ -190,16 +214,16 @@ class DocumentationCenterUI:
         top=tk.Frame(self.frame,bg=cc.BG); top.pack(fill='x',padx=24,pady=12)
         for title,val,col in [('Dokumente gesamt',total,cc.BLUE),('Nachweise vorhanden',present,cc.DARK_GREEN),('fehlende Nachweise',missing,cc.RED),('ungültige Pfade',invalid,cc.ORANGE),('Berichte',reports,cc.GREY)]:
             card=tk.Frame(top,bg=col,width=155,height=58); card.pack(side='left',padx=5); card.pack_propagate(False)
-            tk.Label(card,text=str(val),bg=col,fg='white',font=('Segoe UI',16,'bold')).pack(); tk.Label(card,text=title,bg=col,fg='white',font=('Segoe UI',8,'bold')).pack()
+            tk.Label(card,text=str(val),bg=col,fg='white',font=body_font(16,'bold')).pack(); tk.Label(card,text=title,bg=col,fg='white',font=body_font(8,'bold')).pack()
         controls=tk.Frame(self.frame,bg=cc.BG); controls.pack(fill='x',padx=24,pady=(0,8))
-        tk.Label(controls,text='Suche',bg=cc.BG,fg=cc.TEXT,font=('Segoe UI',10,'bold')).pack(side='left')
-        tk.Entry(controls,textvariable=self.search,width=42,bg=cc.WHITE).pack(side='left',padx=6)
-        tk.Checkbutton(controls,text='nur fehlende',variable=self.only_missing,bg=cc.BG,fg=cc.TEXT,command=self.render).pack(side='left')
-        tk.Checkbutton(controls,text='nur ungültige Pfade',variable=self.only_invalid,bg=cc.BG,fg=cc.TEXT,command=self.render).pack(side='left')
-        tk.Button(controls,text='Suchen',command=self.render,bg=cc.BLUE,fg='white',bd=0,padx=10).pack(side='left',padx=4)
-        self.add_btn=tk.Button(controls,text='Dokument hinzufügen/ändern',image=self.attach_icon,compound='left',command=self.manage_selected_document,bg=cc.WHITE,fg=cc.BLUE,bd=1,relief='solid',highlightbackground=cc.BLUE,highlightcolor=cc.BLUE,padx=10,state='disabled')
+        tk.Label(controls,text='Suche',bg=cc.BG,fg=cc.TEXT,font=body_font(10,'bold')).pack(side='left')
+        tk.Entry(controls,textvariable=self.search,width=42,bg=cc.WHITE,font=body_font(10)).pack(side='left',padx=6)
+        tk.Checkbutton(controls,text='nur fehlende',font=body_font(10),variable=self.only_missing,bg=cc.BG,fg=cc.TEXT,command=self.render).pack(side='left')
+        tk.Checkbutton(controls,text='nur ungültige Pfade',font=body_font(10),variable=self.only_invalid,bg=cc.BG,fg=cc.TEXT,command=self.render).pack(side='left')
+        tk.Button(controls,text='Suchen',font=body_font(10,'bold'),command=self.render,bg=cc.BLUE,fg='white',bd=0,padx=10).pack(side='left',padx=4)
+        self.add_btn=tk.Button(controls,text='Dokument hinzufügen/ändern',font=body_font(10,'bold'),image=self.attach_icon,compound='left',command=self.manage_selected_document,bg=cc.WHITE,fg=cc.BLUE,bd=1,relief='solid',highlightbackground=cc.BLUE,highlightcolor=cc.BLUE,padx=10,state='disabled')
         self.add_btn.pack(side='right',padx=4)
-        tk.Button(controls,text='Export',command=self.open_export_popup,bg=cc.WHITE,fg=cc.BLUE,bd=1,padx=14).pack(side='right',padx=4)
+        tk.Button(controls,text='Export',font=body_font(10,'bold'),command=self.open_export_popup,bg=cc.WHITE,fg=cc.BLUE,bd=1,padx=14).pack(side='right',padx=4)
         outer=tk.Frame(self.frame,bg=cc.WHITE,bd=1,relief='solid'); outer.pack(fill='both',expand=True,padx=18,pady=(0,12))
         canvas=tk.Canvas(outer,bg=cc.WHITE,highlightthickness=0); ysb=tk.Scrollbar(outer,orient='vertical',command=canvas.yview); xsb=tk.Scrollbar(outer,orient='horizontal',command=canvas.xview)
         table=tk.Frame(canvas,bg=cc.WHITE); canvas.create_window((0,0),window=table,anchor='nw')
@@ -209,18 +233,18 @@ class DocumentationCenterUI:
         outer.grid_rowconfigure(0,weight=1); outer.grid_columnconfigure(0,weight=1)
         for c,h in enumerate(HEADERS):
             table.grid_columnconfigure(c,minsize=COLUMN_PIXELS.get(h,120))
-            tk.Label(table,text=h,bg=cc.HEADER,fg=cc.TEXT,font=('Segoe UI',9,'bold'),padx=6,pady=6,anchor='w',width=COLUMN_WIDTHS.get(h,18)).grid(row=0,column=c,sticky='nsew',padx=1,pady=1)
+            tk.Label(table,text=h,bg=cc.HEADER,fg=cc.TEXT,font=body_font(9,'bold'),padx=8,pady=8,anchor='w',width=COLUMN_WIDTHS.get(h,18)).grid(row=0,column=c,sticky='nsew',padx=1,pady=1)
         for r_idx,row in enumerate(rows,1):
             widgets=[]
             for c,h in enumerate(HEADERS):
                 full=row.get(h,''); text=ellipsize(full,COLUMN_WIDTHS.get(h,18))
                 if h=='Dokument':
-                    cell=tk.Frame(table,bg=cc.WHITE,width=COLUMN_PIXELS[h],height=30)
+                    cell=tk.Frame(table,bg=cc.WHITE,width=COLUMN_PIXELS[h],height=max(34, int(30 * min(1.18, BODY_TEXT_SCALE / 2.0))))
                     cell.grid(row=r_idx,column=c,sticky='nsew',padx=1,pady=1); cell.grid_propagate(False)
-                    btn=tk.Button(cell,text=text,image=self.doc_icon if row.get('__path') else None,compound='right',bg=cc.WHITE,fg=cc.BLUE if row.get('__path') else cc.TEXT,bd=0,anchor='w',justify='left',command=lambda rr=row:self.open_document(rr),cursor='hand2' if row.get('__path') else 'arrow')
+                    btn=tk.Button(cell,text=text,font=body_font(10),image=self.doc_icon if row.get('__path') else None,compound='right',bg=cc.WHITE,fg=cc.BLUE if row.get('__path') else cc.TEXT,bd=0,anchor='w',justify='left',command=lambda rr=row:self.open_document(rr),cursor='hand2' if row.get('__path') else 'arrow')
                     btn.pack(fill='both',expand=True,padx=3,pady=1); self._bind_cell(btn,row,widgets,full); widgets.extend([cell,btn])
                 else:
-                    lbl=tk.Label(table,text=text,bg=cc.WHITE,fg=cc.TEXT,padx=6,pady=5,anchor='w',width=COLUMN_WIDTHS.get(h,18),justify='left')
+                    lbl=tk.Label(table,text=text,font=body_font(10),bg=cc.WHITE,fg=cc.TEXT,padx=6,pady=5,anchor='w',width=COLUMN_WIDTHS.get(h,18),justify='left')
                     lbl.grid(row=r_idx,column=c,sticky='nsew',padx=1,pady=1); self._bind_cell(lbl,row,widgets,full); widgets.append(lbl)
             self.row_widgets.append(widgets)
         self.app.active_scroll_canvas=canvas
@@ -234,14 +258,14 @@ class DocumentationCenterUI:
             self.add_document_for_row(self.selected_row)
 
     def open_manage_popup(self,row):
-        win=tk.Toplevel(self.root); win.title('Dokument hinzufügen/ändern'); win.geometry('760x320'); win.configure(bg=cc.BG); win.transient(self.root)
-        tk.Label(win,text='Dokumentverwaltung',bg=cc.BG,fg=cc.TEXT,font=('Segoe UI',14,'bold')).pack(anchor='w',padx=16,pady=(14,8))
+        win=tk.Toplevel(self.root); win.title('Dokument hinzufügen/ändern'); win.geometry('900x380'); win.configure(bg=cc.BG); win.transient(self.root)
+        tk.Label(win,text='Dokumentverwaltung',bg=cc.BG,fg=cc.TEXT,font=body_font(14,'bold')).pack(anchor='w',padx=16,pady=(14,8))
         current=tk.Frame(win,bg=cc.WHITE,bd=1,relief='solid'); current.pack(fill='x',padx=16,pady=8)
         tk.Label(current,text=ellipsize(row.get('Dokument',''),60),bg=cc.WHITE,fg=cc.TEXT,anchor='w').pack(side='left',fill='x',expand=True,padx=8,pady=8)
-        tk.Button(current,text='Öffnen',command=lambda:self.open_document(row),bg=cc.WHITE,fg=cc.BLUE,bd=1,padx=10).pack(side='left',padx=4)
-        tk.Button(current,text='Ändern',image=self.attach_icon,compound='left',command=lambda:(win.destroy(),self.replace_document_interactive(row)),bg=cc.WHITE,fg=cc.BLUE,bd=1,padx=10).pack(side='left',padx=4)
-        tk.Button(current,text='Löschen',image=self.delete_icon,compound='left',command=lambda:(win.destroy(),self.delete_document(row)),bg=cc.WHITE,fg=cc.RED,bd=1,padx=10).pack(side='left',padx=4)
-        tk.Button(win,text='Weiteres Dokument hinzufügen',image=self.attach_icon,compound='left',command=lambda:(win.destroy(),self.add_document_for_row(row)),bg=cc.WHITE,fg=cc.BLUE,bd=1,padx=12,pady=7).pack(anchor='e',padx=16,pady=12)
+        tk.Button(current,text='Öffnen',font=body_font(10,'bold'),command=lambda:self.open_document(row),bg=cc.WHITE,fg=cc.BLUE,bd=1,padx=10).pack(side='left',padx=4)
+        tk.Button(current,text='Ändern',font=body_font(10,'bold'),image=self.attach_icon,compound='left',command=lambda:(win.destroy(),self.replace_document_interactive(row)),bg=cc.WHITE,fg=cc.BLUE,bd=1,padx=10).pack(side='left',padx=4)
+        tk.Button(current,text='Löschen',font=body_font(10,'bold'),image=self.delete_icon,compound='left',command=lambda:(win.destroy(),self.delete_document(row)),bg=cc.WHITE,fg=cc.RED,bd=1,padx=10).pack(side='left',padx=4)
+        tk.Button(win,text='Weiteres Dokument hinzufügen',font=body_font(10,'bold'),image=self.attach_icon,compound='left',command=lambda:(win.destroy(),self.add_document_for_row(row)),bg=cc.WHITE,fg=cc.BLUE,bd=1,padx=12,pady=7).pack(anchor='e',padx=16,pady=12)
 
     def add_document_for_row(self,row):
         p=filedialog.askopenfilename()
@@ -309,16 +333,16 @@ class DocumentationCenterUI:
     def open_export_popup(self):
         rows=self.filtered(); raw_periods=sorted(set(str(r.get('__raw_period') or r.get('__period') or r.get('Zeitraum','')) for r in rows if (r.get('__raw_period') or r.get('__period') or r.get('Zeitraum')))); period_labels={display_period(p):p for p in raw_periods}; periods=list(period_labels.keys())
         if not periods: messagebox.showinfo('Export','Es sind keine exportierbaren Positionen vorhanden.'); return
-        win=tk.Toplevel(self.root); win.title('Export'); win.geometry('560x310'); win.configure(bg=cc.BG); mode=tk.StringVar(value='all'); fmt=tk.StringVar(value='Excel'); from_var=tk.StringVar(value=periods[0]); to_var=tk.StringVar(value=periods[-1])
-        tk.Label(win,text='Exportumfang',bg=cc.BG,fg=cc.TEXT,font=('Segoe UI',11,'bold')).pack(anchor='w',padx=18,pady=(16,6))
-        for text,val in [('Alles exportieren','all'),('Bestimmte Zeiträume exportieren (von/bis)','include'),('Bestimmte Zeiträume nicht exportieren (von/bis ausschließen)','exclude')]: tk.Radiobutton(win,text=text,variable=mode,value=val,bg=cc.BG,fg=cc.TEXT).pack(anchor='w',padx=24)
-        row=tk.Frame(win,bg=cc.BG); row.pack(fill='x',padx=18,pady=12); tk.Label(row,text='Von',bg=cc.BG,fg=cc.TEXT).pack(side='left'); ttk.Combobox(row,textvariable=from_var,values=periods,state='readonly',width=16).pack(side='left',padx=8); tk.Label(row,text='Bis',bg=cc.BG,fg=cc.TEXT).pack(side='left'); ttk.Combobox(row,textvariable=to_var,values=periods,state='readonly',width=16).pack(side='left',padx=8); tk.Label(row,text='Format',bg=cc.BG,fg=cc.TEXT).pack(side='left',padx=(18,4)); ttk.Combobox(row,textvariable=fmt,values=['PDF','Excel'],state='readonly',width=10).pack(side='left')
+        win=tk.Toplevel(self.root); win.title('Export'); win.geometry('680x360'); win.configure(bg=cc.BG); mode=tk.StringVar(value='all'); fmt=tk.StringVar(value='Excel'); from_var=tk.StringVar(value=periods[0]); to_var=tk.StringVar(value=periods[-1])
+        tk.Label(win,text='Exportumfang',bg=cc.BG,fg=cc.TEXT,font=body_font(11,'bold')).pack(anchor='w',padx=18,pady=(16,6))
+        for text,val in [('Alles exportieren','all'),('Bestimmte Zeiträume exportieren (von/bis)','include'),('Bestimmte Zeiträume nicht exportieren (von/bis ausschließen)','exclude')]: tk.Radiobutton(win,text=text,font=body_font(10),variable=mode,value=val,bg=cc.BG,fg=cc.TEXT).pack(anchor='w',padx=24)
+        row=tk.Frame(win,bg=cc.BG); row.pack(fill='x',padx=18,pady=12); tk.Label(row,text='Von',font=body_font(10),bg=cc.BG,fg=cc.TEXT).pack(side='left'); ttk.Combobox(row,textvariable=from_var,values=periods,state='readonly',width=16).pack(side='left',padx=8); tk.Label(row,text='Bis',font=body_font(10),bg=cc.BG,fg=cc.TEXT).pack(side='left'); ttk.Combobox(row,textvariable=to_var,values=periods,state='readonly',width=16).pack(side='left',padx=8); tk.Label(row,text='Format',font=body_font(10),bg=cc.BG,fg=cc.TEXT).pack(side='left',padx=(18,4)); ttk.Combobox(row,textvariable=fmt,values=['PDF','Excel'],state='readonly',width=10).pack(side='left')
         def run_export():
             start=period_labels.get(from_var.get(),from_var.get()); end=period_labels.get(to_var.get(),to_var.get()); selected=rows
             if mode.get()=='include': selected=[r for r in rows if period_in_range(str(r.get('__raw_period') or r.get('__period') or r.get('Zeitraum','')),start,end)]
             elif mode.get()=='exclude': selected=[r for r in rows if not period_in_range(str(r.get('__raw_period') or r.get('__period') or r.get('Zeitraum','')),start,end)]
             self.export_excel(selected) if fmt.get()=='Excel' else self.export_pdf(selected); win.destroy()
-        tk.Button(win,text='Export starten',command=run_export,bg=cc.BLUE,fg='white',bd=0,padx=14,pady=8).pack(anchor='e',padx=18,pady=18)
+        tk.Button(win,text='Export starten',font=body_font(10,'bold'),command=run_export,bg=cc.BLUE,fg='white',bd=0,padx=14,pady=8).pack(anchor='e',padx=18,pady=18)
     def export_excel(self, rows=None):
         path=filedialog.asksaveasfilename(defaultextension='.xlsx',filetypes=[('Excel','*.xlsx')],initialfile='Dokumentationsindex.xlsx')
         if not path: return
