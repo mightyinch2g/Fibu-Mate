@@ -1709,6 +1709,8 @@ class FiBuMateApp:
 
     def on_global_mousewheel(self, event):
         if self._is_ctrl_mousewheel(event):
+            if not self.is_zoom_control_visible():
+                return "break"
             if not self._event_allows_content_zoom(event):
                 return "break"
             direction = self._mousewheel_direction(event)
@@ -1996,9 +1998,19 @@ class FiBuMateApp:
         canvas.create_rectangle(x - 17, y - 8, x + 17, y + 8, outline=BLUE, width=1)
         canvas.create_text(x, y, text="HELP", fill=BLUE, font=("Segoe UI", 7, "bold"))
 
+    def is_zoom_control_visible(self):
+        """v0.434 technische Korrektur: Zoomleiste nur in Modulen und Einstellungen-Untermenüs anzeigen."""
+        try:
+            page = str(getattr(self, "current_page", "") or "")
+            if page.startswith("tool:"):
+                return True
+            return page in {"tile_colors", "users", "permissions", "information", "versions"}
+        except Exception:
+            return False
+
     def draw_zoom_control(self):
         """v0.434 Paket 1E: sichtbare Zoom-Leiste als Alternative zu Strg+Mausrad."""
-        if self.current_page == "launch":
+        if not self.is_zoom_control_visible():
             return
         try:
             w = ui_s(190)
@@ -2318,8 +2330,9 @@ class FiBuMateApp:
             tile = Tile(self.root, self, f"center_{page}", label, cmd, favorite_enabled=False, center_text=True); tile.resize_tile(tile_w, tile_h); self.widget_items.append(tile); self.focusable_tiles.append(tile); self.canvas.create_window(start_x, y, window=tile, anchor="center")
 
     def render_tile_colors_menu(self):
+        zfont = self.zoomed_content_font
         frame = tk.Frame(self.root, bg=BG); self.widget_items.append(frame)
-        tk.Label(frame, text="Standardfarben", font=("Segoe UI", 15, "bold"), bg=BG, fg=TEXT).grid(row=0, column=0, columnspan=5, pady=(0, 14), sticky="w")
+        tk.Label(frame, text="Standardfarben", font=zfont(("Segoe UI", 15, "bold")), bg=BG, fg=TEXT).grid(row=0, column=0, columnspan=5, pady=(0, 14), sticky="w")
         selected_color = self.current_tile_color() or BLUE
         def set_color(col):
             if self.current_user_key:
@@ -2329,7 +2342,7 @@ class FiBuMateApp:
             r = 1 + idx // 5; c = idx % 5; sw = tk.Canvas(frame, width=140, height=78, bg=BG, highlightthickness=0, bd=0, cursor="hand2")
             if color == selected_color:
                 sw.create_rectangle(4, 4, 136, 58, outline=WHITE, width=4)
-            sw.create_rectangle(8, 8, 132, 54, fill=color, outline=LINE, width=2); sw.create_text(70, 66, text=name, fill=TEXT, font=("Segoe UI", 9, "bold")); sw.bind("<Button-1>", lambda e, col=color: set_color(col)); sw.grid(row=r, column=c, padx=10, pady=10)
+            sw.create_rectangle(8, 8, 132, 54, fill=color, outline=LINE, width=2); sw.create_text(70, 66, text=name, fill=TEXT, font=zfont(("Segoe UI", 9, "bold"))); sw.bind("<Button-1>", lambda e, col=color: set_color(col)); sw.grid(row=r, column=c, padx=10, pady=10)
         def reset():
             if self.current_user_key:
                 self.user_data["users"][self.current_user_key].pop("tile_color", None); self.save_user_data()
@@ -2339,6 +2352,7 @@ class FiBuMateApp:
 
 
     def render_users_menu(self):
+        zfont = self.zoomed_content_font
         if not self.can_view_user_management():
             self.render_menu_text("Keine Berechtigung für die Benutzerverwaltung."); return
         users = self.user_data.setdefault("users", {})
@@ -2363,7 +2377,7 @@ class FiBuMateApp:
         self._update_scroll_indicators = update_arrows; content.bind("<Configure>", update_scrollregion); scroll_canvas.bind("<Configure>", update_scrollregion)
         scroll_canvas.bind("<MouseWheel>", lambda e: self._route_mousewheel_to_canvas(e, scroll_canvas))
         frame = content
-        tk.Label(frame, text="Benutzerverwaltung", font=("Segoe UI", 15, "bold"), bg=BG, fg=TEXT).grid(row=0, column=0, columnspan=8, sticky="w", pady=(0, 14))
+        tk.Label(frame, text="Benutzerverwaltung", font=zfont(("Segoe UI", 15, "bold")), bg=BG, fg=TEXT).grid(row=0, column=0, columnspan=8, sticky="w", pady=(0, 14))
         for col, header in enumerate(["Benutzer", "Anzeigename/Nachname", "Vorname", "E-Mail", "Rolle", "Passwort"]):
             tk.Label(frame, text=header, bg=BG, fg=TEXT, font=("Segoe UI", 10, "bold")).grid(row=1, column=col, sticky="w", padx=(0, 14))
         def can_edit_user(target_key):
@@ -2423,6 +2437,7 @@ class FiBuMateApp:
 
 
     def render_permissions_menu(self):
+        zfont = self.zoomed_content_font
         if not self.can_manage_permissions():
             self.render_menu_text("Keine Berechtigung für das Menü Berechtigungen."); return
         users = self.user_data.setdefault("users", {})
@@ -2445,7 +2460,7 @@ class FiBuMateApp:
         self._update_scroll_indicators = update_arrows; content.bind("<Configure>", update_scrollregion); scroll_canvas.bind("<Configure>", update_scrollregion)
         scroll_canvas.bind("<MouseWheel>", lambda e: self._route_mousewheel_to_canvas(e, scroll_canvas))
         frame = content
-        tk.Label(frame, text="Berechtigungen", font=("Segoe UI", 15, "bold"), bg=BG, fg=TEXT).grid(row=0, column=0, columnspan=5, sticky="w", pady=(0, 10))
+        tk.Label(frame, text="Berechtigungen", font=zfont(("Segoe UI", 15, "bold")), bg=BG, fg=TEXT).grid(row=0, column=0, columnspan=5, sticky="w", pady=(0, 10))
         def show_role_info():
             popup = tk.Toplevel(self.root); popup.title("Berechtigungen der Rollen anzeigen"); popup.configure(bg=BG); popup.geometry("820x620"); popup.transient(self.root)
             text = tk.Text(popup, bg="white", fg=TEXT, wrap="word", font=("Segoe UI", 10)); text.pack(fill="both", expand=True, padx=14, pady=14)
