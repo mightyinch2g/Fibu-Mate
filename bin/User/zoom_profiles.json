@@ -1,10 +1,18 @@
 {
   "wagnerm": {
     "1280x800": {
-      "tool:audit_cockpit": 0.875,
+      "tool:audit_cockpit": 0.975,
       "tool:tax_reporting": 1.1,
       "tool:documentation_center": 1.0,
-      "tool:deadline_maintenance": 1.125
+      "tool:deadline_maintenance": 1.125,
+      "tool:quarterly_close": 1.075,
+      "main": 1.0,
+      "tool:monthly_close": 1.0,
+      "users": 1.0,
+      "closing_calendar": 1.0,
+      "versions": 0.975,
+      "permissions": 1.1,
+      "tile_colors": 1.1
     }
   }
 }

@@ -832,19 +832,44 @@ class FiBuMateApp:
         self.ensure_version_432_once()
         self.ensure_version_433_once()
         self.ensure_version_434_once()
+        self.normalize_version_after_zoom_patch()
         self.create_footer()
         self.canvas = tk.Canvas(self.root, highlightthickness=0, bg=BG, cursor="arrow")
         self.canvas.pack(side="top", fill="both", expand=True)
         self.canvas.bind("<Configure>", self.on_resize)
         self.active_scroll_canvas = None
-        self.root.bind_all("<MouseWheel>", self.on_global_mousewheel)
-        self.root.bind_all("<Control-MouseWheel>", self.on_global_mousewheel, add="+")
-        self.root.bind_all("<Control-Button-4>", self.on_global_mousewheel, add="+")
-        self.root.bind_all("<Control-Button-5>", self.on_global_mousewheel, add="+")
-        self.root.bind_all("<Control-0>", self.reset_global_text_zoom, add="+")
+        self.install_zoom_mouse_bindings()
         for key, handler in [("<Escape>", self.handle_escape), ("<Return>", self.handle_enter), ("<Tab>", self.handle_tab), ("<Shift-Tab>", self.handle_shift_tab), ("<ISO_Left_Tab>", self.handle_shift_tab)]:
             self.root.bind_all(key, handler)
         self.show_page("launch", add_to_history=False)
+
+    def install_zoom_mouse_bindings(self):
+        """v0.434 Paket 1C: robuste Strg+Mausrad-Bindings für Windows/Linux und Canvas/Widgets."""
+        try:
+            sequences = (
+                "<MouseWheel>",
+                "<Control-MouseWheel>",
+                "<Control-Button-4>", "<Control-Button-5>",
+                "<Control-ButtonPress-4>", "<Control-ButtonPress-5>",
+                "<Control-0>",
+            )
+            for seq in sequences:
+                handler = self.reset_global_text_zoom if seq == "<Control-0>" else self.on_global_mousewheel
+                try:
+                    self.root.bind_all(seq, handler, add="+")
+                except Exception:
+                    pass
+                try:
+                    self.root.bind(seq, handler, add="+")
+                except Exception:
+                    pass
+                try:
+                    if hasattr(self, "canvas") and self.canvas is not None:
+                        self.canvas.bind(seq, handler, add="+")
+                except Exception:
+                    pass
+        except Exception:
+            pass
 
     # === FiBu Mate UI interaction helpers: START ===
     def _install_modal_toplevel_patch(self):
@@ -1614,10 +1639,11 @@ class FiBuMateApp:
         except Exception:
             pass
         try:
-            y = widget.winfo_rooty() - self.canvas.winfo_rooty()
-            # Kopf-/Mini-Widgets/Favoriten/Breadcrumb bewusst nicht per Strg+Mausrad zoomen.
-            if y < 126:
-                return True
+            # Kopf-/Mini-Widgets/Breadcrumb nur im Hauptfenster über y-Koordinate ausschließen.
+            if widget.winfo_toplevel() is self.root:
+                y = widget.winfo_rooty() - self.canvas.winfo_rooty()
+                if y < 126:
+                    return True
         except Exception:
             pass
         return False
@@ -1625,27 +1651,47 @@ class FiBuMateApp:
     def _event_allows_content_zoom(self, event):
         try:
             widget = getattr(event, "widget", None)
+            y_root = getattr(event, "y_root", None)
+            # Hauptcanvas: nicht pauschal als Header behandeln; nur die echte Kopfzone y < 126 sperren.
+            if widget is getattr(self, "canvas", None):
+                if y_root is not None:
+                    try:
+                        y = y_root - self.canvas.winfo_rooty()
+                        return y >= 126
+                    except Exception:
+                        return True
+                return True
             if widget is not None and self.is_header_footer_or_fixed_widget(widget):
                 return False
-            y_root = getattr(event, "y_root", None)
-            if y_root is not None:
-                y = y_root - self.canvas.winfo_rooty()
-                if y < 126:
-                    return False
+            # Nur Ereignisse im Hauptfenster im Headerbereich blocken; Toplevel/Popup-Inhalte bleiben zoombar.
+            if widget is not None and y_root is not None:
+                try:
+                    if widget.winfo_toplevel() is self.root:
+                        y = y_root - self.canvas.winfo_rooty()
+                        if y < 126:
+                            return False
+                except Exception:
+                    pass
         except Exception:
             pass
         return True
 
     def _is_ctrl_mousewheel(self, event):
         try:
+            # Windows/Tk: ControlMask ist 0x0004. Bei Control-spezifischen Bindings kann state je nach Umgebung variieren;
+            # num 4/5 bzw. delta != 0 mit Control-Binding wird deshalb zusätzlich akzeptiert.
             if getattr(event, "state", 0) & 0x0004:
                 return True
         except Exception:
             pass
         try:
-            return str(getattr(event, "type", "")) in ("ButtonPress", "4", "5") and bool(getattr(event, "state", 0) & 0x0004)
+            if getattr(event, "num", None) in (4, 5):
+                return True
+            if int(getattr(event, "delta", 0) or 0) != 0 and str(getattr(event, "type", "")) in ("MouseWheel", "38"):
+                return bool(getattr(event, "state", 0) & 0x0004)
         except Exception:
-            return False
+            pass
+        return False
 
     def _mousewheel_direction(self, event):
         try:
@@ -1681,13 +1727,29 @@ class FiBuMateApp:
                 return
             self.set_scope_zoom(new_zoom)
             self.apply_global_text_zoom()
+            self.update_zoom_control_label()
+            self.refresh_zoomed_content()
         except Exception:
             pass
+
+    def refresh_zoomed_content(self):
+        """Erzwingt die sichtbare Anwendung des Bereichszooms durch Neu-Rendern des aktuellen Inhalts."""
+        try:
+            if getattr(self, "current_page", "") == "launch":
+                return
+            self.root.after_idle(self.render_page)
+        except Exception:
+            try:
+                self.render_page()
+            except Exception:
+                pass
 
     def reset_global_text_zoom(self, event=None):
         try:
             self.set_scope_zoom(1.0)
             self.apply_global_text_zoom()
+            self.update_zoom_control_label()
+            self.refresh_zoomed_content()
         except Exception:
             pass
         return "break"
@@ -1725,6 +1787,15 @@ class FiBuMateApp:
 
     def _apply_zoom_to_widget_tree(self, widget):
         try:
+            # Canvas zuerst behandeln: Der Hauptcanvas startet bei y=0, enthält aber auch den zoombaren Inhaltsbereich.
+            # Header-Texte werden in _apply_zoom_to_canvas weiterhin anhand der Item-BBox ausgeschlossen.
+            if isinstance(widget, tk.Canvas):
+                if not getattr(widget, "_zoom_exclude", False):
+                    self._apply_zoom_to_canvas(widget)
+                # Font-Konfiguration des Canvas selbst ist nicht relevant; Kinder trotzdem prüfen.
+                for child in widget.winfo_children():
+                    self._apply_zoom_to_widget_tree(child)
+                return
             if self.is_header_footer_or_fixed_widget(widget):
                 return
             try:
@@ -1735,8 +1806,6 @@ class FiBuMateApp:
                 widget.configure(font=self._scaled_font_from_base(self._zoom_base_fonts[key]))
             except Exception:
                 pass
-            if isinstance(widget, tk.Canvas):
-                self._apply_zoom_to_canvas(widget)
             for child in widget.winfo_children():
                 self._apply_zoom_to_widget_tree(child)
         except Exception:
@@ -1898,6 +1967,7 @@ class FiBuMateApp:
 
     def draw_controls(self):
         self.draw_logout_control() if self.current_page == "main" else self.draw_back_control()
+        self.draw_zoom_control()
         self.draw_suggestion_control()
         self.draw_help_control()
         self.draw_close_control()
@@ -1926,18 +1996,96 @@ class FiBuMateApp:
         canvas.create_rectangle(x - 17, y - 8, x + 17, y + 8, outline=BLUE, width=1)
         canvas.create_text(x, y, text="HELP", fill=BLUE, font=("Segoe UI", 7, "bold"))
 
+    def draw_zoom_control(self):
+        """v0.434 Paket 1E: sichtbare Zoom-Leiste als Alternative zu Strg+Mausrad."""
+        if self.current_page == "launch":
+            return
+        try:
+            w = ui_s(190)
+            h = MINI_WIDGET_H
+            btn = tk.Canvas(self.root, width=w, height=h, bg=HEADER, highlightthickness=0, bd=0, cursor="arrow"); btn._zoom_exclude = True
+            btn.create_rectangle(1, 1, w - 1, h - 1, fill=HEADER, outline=BLUE, width=1)
+            minus = btn.create_text(ui_s(18), h / 2, text="−", fill=BLUE, font=("Segoe UI", 13, "bold"), anchor="center")
+            label = btn.create_text(w / 2, h / 2, text=self.zoom_percent_text(), fill=TEXT, font=("Segoe UI", 9, "bold"), anchor="center")
+            plus = btn.create_text(w - ui_s(18), h / 2, text="+", fill=BLUE, font=("Segoe UI", 13, "bold"), anchor="center")
+            btn.create_line(ui_s(36), 4, ui_s(36), h - 4, fill=LINE)
+            btn.create_line(w - ui_s(36), 4, w - ui_s(36), h - 4, fill=LINE)
+            btn._zoom_label_item = label
+            btn._zoom_minus_item = minus
+            btn._zoom_plus_item = plus
+            btn.tag_bind(minus, "<Button-1>", lambda _e: self.zoom_bar_step(-1))
+            btn.tag_bind(plus, "<Button-1>", lambda _e: self.zoom_bar_step(1))
+            btn.tag_bind(label, "<Button-1>", lambda _e: self.zoom_bar_reset())
+            btn.bind("<Button-1>", lambda e: self.zoom_bar_click(e, btn, w))
+            btn.bind("<Enter>", lambda _e: self.show_small_tooltip(btn, "Zoom: − / Prozent zurücksetzen / +"))
+            btn.bind("<Leave>", lambda _e: self.hide_small_tooltip())
+            self._zoom_control = btn
+            self.widget_items.append(btn)
+            self.canvas.create_window(ui_s(168), 7, window=btn, anchor="nw")
+        except Exception:
+            pass
+
+    def zoom_percent_text(self):
+        try:
+            return f"{int(round(float(self.get_scope_zoom()) * 100))}%"
+        except Exception:
+            return "100%"
+
+    def update_zoom_control_label(self):
+        try:
+            btn = getattr(self, "_zoom_control", None)
+            if btn and btn.winfo_exists():
+                btn.itemconfigure(getattr(btn, "_zoom_label_item", None), text=self.zoom_percent_text())
+        except Exception:
+            pass
+
+    def zoom_bar_step(self, direction):
+        try:
+            self.adjust_global_text_zoom(direction)
+            self.update_zoom_control_label()
+        except Exception:
+            pass
+        return "break"
+
+    def zoom_bar_reset(self):
+        try:
+            self.set_scope_zoom(1.0)
+            self.apply_global_text_zoom()
+            self.update_zoom_control_label()
+            self.refresh_zoomed_content()
+        except Exception:
+            pass
+        return "break"
+
+    def zoom_bar_click(self, event, canvas, width):
+        try:
+            x = getattr(event, "x", 0)
+            if x <= ui_s(38):
+                return self.zoom_bar_step(-1)
+            if x >= width - ui_s(38):
+                return self.zoom_bar_step(1)
+            return self.zoom_bar_reset()
+        except Exception:
+            return "break"
+
     def draw_suggestion_control(self):
         if self.current_page == "launch":
             return
-        btn = tk.Canvas(self.root, width=MINI_WIDGET_W, height=MINI_WIDGET_H, bg=HEADER, highlightthickness=0, bd=0, cursor="hand2"); btn._zoom_exclude = True
-        btn.create_rectangle(1, 1, MINI_WIDGET_W - 1, MINI_WIDGET_H - 1, fill=HEADER, outline=BLUE, width=1)
-        self.draw_mini_bulb_icon(btn, 18, 14)
-        btn.create_text((MINI_WIDGET_W / 2) + 10, MINI_WIDGET_H / 2, text="Änderung vorschlagen", fill=TEXT, font=body_font(10, "bold"), anchor="center")
+        # v0.434 Paket 1D: Mini-Widget bleibt zoom-excluded; Text wird bewusst mit fixer Mini-Schrift gezeichnet.
+        # Dadurch kann „Änderung vorschlagen“ nicht mehr durch UI_TEXT_SCALE aus dem Button laufen.
+        suggestion_w = max(MINI_WIDGET_W, ui_s(286))
+        btn = tk.Canvas(self.root, width=suggestion_w, height=MINI_WIDGET_H, bg=HEADER, highlightthickness=0, bd=0, cursor="hand2"); btn._zoom_exclude = True
+        btn.create_rectangle(1, 1, suggestion_w - 1, MINI_WIDGET_H - 1, fill=HEADER, outline=BLUE, width=1)
+        icon_x = ui_s(18)
+        text_x = ui_s(44)
+        self.draw_mini_bulb_icon(btn, icon_x, MINI_WIDGET_H / 2)
+        btn.create_text(text_x, MINI_WIDGET_H / 2, text="Änderung vorschlagen", fill=TEXT, font=("Segoe UI", 9, "bold"), anchor="w")
         btn.bind("<Button-1>", lambda _e: self.open_suggestion_mail())
         btn.bind("<Enter>", lambda _e: self.show_small_tooltip(btn, "Änderung vorschlagen"))
         btn.bind("<Leave>", lambda _e: self.hide_small_tooltip())
         self.widget_items.append(btn)
-        x = self.canvas.winfo_width() - 52 - MINI_WIDGET_W - MINI_WIDGET_GAP
+        # rechter Rand: links vom Hilfe-Mini-Widget; anchor=ne erwartet die rechte Kante, daher nicht nochmals um die eigene Breite verschieben.
+        x = self.canvas.winfo_width() - 52 - MINI_WIDGET_GAP
         self.canvas.create_window(x, 7, window=btn, anchor="ne")
 
     def show_small_tooltip(self, widget, text):
@@ -2596,6 +2744,44 @@ class FiBuMateApp:
         self.root.mainloop()
 
 
+    def normalize_version_after_zoom_patch(self):
+        """Korrektur: versehentliche Versionssprünge 0.435-0.437 aus Zoom-Testpaketen zurücknehmen. Kein Versions-Bump."""
+        try:
+            changed = False
+            try:
+                build = int(self.version_state.get("build", DEFAULT_BUILD))
+            except Exception:
+                build = DEFAULT_BUILD
+            if build > 34:
+                self.version_state["build"] = 34
+                changed = True
+            applied = self.version_state.setdefault("applied_updates", [])
+            for upd in ("2026-05-29_v0434_paket1c_fibu_mate_zoom_miniwidget", "2026-05-29_v0434_paket1d_fibu_mate_zoom_miniwidget_nachkorrektur", "2026-05-29_v0434_paket1e_zoomleiste"):
+                if upd not in applied:
+                    applied.append(upd)
+                    changed = True
+            self.version_state["applied_updates"] = applied
+            if changed:
+                self.save_version_state()
+            history = self.load_version_history()
+            entries = history.setdefault("entries", [])
+            cleaned = []
+            for entry in entries:
+                version = str(entry.get("version", ""))
+                bullets = "\n".join(str(b) for b in entry.get("bullets", [])).lower()
+                accidental = version in ("v0.435", "v0.436", "v0.437") or "paket 1c" in bullets or "paket 1d" in bullets or "paket 1e" in bullets or "zoom-leiste" in bullets or "zoomleiste" in bullets
+                if not accidental:
+                    cleaned.append(entry)
+            if len(cleaned) != len(entries):
+                history["entries"] = cleaned
+                self.save_version_history(history)
+            try:
+                self.version_label.config(text=self.version_label_text())
+            except Exception:
+                pass
+        except Exception:
+            pass
+
     def ensure_version_434_once(self):
         """v0.434: Bereichsbezogener Zoom und Lesbarkeitspaket 1A."""
         try:
@@ -2611,6 +2797,18 @@ class FiBuMateApp:
             )
         except Exception:
             pass
+
+    def ensure_version_434_1c_once(self):
+        """Technische Korrektur innerhalb v0.434; kein Versions-Bump."""
+        return
+
+    def ensure_version_434_1d_once(self):
+        """Technische Korrektur innerhalb v0.434; kein Versions-Bump."""
+        return
+
+    def ensure_version_434_1e_once(self):
+        """Technische Korrektur innerhalb v0.434; kein Versions-Bump."""
+        return
 
 if __name__ == "__main__":
     FiBuMateApp().run()
