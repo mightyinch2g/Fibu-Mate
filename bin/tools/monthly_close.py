@@ -976,7 +976,7 @@ class MonthlyCloseUI:
 
     def task_uid_display(self, task):
         uid = self.normalize_task_uid_value(task.get("task_uid", ""))
-        return f"[Aufgaben-ID {uid}]" if uid else "[Aufgaben-ID fehlt]"
+        return uid or ""
 
     def initial_uid_for_task(self, task):
         return INITIAL_TASK_IDS.get((normalize_team_name(task.get("team")), str(task.get("title") or "")), "")
@@ -1891,11 +1891,14 @@ class MonthlyCloseUI:
 
         scroll_canvas = tk.Canvas(outer, bg=COLORS["white"], highlightthickness=0, bd=0)
         scrollbar = tk.Scrollbar(outer, orient="vertical", command=scroll_canvas.yview)
+        xscrollbar = tk.Scrollbar(outer, orient="horizontal", command=scroll_canvas.xview)
         table = tk.Frame(scroll_canvas, bg="#E4EAF1")  # dezente Spaltentrennlinien
         table_window = scroll_canvas.create_window((0, 0), window=table, anchor="nw")
 
         def update_scrollregion(_event=None):
-            scroll_canvas.itemconfigure(table_window, width=max(1, scroll_canvas.winfo_width()))
+            table.update_idletasks()
+            target_width = max(scroll_canvas.winfo_width(), table.winfo_reqwidth())
+            scroll_canvas.itemconfigure(table_window, width=max(1, target_width))
             scroll_canvas.configure(scrollregion=scroll_canvas.bbox("all"))
 
         def on_mousewheel(event):
@@ -1906,7 +1909,8 @@ class MonthlyCloseUI:
         scroll_canvas.bind("<Configure>", update_scrollregion)
         scroll_canvas.bind("<MouseWheel>", on_mousewheel)
         table.bind("<MouseWheel>", on_mousewheel)
-        scroll_canvas.configure(yscrollcommand=scrollbar.set)
+        scroll_canvas.configure(yscrollcommand=scrollbar.set, xscrollcommand=xscrollbar.set)
+        xscrollbar.pack(side="bottom", fill="x")
         scroll_canvas.pack(side="left", fill="both", expand=True)
         scrollbar.pack(side="right", fill="y")
         self.app.active_scroll_canvas = scroll_canvas
@@ -1925,7 +1929,7 @@ class MonthlyCloseUI:
             row_idx = self.render_task_row(table, row_idx, task, headers)
 
         # Spaltenbreiten: Aufgabe und Zuständig etwas reduziert; Dokumentation schmal; Fristart/Priorität/Anlagen erhalten mehr Raum.
-        min_sizes = {0: 46, 1: 330, 2: 92, 3: 225, 4: 220, 5: 105, 6: 105, 7: 120, 8: 100, 9: 88, 10: 150}
+        min_sizes = {0: 46, 1: 560, 2: 92, 3: 225, 4: 220, 5: 105, 6: 105, 7: 120, 8: 100, 9: 88, 10: 150}
         stretch_cols = {1: 2, 4: 2, 5: 1, 6: 1, 8: 1}
         for col in range(len(headers)):
             table.grid_columnconfigure(col, minsize=min_sizes.get(col, 80), weight=stretch_cols.get(col, 0))
@@ -1945,14 +1949,23 @@ class MonthlyCloseUI:
 
         task_cell = tk.Frame(table, bg=bg)
         task_cell.grid(row=row_idx, column=1, sticky="nsew", padx=1, pady=1)
-        tk.Label(task_cell, text=f"{self.task_uid_display(task)}  {task.get("title")}", bg=bg, fg=COLORS["text"], font=zfont(self.app, 12), padx=6, pady=6, anchor="w", justify="left").pack(side="left", fill="x", expand=True)
         visible_subtasks = sorted([s for s in task.get("subtasks", []) if not s.get("deleted")], key=lambda s: str(s.get("title", "")).casefold())
-        tk.Button(task_cell, text="PDF", command=lambda t=task: self.create_task_id_report(t), bg=COLORS["white"], fg=COLORS["blue"], bd=1, padx=4, pady=2, cursor="hand2").pack(side="right", padx=(4, 4))
+
+        task_actions = tk.Frame(task_cell, bg=bg)
+        task_actions.pack(side="right", padx=(6, 8), pady=3)
+        tk.Button(task_actions, text="PDF", command=lambda t=task: self.create_task_id_report(t), bg=COLORS["white"], fg=COLORS["blue"], bd=1, padx=4, pady=2, cursor="hand2").pack(side="right", padx=(4, 0))
         if visible_subtasks:
             expand_key = self.get_expand_key(task)
             expanded = expand_key in self.expanded_tasks
             toggle_text = "Unteraufgaben einklappen v" if expanded else "Unteraufgaben ausklappen >"
-            tk.Button(task_cell, text=toggle_text, command=lambda key=expand_key: self.toggle_subtasks_visibility(key), bg=bg, fg=COLORS["blue"], bd=0, padx=4, pady=4, cursor="hand2").pack(side="right", padx=(4, 8))
+            tk.Button(task_actions, text=toggle_text, command=lambda key=expand_key: self.toggle_subtasks_visibility(key), bg=bg, fg=COLORS["blue"], bd=0, padx=4, pady=4, cursor="hand2").pack(side="right", padx=(0, 6))
+
+        task_text = tk.Frame(task_cell, bg=bg)
+        task_text.pack(side="left", fill="both", expand=True, padx=(6, 4), pady=4)
+        uid = self.task_uid_display(task)
+        if uid:
+            tk.Label(task_text, text=uid, bg=bg, fg=COLORS["blue"], font=zfont(self.app, 12, "bold"), anchor="w", justify="left").pack(anchor="w")
+        tk.Label(task_text, text=str(task.get("title", "")), bg=bg, fg=COLORS["text"], font=zfont(self.app, 12), anchor="w", justify="left", wraplength=430).pack(anchor="w", fill="x", expand=True)
 
         doc_frame = tk.Frame(table, bg=bg)
         doc_frame.grid(row=row_idx, column=2, sticky="nsew", padx=1, pady=1)

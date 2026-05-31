@@ -19,6 +19,39 @@ except Exception:
         import compliance_common as cc
     except Exception:
         cc = None
+
+## v0.434: einheitliche Modulschrift / Bereichszoom analog Monatsabschluss.
+
+def zfont(app, size=12, weight=None, underline=False, scale=1.0):
+    try:
+        scope_zoom = float(getattr(app, "current_scope_zoom", 1.0) or 1.0)
+        final = max(9, int(round(float(size) * 1.28 * scope_zoom * float(scale))))
+    except Exception:
+        final = int(size)
+    styles = []
+    if weight:
+        styles.append(weight)
+    if underline:
+        styles.append("underline")
+    return tuple(["Segoe UI", final] + styles)
+
+def apply_readable_fonts(widget, app, base_size=12):
+    "Setzt direkte Tk-Fonts für neu erzeugte Modulwidgets nach."
+    try:
+        try:
+            cls = widget.winfo_class().lower()
+        except Exception:
+            cls = ""
+        if cls in ("label", "button", "entry", "text", "listbox", "checkbutton", "radiobutton", "menubutton"):
+            try:
+                current = str(widget.cget("font") or "")
+                widget.configure(font=zfont(app, base_size, "bold" if "bold" in current.lower() else None))
+            except Exception:
+                pass
+        for child in widget.winfo_children():
+            apply_readable_fonts(child, app, base_size)
+    except Exception:
+        pass
 STATUS_OPEN = "Offen"
 STATUS_IN_PROGRESS = "In Bearbeitung"
 STATUS_DONE = "Erledigt"
@@ -554,7 +587,7 @@ class YearlyCloseUI:
         self.canvas.create_window(0, 132, window=self.frame, anchor="nw", width=self.canvas.winfo_width(), height=max(400, self.canvas.winfo_height() - 172))
         self.ensure_task_ids()
         self.render_dashboard()
-
+        apply_readable_fonts(self.frame, self.app, 12)  
     def handle_escape(self):
         if self.selected_team:
             self.selected_team = None
@@ -897,7 +930,7 @@ class YearlyCloseUI:
 
     def task_uid_display(self, task):
         uid = self.normalize_task_uid_value(task.get("task_uid", ""))
-        return f"[Aufgaben-ID {uid}]" if uid else "[Aufgaben-ID fehlt]"
+        return uid or ""
 
     def initial_uid_for_task(self, task):
         return INITIAL_TASK_IDS.get((normalize_team_name(task.get("team")), str(task.get("title") or "")), "")
@@ -1812,11 +1845,14 @@ class YearlyCloseUI:
 
         scroll_canvas = tk.Canvas(outer, bg=COLORS["white"], highlightthickness=0, bd=0)
         scrollbar = tk.Scrollbar(outer, orient="vertical", command=scroll_canvas.yview)
+        xscrollbar = tk.Scrollbar(outer, orient="horizontal", command=scroll_canvas.xview)
         table = tk.Frame(scroll_canvas, bg="#E4EAF1")  # dezente Spaltentrennlinien
         table_window = scroll_canvas.create_window((0, 0), window=table, anchor="nw")
 
         def update_scrollregion(_event=None):
-            scroll_canvas.itemconfigure(table_window, width=max(1, scroll_canvas.winfo_width()))
+            table.update_idletasks()
+            target_width = max(scroll_canvas.winfo_width(), table.winfo_reqwidth())
+            scroll_canvas.itemconfigure(table_window, width=max(1, target_width))
             scroll_canvas.configure(scrollregion=scroll_canvas.bbox("all"))
 
         def on_mousewheel(event):
@@ -1827,7 +1863,8 @@ class YearlyCloseUI:
         scroll_canvas.bind("<Configure>", update_scrollregion)
         scroll_canvas.bind("<MouseWheel>", on_mousewheel)
         table.bind("<MouseWheel>", on_mousewheel)
-        scroll_canvas.configure(yscrollcommand=scrollbar.set)
+        scroll_canvas.configure(yscrollcommand=scrollbar.set, xscrollcommand=xscrollbar.set)
+        xscrollbar.pack(side="bottom", fill="x")
         scroll_canvas.pack(side="left", fill="both", expand=True)
         scrollbar.pack(side="right", fill="y")
         self.app.active_scroll_canvas = scroll_canvas
@@ -1846,7 +1883,7 @@ class YearlyCloseUI:
             row_idx = self.render_task_row(table, row_idx, task, headers)
 
         # Spaltenbreiten: Aufgabe und Zuständig etwas reduziert; Dokumentation schmal; Fristart/Priorität/Anlagen erhalten mehr Raum.
-        min_sizes = {0: 46, 1: 330, 2: 92, 3: 225, 4: 220, 5: 105, 6: 105, 7: 120, 8: 100, 9: 88, 10: 150}
+        min_sizes = {0: 46, 1: 560, 2: 92, 3: 225, 4: 220, 5: 105, 6: 105, 7: 120, 8: 100, 9: 88, 10: 150}
         stretch_cols = {1: 2, 4: 2, 5: 1, 6: 1, 8: 1}
         for col in range(len(headers)):
             table.grid_columnconfigure(col, minsize=min_sizes.get(col, 80), weight=stretch_cols.get(col, 0))
@@ -1866,14 +1903,23 @@ class YearlyCloseUI:
 
         task_cell = tk.Frame(table, bg=bg)
         task_cell.grid(row=row_idx, column=1, sticky="nsew", padx=1, pady=1)
-        tk.Label(task_cell, text=f"{self.task_uid_display(task)}  {task.get("title")}", bg=bg, fg=COLORS["text"], font=("Segoe UI", 10), padx=6, pady=6, anchor="w", justify="left").pack(side="left", fill="x", expand=True)
         visible_subtasks = sorted([s for s in task.get("subtasks", []) if not s.get("deleted")], key=lambda s: str(s.get("title", "")).casefold())
-        tk.Button(task_cell, text="PDF", command=lambda t=task: self.create_task_id_report(t), bg=COLORS["white"], fg=COLORS["blue"], bd=1, padx=4, pady=2, cursor="hand2").pack(side="right", padx=(4, 4))
+
+        task_actions = tk.Frame(task_cell, bg=bg)
+        task_actions.pack(side="right", padx=(6, 8), pady=3)
+        tk.Button(task_actions, text="PDF", command=lambda t=task: self.create_task_id_report(t), bg=COLORS["white"], fg=COLORS["blue"], bd=1, padx=4, pady=2, cursor="hand2").pack(side="right", padx=(4, 0))
         if visible_subtasks:
             expand_key = self.get_expand_key(task)
             expanded = expand_key in self.expanded_tasks
             toggle_text = "Unteraufgaben einklappen v" if expanded else "Unteraufgaben ausklappen >"
-            tk.Button(task_cell, text=toggle_text, command=lambda key=expand_key: self.toggle_subtasks_visibility(key), bg=bg, fg=COLORS["blue"], bd=0, padx=4, pady=4, cursor="hand2").pack(side="right", padx=(4, 8))
+            tk.Button(task_actions, text=toggle_text, command=lambda key=expand_key: self.toggle_subtasks_visibility(key), bg=bg, fg=COLORS["blue"], bd=0, padx=4, pady=4, cursor="hand2").pack(side="right", padx=(0, 6))
+
+        task_text = tk.Frame(task_cell, bg=bg)
+        task_text.pack(side="left", fill="both", expand=True, padx=(6, 4), pady=4)
+        uid = self.task_uid_display(task)
+        if uid:
+            tk.Label(task_text, text=uid, bg=bg, fg=COLORS["blue"], font=zfont(self.app, 12, "bold"), anchor="w", justify="left").pack(anchor="w")
+        tk.Label(task_text, text=str(task.get("title", "")), bg=bg, fg=COLORS["text"], font=zfont(self.app, 12), anchor="w", justify="left", wraplength=430).pack(anchor="w", fill="x", expand=True)
 
         doc_frame = tk.Frame(table, bg=bg)
         doc_frame.grid(row=row_idx, column=2, sticky="nsew", padx=1, pady=1)

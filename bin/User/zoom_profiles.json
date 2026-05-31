@@ -1,7 +1,7 @@
 {
   "wagnerm": {
     "1280x800": {
-      "tool:audit_cockpit": 0.925,
+      "tool:audit_cockpit": 1.6,
       "tool:tax_reporting": 1.3,
       "tool:documentation_center": 0.975,
       "tool:deadline_maintenance": 1.125,
@@ -16,7 +16,7 @@
       "data_prep": 1.0,
       "tool:nike_pdf_to_excel": 1.05,
       "tool:nike_op_liste_pdf_check": 0.95,
-      "tool:task_history": 1.15,
+      "tool:task_history": 1.8,
       "tool:yearly_close": 1.0
     }
   }
