@@ -107,6 +107,7 @@ BASE_FONT_TILE = FONT_TILE
 BASE_FONT_TILE_SMALL = FONT_TILE_SMALL
 BASE_FONT_SMALL = FONT_SMALL
 UI_SCALE = 1.0
+UI_TEXT_SCALE = 2.00  # v0.433 Korrektur Paket 1e: Schriftgröße um 100% erhöht; Icon-Skalierung bleibt unverändert.
 
 def ui_s(value):
     try:
@@ -117,9 +118,16 @@ def ui_s(value):
 def scaled_font(font_tuple):
     try:
         family, size, *rest = font_tuple
-        return tuple([family, max(7, int(round(size * UI_SCALE)))] + rest)
+        return tuple([family, max(7, int(round(size * UI_SCALE * UI_TEXT_SCALE)))] + rest)
     except Exception:
         return font_tuple
+
+def ui_icon_size(base=36):
+    """v0.433 Korrektur: zentrale Icon-Skalierung für kleinere Monitore."""
+    try:
+        return max(14, int(round(float(base) * UI_SCALE)))
+    except Exception:
+        return base
 MINI_WIDGET_W = 174
 MINI_WIDGET_H = 30
 MINI_WIDGET_GAP = 8
@@ -482,9 +490,9 @@ class Tile(tk.Canvas):
         self.create_rectangle(x0, y0, x1, y1, fill=self.current_color(), outline=self.current_color())
         if self.corner_fold:
             self._draw_corner_fold(x1, y0)
-        title_y = y0 + ui_s(18)
-        icon_y = y1 - ui_s(34)
-        title_font = FONT_TILE_SMALL if len(self.title) > 28 else self.title_font()
+        title_y = y0 + ui_s(14)
+        icon_y = y0 + int((y1 - y0) * 0.66)
+        title_font = FONT_TILE_SMALL if len(self.title) > 24 else self.title_font()
         title_color = BLUE if self.lock_tile else "white"
         icon_to_draw = "lock" if self.lock_tile else self.icon_type
         if self.center_text and not icon_to_draw:
@@ -551,7 +559,7 @@ class FiBuMateApp:
         try:
             sw = max(1, self.root.winfo_screenwidth())
             sh = max(1, self.root.winfo_screenheight())
-            UI_SCALE = max(0.72, min(1.12, min(sw / 1920.0, sh / 1080.0)))
+            UI_SCALE = max(0.68, min(1.08, min(sw / 1920.0, sh / 1080.0)))
             self.ui_scale = UI_SCALE
             FONT_TITLE = scaled_font(BASE_FONT_TITLE)
             FONT_MENU = scaled_font(BASE_FONT_MENU)
@@ -560,7 +568,7 @@ class FiBuMateApp:
             FONT_SMALL = scaled_font(BASE_FONT_SMALL)
             MINI_WIDGET_W = ui_s(174); MINI_WIDGET_H = ui_s(30); MINI_WIDGET_GAP = ui_s(8)
             try:
-                self.root.tk.call('tk', 'scaling', max(0.85, min(1.15, UI_SCALE)))
+                self.root.tk.call('tk', 'scaling', max(0.80, min(1.10, UI_SCALE)))
             except Exception:
                 pass
         except Exception:
@@ -568,6 +576,7 @@ class FiBuMateApp:
 
     def __init__(self):
         self.root = tk.Tk()
+        self.init_responsive_scaling()
         self.root.title(APP_NAME)
         self.root.protocol("WM_DELETE_WINDOW", self.confirm_exit)
         self._install_modal_toplevel_patch()
@@ -580,6 +589,7 @@ class FiBuMateApp:
         self.focusable_tiles = []
         self.focus_index = -1
         self._suppress_next_global_return = False
+        self._closing_in_progress = False
         self.favorites = set()
         self.current_user_key = None
         self.current_user_display = ""
@@ -1683,19 +1693,20 @@ class FiBuMateApp:
         btn = tk.Canvas(self.root, width=MINI_WIDGET_W, height=MINI_WIDGET_H, bg=HEADER, highlightthickness=0, bd=0, cursor="hand2")
         btn.create_rectangle(1, 1, MINI_WIDGET_W - 1, MINI_WIDGET_H - 1, fill=HEADER, outline=BLUE, width=1)
         self.draw_mini_help_icon(btn, 25, MINI_WIDGET_H / 2)
-        btn.create_text(MINI_WIDGET_W / 2, MINI_WIDGET_H / 2, text="Hilfe", fill=TEXT, font=("Segoe UI", 8, "bold"), anchor="center")
+        btn.create_text(MINI_WIDGET_W / 2, MINI_WIDGET_H / 2, text="Hilfe", fill=TEXT, font=("Segoe UI", max(16, ui_s(16)), "bold"), anchor="center")
         def open_help(_event=None):
             self.show_help_popup()
         btn.bind("<Button-1>", open_help)
         btn.bind("<Enter>", lambda _e: self.show_small_tooltip(btn, "Hilfe"))
         btn.bind("<Leave>", lambda _e: self.hide_small_tooltip())
         self.widget_items.append(btn)
-        self.canvas.create_window(self.canvas.winfo_width() - 52, 7, window=btn, anchor="ne")
+        self.canvas.create_window(self.canvas.winfo_width() - 22, 7, window=btn, anchor="ne")
 
     def draw_close_control(self):
-        label = tk.Label(self.root, text="X", bg=HEADER, fg=RED, font=("Segoe UI", 10, "bold"), cursor="hand2", relief="solid", bd=1, padx=4)
-        label.bind("<Button-1>", lambda e: self.confirm_exit()); self.widget_items.append(label)
-        self.canvas.create_window(self.canvas.winfo_width() - 22, 7, window=label, anchor="ne")
+        """v0.433 Korrektur Paket 1c/1e: Separater X-Button in den Mini-Widgets deaktiviert.
+        Das Schließen erfolgt ausschließlich über das native Fenster-X bzw. die bestehende App-Logik.
+        """
+        return
 
     def show_help_popup(self):
         popup = tk.Toplevel(self.root)
@@ -2232,10 +2243,38 @@ class FiBuMateApp:
         return "break"
 
     def confirm_exit(self):
-        if not self.confirm_unsaved_changes():
+        if getattr(self, "_closing_in_progress", False):
             return
-        if messagebox.askyesno(APP_NAME, "FiBu Mate wirklich schließen?"):
-            self.root.destroy()
+        self._closing_in_progress = True
+        try:
+            if not self.confirm_unsaved_changes():
+                self._closing_in_progress = False
+                return
+            if not messagebox.askyesno(APP_NAME, "FiBu Mate wirklich schließen?"):
+                self._closing_in_progress = False
+                return
+            try:
+                for w in list(self.root.winfo_children()):
+                    if isinstance(w, tk.Toplevel):
+                        try:
+                            w.destroy()
+                        except Exception:
+                            pass
+            except Exception:
+                pass
+            try:
+                self.root.quit()
+            except Exception:
+                pass
+            try:
+                self.root.destroy()
+            except Exception:
+                pass
+        except Exception:
+            try:
+                self.root.destroy()
+            except Exception:
+                pass
 
 
     def ensure_version_433_once(self):
@@ -2246,6 +2285,7 @@ class FiBuMateApp:
                 "v0.433: Dokumentationszentrale-Tabelle umgebaut: Aufgabenzuordnung als erste Spalte, Dokument statt Dokumentname, Status und Pfad ausgeblendet.",
                 "v0.433: Dokumentnamen in der Dokumentationszentrale sind anklickbar und öffnen die hinterlegte Datei; Datei- und Anhang-Icons ergänzt.",
                 "v0.433: Dokumentationszentrale erhält horizontale Scroll-Unterstützung für Tabellenüberlauf und optimierte Spaltenbreiten.",
+                "v0.433 Korrektur Paket 1b: Kachel-/Widget-Skalierung nachjustiert, Schließen-Logik gegen doppelten Dialog bzw. weißes Restfenster abgesichert und Mini-Widget-Schließen neben Hilfe neutralisiert.",
             ],
         )
 
