@@ -30,6 +30,7 @@ def _load_tool_module_from_file(module_path: str):
 
 import webbrowser
 import tkinter as tk
+import tkinter.font as tkfont
 from tkinter import messagebox
 from datetime import datetime
 from urllib.parse import quote
@@ -45,6 +46,7 @@ VERSION_PREFIX = "0.4"
 DEFAULT_BUILD = 0
 VERSION_STATE_FILE = "version_state.json"
 VERSION_HISTORY_FILE = "version_history.json"
+ZOOM_PROFILE_FILE = "zoom_profiles.json"
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 BIN_DIR = os.path.join(SCRIPT_DIR, "bin")
@@ -109,6 +111,10 @@ BASE_FONT_SMALL = FONT_SMALL
 UI_SCALE = 1.0
 UI_TEXT_SCALE = 2.00  # v0.433 Korrektur Paket 1e: Schriftgröße um 100% erhöht; Icon-Skalierung bleibt unverändert.
 UI_BODY_TEXT_SCALE = 1.00  # v0.433 Korrektur Paket 1g: 1920x1080 ist Body-Referenz; dynamische Lesbarkeit über body_font().
+GLOBAL_TEXT_ZOOM_MIN = 0.70
+GLOBAL_TEXT_ZOOM_MAX = 1.80
+GLOBAL_TEXT_ZOOM_STEP = 0.025  # v0.433 Korrektur Paket 1h: feine Körnung pro Mausrad-Raster.
+GLOBAL_TEXT_ZOOM = 1.00  # Fallback; v0.434 nutzt bereichsbezogene Zoomprofile.
 
 def ui_s(value):
     try:
@@ -517,11 +523,11 @@ class Tile(tk.Canvas):
             self._draw_corner_fold(x1, y0)
         title_y = y0 + ui_s(14)
         icon_y = y0 + int((y1 - y0) * 0.66)
-        title_font = FONT_TILE_SMALL if len(self.title) > 24 else self.title_font()
+        title_font = self.app.zoomed_content_font(FONT_TILE_SMALL if len(self.title) > 24 else self.title_font())
         title_color = BLUE if self.lock_tile else "white"
         icon_to_draw = "lock" if self.lock_tile else self.icon_type
         if self.center_text and not icon_to_draw:
-            self.create_text((x0 + x1) / 2, (y0 + y1) / 2, text=self.title, anchor="center", fill=title_color, font=self.title_font(), width=max(ui_s(110), self.tile_width - ui_s(44)), justify="center")
+            self.create_text((x0 + x1) / 2, (y0 + y1) / 2, text=self.title, anchor="center", fill=title_color, font=self.app.zoomed_content_font(self.title_font()), width=max(ui_s(110), self.tile_width - ui_s(44)), justify="center")
         else:
             self.create_text((x0 + x1) / 2, title_y, text=self.title, anchor="n", fill=title_color, font=title_font, width=max(ui_s(110), self.tile_width - ui_s(44)), justify="center")
             if icon_to_draw:
@@ -529,7 +535,7 @@ class Tile(tk.Canvas):
                 if close_period and self.tile_id in ("monthly_close", "quarterly_close", "yearly_close"):
                     icon_x = x0 + 98
                     self._draw_main_icon(icon_to_draw, icon_x, icon_y)
-                    self.create_text(icon_x + 48, icon_y, text=close_period, anchor="w", fill=title_color, font=("Segoe UI", 13, "italic"), width=max(120, x1 - icon_x - 58), justify="left")
+                    self.create_text(icon_x + 48, icon_y, text=close_period, anchor="w", fill=title_color, font=self.app.zoomed_content_font(("Segoe UI", 13, "italic")), width=max(120, x1 - icon_x - 58), justify="left")
                 else:
                     self._draw_main_icon(icon_to_draw, (x0 + x1) / 2, icon_y)
         self.star_bounds = None
@@ -578,6 +584,13 @@ class Tile(tk.Canvas):
 
 
 class FiBuMateApp:
+    def zoomed_content_font(self, font_tuple):
+        try:
+            family, size, *rest = font_tuple
+            return tuple([family, max(7, int(round(float(size) * float(self.current_scope_zoom))))] + rest)
+        except Exception:
+            return font_tuple
+
     def init_responsive_scaling(self):
         """v0.433: Skaliert zentrale Schrift-/Kachelwerte für kleinere Monitore."""
         global UI_SCALE, FONT_TITLE, FONT_MENU, FONT_TILE, FONT_TILE_SMALL, FONT_SMALL, MINI_WIDGET_W, MINI_WIDGET_H, MINI_WIDGET_GAP
@@ -615,6 +628,11 @@ class FiBuMateApp:
         self.focus_index = -1
         self._suppress_next_global_return = False
         self._closing_in_progress = False
+        self.global_text_zoom = GLOBAL_TEXT_ZOOM
+        self.zoom_profiles = self.load_zoom_profiles()
+        self.current_scope_zoom = 1.0
+        self._zoom_base_fonts = {}
+        self._zoom_base_canvas_fonts = {}
         self.favorites = set()
         self.current_user_key = None
         self.current_user_display = ""
@@ -813,12 +831,17 @@ class FiBuMateApp:
         self.ensure_version_431_once()
         self.ensure_version_432_once()
         self.ensure_version_433_once()
+        self.ensure_version_434_once()
         self.create_footer()
         self.canvas = tk.Canvas(self.root, highlightthickness=0, bg=BG, cursor="arrow")
         self.canvas.pack(side="top", fill="both", expand=True)
         self.canvas.bind("<Configure>", self.on_resize)
         self.active_scroll_canvas = None
         self.root.bind_all("<MouseWheel>", self.on_global_mousewheel)
+        self.root.bind_all("<Control-MouseWheel>", self.on_global_mousewheel, add="+")
+        self.root.bind_all("<Control-Button-4>", self.on_global_mousewheel, add="+")
+        self.root.bind_all("<Control-Button-5>", self.on_global_mousewheel, add="+")
+        self.root.bind_all("<Control-0>", self.reset_global_text_zoom, add="+")
         for key, handler in [("<Escape>", self.handle_escape), ("<Return>", self.handle_enter), ("<Tab>", self.handle_tab), ("<Shift-Tab>", self.handle_shift_tab), ("<ISO_Left_Tab>", self.handle_shift_tab)]:
             self.root.bind_all(key, handler)
         self.show_page("launch", add_to_history=False)
@@ -855,6 +878,10 @@ class FiBuMateApp:
             except Exception:
                 pass
             self._make_modal(win)
+            try:
+                self.root.after_idle(self.apply_global_text_zoom)
+            except Exception:
+                pass
         except Exception:
             pass
 
@@ -1392,7 +1419,7 @@ class FiBuMateApp:
         return None
 
     def create_footer(self):
-        self.footer = tk.Frame(self.root, bg="black", height=ui_s(58))
+        self.footer = tk.Frame(self.root, bg="black", height=ui_s(58)); self.footer._zoom_exclude = True
         self.footer.pack(side="bottom", fill="x")
         self.footer.pack_propagate(False)
         self.user_label = tk.Label(self.footer, bg="black", fg="white", font=body_font(10))
@@ -1513,8 +1540,242 @@ class FiBuMateApp:
             self.update_breadcrumb(page, title)
             self.render_page()
 
+    def display_zoom_key(self):
+        try:
+            return f"{self.root.winfo_screenwidth()}x{self.root.winfo_screenheight()}"
+        except Exception:
+            return "unknown"
+
+    def zoom_user_key(self):
+        return self.current_user_key or "__anonymous__"
+
+    def current_zoom_scope_key(self):
+        try:
+            if str(self.current_page or "").startswith("tool:"):
+                return self.current_page
+            return self.current_page or "main"
+        except Exception:
+            return "main"
+
+    def load_zoom_profiles(self):
+        path = os.path.join(USER_DIR, ZOOM_PROFILE_FILE)
+        try:
+            if os.path.exists(path):
+                with open(path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                return data if isinstance(data, dict) else {}
+        except Exception:
+            pass
+        return {}
+
+    def save_zoom_profiles(self):
+        try:
+            os.makedirs(USER_DIR, exist_ok=True)
+            with open(os.path.join(USER_DIR, ZOOM_PROFILE_FILE), "w", encoding="utf-8") as f:
+                json.dump(self.zoom_profiles, f, ensure_ascii=False, indent=2)
+        except Exception:
+            pass
+
+    def get_scope_zoom(self, scope=None):
+        try:
+            scope = scope or self.current_zoom_scope_key()
+            user = self.zoom_user_key(); display = self.display_zoom_key()
+            return float(self.zoom_profiles.get(user, {}).get(display, {}).get(scope, 1.0))
+        except Exception:
+            return 1.0
+
+    def set_scope_zoom(self, zoom, scope=None):
+        try:
+            scope = scope or self.current_zoom_scope_key()
+            user = self.zoom_user_key(); display = self.display_zoom_key()
+            self.zoom_profiles.setdefault(user, {}).setdefault(display, {})[scope] = round(float(zoom), 3)
+            self.current_scope_zoom = round(float(zoom), 3)
+            self.save_zoom_profiles()
+        except Exception:
+            pass
+
+    def prepare_scope_zoom(self):
+        global GLOBAL_TEXT_ZOOM
+        try:
+            self.current_scope_zoom = self.get_scope_zoom()
+            GLOBAL_TEXT_ZOOM = 1.0
+        except Exception:
+            self.current_scope_zoom = 1.0
+
+    def is_header_footer_or_fixed_widget(self, widget):
+        try:
+            w = widget
+            while w is not None:
+                if w is getattr(self, "footer", None):
+                    return True
+                if getattr(w, "_zoom_exclude", False):
+                    return True
+                w = w.master
+        except Exception:
+            pass
+        try:
+            y = widget.winfo_rooty() - self.canvas.winfo_rooty()
+            # Kopf-/Mini-Widgets/Favoriten/Breadcrumb bewusst nicht per Strg+Mausrad zoomen.
+            if y < 126:
+                return True
+        except Exception:
+            pass
+        return False
+
+    def _event_allows_content_zoom(self, event):
+        try:
+            widget = getattr(event, "widget", None)
+            if widget is not None and self.is_header_footer_or_fixed_widget(widget):
+                return False
+            y_root = getattr(event, "y_root", None)
+            if y_root is not None:
+                y = y_root - self.canvas.winfo_rooty()
+                if y < 126:
+                    return False
+        except Exception:
+            pass
+        return True
+
+    def _is_ctrl_mousewheel(self, event):
+        try:
+            if getattr(event, "state", 0) & 0x0004:
+                return True
+        except Exception:
+            pass
+        try:
+            return str(getattr(event, "type", "")) in ("ButtonPress", "4", "5") and bool(getattr(event, "state", 0) & 0x0004)
+        except Exception:
+            return False
+
+    def _mousewheel_direction(self, event):
+        try:
+            if getattr(event, "num", None) == 4:
+                return 1
+            if getattr(event, "num", None) == 5:
+                return -1
+        except Exception:
+            pass
+        try:
+            delta = int(getattr(event, "delta", 0))
+            return 1 if delta > 0 else (-1 if delta < 0 else 0)
+        except Exception:
+            return 0
+
     def on_global_mousewheel(self, event):
+        if self._is_ctrl_mousewheel(event):
+            if not self._event_allows_content_zoom(event):
+                return "break"
+            direction = self._mousewheel_direction(event)
+            if direction:
+                self.adjust_global_text_zoom(direction)
+            return "break"
         return self._route_mousewheel_to_canvas(event)
+
+    def adjust_global_text_zoom(self, direction):
+        try:
+            direction = 1 if direction > 0 else -1
+            current = self.get_scope_zoom()
+            new_zoom = current + direction * GLOBAL_TEXT_ZOOM_STEP
+            new_zoom = max(GLOBAL_TEXT_ZOOM_MIN, min(GLOBAL_TEXT_ZOOM_MAX, round(new_zoom, 3)))
+            if abs(new_zoom - current) < 0.0001:
+                return
+            self.set_scope_zoom(new_zoom)
+            self.apply_global_text_zoom()
+        except Exception:
+            pass
+
+    def reset_global_text_zoom(self, event=None):
+        try:
+            self.set_scope_zoom(1.0)
+            self.apply_global_text_zoom()
+        except Exception:
+            pass
+        return "break"
+
+    def _font_actual_tuple(self, widget, font_spec):
+        try:
+            f = tkfont.Font(root=widget, font=font_spec)
+            actual = f.actual()
+            family = actual.get('family') or 'Segoe UI'
+            size = abs(int(actual.get('size') or 10))
+            weight = actual.get('weight') or 'normal'
+            slant = actual.get('slant') or 'roman'
+            underline = bool(actual.get('underline'))
+            overstrike = bool(actual.get('overstrike'))
+            return (family, size, weight, slant, underline, overstrike)
+        except Exception:
+            return ('Segoe UI', 10, 'normal', 'roman', False, False)
+
+    def _scaled_font_from_base(self, base):
+        try:
+            family, size, weight, slant, underline, overstrike = base
+            scaled_size = max(6, int(round(float(size) * float(self.current_scope_zoom))))
+            args = [family, scaled_size]
+            if weight and weight != 'normal':
+                args.append(weight)
+            if slant and slant != 'roman':
+                args.append(slant)
+            if underline:
+                args.append('underline')
+            if overstrike:
+                args.append('overstrike')
+            return tuple(args)
+        except Exception:
+            return ('Segoe UI', 10)
+
+    def _apply_zoom_to_widget_tree(self, widget):
+        try:
+            if self.is_header_footer_or_fixed_widget(widget):
+                return
+            try:
+                font_spec = widget.cget('font')
+                key = str(widget)
+                if key not in self._zoom_base_fonts:
+                    self._zoom_base_fonts[key] = self._font_actual_tuple(widget, font_spec)
+                widget.configure(font=self._scaled_font_from_base(self._zoom_base_fonts[key]))
+            except Exception:
+                pass
+            if isinstance(widget, tk.Canvas):
+                self._apply_zoom_to_canvas(widget)
+            for child in widget.winfo_children():
+                self._apply_zoom_to_widget_tree(child)
+        except Exception:
+            pass
+
+    def _apply_zoom_to_canvas(self, canvas):
+        try:
+            ckey = str(canvas)
+            base_map = self._zoom_base_canvas_fonts.setdefault(ckey, {})
+            for item in canvas.find_all():
+                try:
+                    if canvas.type(item) != 'text':
+                        continue
+                    try:
+                        bbox = canvas.bbox(item)
+                        if bbox and bbox[1] < 126:
+                            continue
+                    except Exception:
+                        pass
+                    if item not in base_map:
+                        base_map[item] = self._font_actual_tuple(canvas, canvas.itemcget(item, 'font'))
+                    canvas.itemconfigure(item, font=self._scaled_font_from_base(base_map[item]))
+                except Exception:
+                    pass
+        except Exception:
+            pass
+
+    def apply_global_text_zoom(self):
+        try:
+            self.prepare_scope_zoom()
+            self._apply_zoom_to_widget_tree(self.root)
+            for win in list(self.root.winfo_children()):
+                try:
+                    if isinstance(win, tk.Toplevel) and win.winfo_exists():
+                        self._apply_zoom_to_widget_tree(win)
+                except Exception:
+                    pass
+        except Exception:
+            pass
     def clear_content(self):
         self.clear_unsaved_changes_provider()
         self.active_scroll_canvas = None
@@ -1534,10 +1795,15 @@ class FiBuMateApp:
         self.image_refs.clear()
 
     def render_page(self):
+        self.prepare_scope_zoom()
         self.clear_content()
         self.draw_background()
         if self.current_page == "launch":
             self.render_launch()
+            try:
+                self.root.after_idle(self.apply_global_text_zoom)
+            except Exception:
+                pass
             return
         self.draw_header(self.current_title)
         self.draw_controls()
@@ -1560,6 +1826,10 @@ class FiBuMateApp:
         if self.focusable_tiles:
             self.focus_index = 0
             self.focusable_tiles[0].focus_set()
+        try:
+            self.root.after_idle(self.apply_global_text_zoom)
+        except Exception:
+            pass
 
     def on_resize(self, *_):
         self.root.after(30, self.render_page)
@@ -1618,11 +1888,11 @@ class FiBuMateApp:
         w = self.canvas.winfo_width(); x1, x2 = max(w * 0.68, w - 620), w - 8
         self.draw_gradient_line(x1, x2, 42); self.draw_gradient_line(x1, x2, 68)
         self.canvas.create_text(x1 + 18, 55, text="★", font=("Segoe UI", 16, "bold"), fill=GOLD, anchor="w")
-        self.canvas.create_text(x1 + 48, 55, text="Favoriten", font=("Segoe UI", 10, "bold"), fill=TEXT, anchor="w")
+        self.canvas.create_text(x1 + 48, 55, text="Favoriten", font=body_font(10, "bold"), fill=TEXT, anchor="w")
         x = x1 + 135; chip_color = self.current_tile_color() or BLUE
         for fav in sorted(f for f in self.favorites if f in TOOL_REGISTRY):
             label = TOOL_REGISTRY.get(fav, {}).get("favorite_label", fav)
-            chip = tk.Label(self.root, text=label, bg=chip_color, fg="white", font=("Segoe UI", 9), padx=8, pady=2, cursor="hand2")
+            chip = tk.Label(self.root, text=label, bg=chip_color, fg="white", font=body_font(10), padx=8, pady=2, cursor="hand2"); chip._zoom_exclude = True
             chip.bind("<Button-1>", lambda e, fid=fav: self.execute_favorite(fid))
             self.widget_items.append(chip); self.canvas.create_window(x, 55, window=chip, anchor="w"); x += 120
 
@@ -1659,10 +1929,10 @@ class FiBuMateApp:
     def draw_suggestion_control(self):
         if self.current_page == "launch":
             return
-        btn = tk.Canvas(self.root, width=MINI_WIDGET_W, height=MINI_WIDGET_H, bg=HEADER, highlightthickness=0, bd=0, cursor="hand2")
+        btn = tk.Canvas(self.root, width=MINI_WIDGET_W, height=MINI_WIDGET_H, bg=HEADER, highlightthickness=0, bd=0, cursor="hand2"); btn._zoom_exclude = True
         btn.create_rectangle(1, 1, MINI_WIDGET_W - 1, MINI_WIDGET_H - 1, fill=HEADER, outline=BLUE, width=1)
         self.draw_mini_bulb_icon(btn, 18, 14)
-        btn.create_text((MINI_WIDGET_W / 2) + 10, MINI_WIDGET_H / 2, text="Änderung vorschlagen", fill=TEXT, font=("Segoe UI", 8, "bold"), anchor="center")
+        btn.create_text((MINI_WIDGET_W / 2) + 10, MINI_WIDGET_H / 2, text="Änderung vorschlagen", fill=TEXT, font=body_font(10, "bold"), anchor="center")
         btn.bind("<Button-1>", lambda _e: self.open_suggestion_mail())
         btn.bind("<Enter>", lambda _e: self.show_small_tooltip(btn, "Änderung vorschlagen"))
         btn.bind("<Leave>", lambda _e: self.hide_small_tooltip())
@@ -1715,7 +1985,7 @@ class FiBuMateApp:
     def draw_help_control(self):
         if self.current_page == "launch":
             return
-        btn = tk.Canvas(self.root, width=MINI_WIDGET_W, height=MINI_WIDGET_H, bg=HEADER, highlightthickness=0, bd=0, cursor="hand2")
+        btn = tk.Canvas(self.root, width=MINI_WIDGET_W, height=MINI_WIDGET_H, bg=HEADER, highlightthickness=0, bd=0, cursor="hand2"); btn._zoom_exclude = True
         btn.create_rectangle(1, 1, MINI_WIDGET_W - 1, MINI_WIDGET_H - 1, fill=HEADER, outline=BLUE, width=1)
         self.draw_mini_help_icon(btn, 25, MINI_WIDGET_H / 2)
         btn.create_text(MINI_WIDGET_W / 2, MINI_WIDGET_H / 2, text="Hilfe", fill=TEXT, font=("Segoe UI", max(16, ui_s(16)), "bold"), anchor="center")
@@ -2325,6 +2595,22 @@ class FiBuMateApp:
             pass
         self.root.mainloop()
 
+
+    def ensure_version_434_once(self):
+        """v0.434: Bereichsbezogener Zoom und Lesbarkeitspaket 1A."""
+        try:
+            self.bump_version_once(
+                "2026-05-29_v0434_scope_zoom_readability_paket1a",
+                [
+                    "v0.434 Paket 1A: Zoom-Architektur von global auf bereichsbezogen umgestellt.",
+                    "v0.434 Paket 1A: Zoomprofile werden pro Benutzer, Bildschirmgröße und Bereich/Modul gespeichert.",
+                    "v0.434 Paket 1A: Kopf- und Fußleiste sind vom Strg+Mausrad-Zoom ausgenommen; Content, Module, Popups und Canvas-Inhalte können bereichsbezogen zoomen.",
+                    "v0.434 Paket 1A: Kachel-Hover erhält den aktiven Menü-Zoom und setzt skalierte Kacheltexte nicht mehr zurück.",
+                    "v0.434 Paket 1A: Steuermeldungs- und Audit-Cockpit erhalten größere Standard-Tabellen-/Dialogschriften.",
+                ],
+            )
+        except Exception:
+            pass
 
 if __name__ == "__main__":
     FiBuMateApp().run()

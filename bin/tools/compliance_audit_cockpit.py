@@ -6,6 +6,16 @@ try:
 except Exception:
     import compliance_common as cc
 
+def zfont(app, size=12, weight=None):
+    """v0.434: Scharfe, direkte Modulschrift mit Bereichszoom."""
+    try:
+        scale = float(getattr(app, "current_scope_zoom", 1.0) or 1.0)
+        final = max(9, int(round(float(size) * 1.22 * scale)))
+    except Exception:
+        final = int(size)
+    return ("Segoe UI", final, weight) if weight else ("Segoe UI", final)
+
+
 class AuditCockpitUI:
     def __init__(self, app):
         self.app=app; self.root=app.root; self.canvas=app.canvas
@@ -43,14 +53,14 @@ class AuditCockpitUI:
         top=tk.Frame(self.frame,bg=cc.BG); top.pack(fill="x",padx=24,pady=12)
         for title,val,col in [("Ereignisse",len(entries),cc.BLUE),("Kritisch",critical,cc.RED),("Benutzer",len(set(e.get('user_key') for e in entries)),cc.ORANGE),("Module",len(set(e.get('module') for e in entries)),cc.DARK_GREEN)]:
             card=tk.Frame(top,bg=col,width=150,height=60); card.pack(side="left",padx=6); card.pack_propagate(False)
-            tk.Label(card,text=str(val),bg=col,fg="white",font=("Segoe UI",17,"bold")).pack(); tk.Label(card,text=title,bg=col,fg="white",font=("Segoe UI",9,"bold")).pack()
+            tk.Label(card,text=str(val),bg=col,fg="white",font=zfont(self.app, 17, "bold")).pack(); tk.Label(card,text=title,bg=col,fg="white",font=zfont(self.app, 11, "bold")).pack()
         btns=tk.Frame(top,bg=cc.BG); btns.pack(side="right")
         if cc.can_admin(self.app):
             tk.Button(btns,text="Archivieren",command=self.archive_visible,bg=cc.BLUE,fg="white",bd=0,padx=12,pady=6).pack(side="left",padx=4)
             tk.Button(btns,text="PDF-Bericht",command=self.export_pdf,bg=cc.WHITE,fg=cc.BLUE,bd=1,padx=12,pady=6).pack(side="left",padx=4)
         filt=tk.Frame(self.frame,bg=cc.BG); filt.pack(fill="x",padx=24,pady=(0,8))
-        tk.Label(filt,text="Suche",bg=cc.BG,fg=cc.TEXT,font=("Segoe UI",10,"bold")).pack(side="left")
-        tk.Entry(filt,textvariable=self.filter_text,width=32,bg=cc.WHITE).pack(side="left",padx=6)
+        tk.Label(filt,text="Suche",bg=cc.BG,fg=cc.TEXT,font=zfont(self.app, 12, "bold")).pack(side="left")
+        tk.Entry(filt,textvariable=self.filter_text,width=32,bg=cc.WHITE,font=zfont(self.app, 12)).pack(side="left",padx=6)
         ttk.Combobox(filt,textvariable=self.risk,values=["Alle","Info","Niedrig","Mittel","Hoch","Kritisch"],state="readonly",width=12).pack(side="left",padx=6)
         ttk.Combobox(filt,textvariable=self.event,values=["Alle"]+cc.EVENT_ORDER,state="readonly",width=28).pack(side="left",padx=6)
         tk.Button(filt,text="Filter anwenden",command=self.render,bg=cc.BLUE,fg="white",bd=0,padx=10).pack(side="left",padx=6)
@@ -59,15 +69,15 @@ class AuditCockpitUI:
         def upd(e=None): canvas.itemconfigure(win,width=max(1,canvas.winfo_width())); canvas.configure(scrollregion=canvas.bbox("all"))
         table.bind("<Configure>",upd); canvas.bind("<Configure>",upd); canvas.configure(yscrollcommand=sb.set); canvas.pack(side="left",fill="both",expand=True); sb.pack(side="right",fill="y")
         headers=["Zeitpunkt","Ereignis","Modul","Risiko","Zeitraum","Benutzer","Details"]
-        for c,h in enumerate(headers): tk.Label(table,text=h,bg=cc.HEADER,fg=cc.TEXT,font=("Segoe UI",10,"bold"),padx=6,pady=6).grid(row=0,column=c,sticky="nsew",padx=1,pady=1)
+        for c,h in enumerate(headers): tk.Label(table,text=h,bg=cc.HEADER,fg=cc.TEXT,font=zfont(self.app, 12, "bold"),padx=6,pady=6).grid(row=0,column=c,sticky="nsew",padx=1,pady=1)
         for r,e in enumerate(entries,1):
             vals=[self.format_ts(e.get("timestamp","")),e.get("event_type",""),e.get("module",""),e.get("risk",""),self.format_period(e.get("period","")),e.get("user_name","")]
-            for c,v in enumerate(vals): tk.Label(table,text=v,bg=cc.WHITE,fg=cc.TEXT,padx=6,pady=5,anchor="w",wraplength=220).grid(row=r,column=c,sticky="nsew",padx=1,pady=1)
-            tk.Button(table,text="öffnen",command=lambda ee=e: self.show_details(ee),bg=cc.WHITE,fg=cc.BLUE,bd=1,padx=6,pady=5).grid(row=r,column=6,sticky="nsew",padx=1,pady=1)
+            for c,v in enumerate(vals): tk.Label(table,text=v,bg=cc.WHITE,fg=cc.TEXT,font=zfont(self.app, 12),padx=6,pady=5,anchor="w",wraplength=220).grid(row=r,column=c,sticky="nsew",padx=1,pady=1)
+            tk.Button(table,text="öffnen",font=zfont(self.app, 12, "bold"),command=lambda ee=e: self.show_details(ee),bg=cc.WHITE,fg=cc.BLUE,bd=1,padx=6,pady=5).grid(row=r,column=6,sticky="nsew",padx=1,pady=1)
         self.app.active_scroll_canvas=canvas
     def show_details(self, entry):
         win=tk.Toplevel(self.root); win.title("Audit-Details"); win.geometry("760x520"); win.configure(bg=cc.BG); win.transient(self.root)
-        txt=tk.Text(win,wrap="word",bg=cc.WHITE,fg=cc.TEXT,font=("Segoe UI",10),padx=12,pady=12); txt.pack(fill="both",expand=True,padx=14,pady=14)
+        txt=tk.Text(win,wrap="word",bg=cc.WHITE,fg=cc.TEXT,font=zfont(self.app, 12),padx=12,pady=12); txt.pack(fill="both",expand=True,padx=14,pady=14)
         txt.insert("1.0", cc.audit_entry_long_text(entry)); txt.configure(state="disabled")
         tk.Button(win,text="Schließen",command=win.destroy,bg=cc.BLUE,fg="white",bd=0,padx=14,pady=7).pack(anchor="e",padx=14,pady=(0,14))
     def archive_visible(self):

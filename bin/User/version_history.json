@@ -1,6 +1,17 @@
 {
   "entries": [
     {
+      "version": "v0.434",
+      "date": "260531",
+      "bullets": [
+        "v0.434 Paket 1A: Zoom-Architektur von global auf bereichsbezogen umgestellt.",
+        "v0.434 Paket 1A: Zoomprofile werden pro Benutzer, Bildschirmgröße und Bereich/Modul gespeichert.",
+        "v0.434 Paket 1A: Kopf- und Fußleiste sind vom Strg+Mausrad-Zoom ausgenommen; Content, Module, Popups und Canvas-Inhalte können bereichsbezogen zoomen.",
+        "v0.434 Paket 1A: Kachel-Hover erhält den aktiven Menü-Zoom und setzt skalierte Kacheltexte nicht mehr zurück.",
+        "v0.434 Paket 1A: Steuermeldungs- und Audit-Cockpit erhalten größere Standard-Tabellen-/Dialogschriften."
+      ]
+    },
+    {
       "version": "v0.433",
       "date": "260531",
       "bullets": [

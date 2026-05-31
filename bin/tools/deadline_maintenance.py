@@ -10,6 +10,40 @@ try:
 except Exception:
     import compliance_common as cc
 
+# v0.434 Paket 1B: direkte, scharfe Modulschrift für Abschluss-/Stichtagsmodule.
+# Der Bereichszoom aus Fibu_mate.py wird berücksichtigt, ohne Kopf-/Fußleisten nachzuskalieren.
+def zfont(app, size=12, weight=None, underline=False, scale=1.0):
+    try:
+        scope_zoom = float(getattr(app, "current_scope_zoom", 1.0) or 1.0)
+        final = max(9, int(round(float(size) * 1.28 * scope_zoom * float(scale))))
+    except Exception:
+        final = int(size)
+    styles = []
+    if weight:
+        styles.append(weight)
+    if underline:
+        styles.append("underline")
+    return tuple(["Segoe UI", final] + styles)
+
+
+def apply_readable_fonts(widget, app, base_size=12):
+    """Setzt direkte Tk-Fonts für neu erzeugte Modulwidgets nach."""
+    try:
+        try:
+            cls = widget.winfo_class().lower()
+        except Exception:
+            cls = ""
+        if cls in ("label", "button", "entry", "text", "listbox", "checkbutton", "radiobutton", "menubutton"):
+            try:
+                current = str(widget.cget("font") or "")
+                widget.configure(font=zfont(app, base_size, "bold" if "bold" in current.lower() else None))
+            except Exception:
+                pass
+        for child in widget.winfo_children():
+            apply_readable_fonts(child, app, base_size)
+    except Exception:
+        pass
+
 MODULE_TITLE = "Stichtags- & Zuständigkeitspflege"
 
 # ---- Feiertage BW + Ranges ----
@@ -326,12 +360,12 @@ class DeadlineMaintenanceUI:
 
         if not self.can_open():
             tk.Label(self.frame, text="Keine Berechtigung: Dieses Modul ist nur für E3/E4 freigeschaltet.",
-                     bg=cc.BG, fg=cc.TEXT, font=("Segoe UI", 12, "bold")).pack(anchor="w", padx=24, pady=24)
+                     bg=cc.BG, fg=cc.TEXT, font=zfont(self.app, 14, "bold")).pack(anchor="w", padx=24, pady=24)
             return
 
         top = tk.Frame(self.frame, bg=cc.BG)
         top.pack(fill="x", padx=24, pady=(14, 8))
-        tk.Label(top, text=MODULE_TITLE, bg=cc.BG, fg=cc.TEXT, font=("Segoe UI", 18, "bold")).pack(side="left")
+        tk.Label(top, text=MODULE_TITLE, bg=cc.BG, fg=cc.TEXT, font=zfont(self.app, 20, "bold")).pack(side="left")
 
         allowed_years = allowed_fiscal_year_starts()
         year_labels = {fiscal_year_label(y): y for y in allowed_years}
@@ -387,7 +421,7 @@ class DeadlineMaintenanceUI:
 
         headers = ["Zeitraum", "Dekadenabschluss (TT.MM.JJJJ)", "Bericht ab 18 Uhr (Datum)", "Kontenabstimmung / Berichtsprüfung ab 8:00 (Datum)", "Abschluss lfd. Buchungsmonat (Datum)"]
         for c, h in enumerate(headers):
-            tk.Label(inner, text=h, bg=cc.HEADER, fg=cc.TEXT, font=("Segoe UI", 9, "bold"), padx=6, pady=6).grid(row=0, column=c, sticky="nsew", padx=1, pady=1)
+            tk.Label(inner, text=h, bg=cc.HEADER, fg=cc.TEXT, font=zfont(self.app, 11, "bold"), padx=6, pady=6).grid(row=0, column=c, sticky="nsew", padx=1, pady=1)
 
         self._row_vars = getattr(self, '_row_vars', {})
         self._row_vars[kind] = {}

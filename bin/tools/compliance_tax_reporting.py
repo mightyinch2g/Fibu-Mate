@@ -8,6 +8,16 @@ try:
 except Exception:
     import compliance_common as cc
 
+def zfont(app, size=12, weight=None):
+    """v0.434: Scharfe, direkte Modulschrift mit Bereichszoom."""
+    try:
+        scale = float(getattr(app, "current_scope_zoom", 1.0) or 1.0)
+        final = max(9, int(round(float(size) * 1.22 * scale)))
+    except Exception:
+        final = int(size)
+    return ("Segoe UI", final, weight) if weight else ("Segoe UI", final)
+
+
 STATUS_VALUES = ["Offen", "Zur Prüfung", "Freigegeben", "Gemeldet", "Nicht relevant"]
 
 class TaxReportingUI:
@@ -68,7 +78,7 @@ class TaxReportingUI:
         top = tk.Frame(self.frame, bg=cc.BG)
         top.pack(fill="x", padx=24, pady=(12, 6))
         tk.Button(top, text="◀", command=lambda: self.switch(-1), bg=cc.WHITE, fg=cc.BLUE, bd=1, width=4).pack(side="left")
-        tk.Label(top, text=cc.period_label(self.period), bg=cc.BG, fg=cc.TEXT, font=("Segoe UI", 16, "bold"), padx=16).pack(side="left")
+        tk.Label(top, text=cc.period_label(self.period), bg=cc.BG, fg=cc.TEXT, font=zfont(self.app, 16, "bold"), padx=16).pack(side="left")
         tk.Button(top, text="▶", command=lambda: self.switch(1), bg=cc.WHITE, fg=cc.BLUE, bd=1, width=4).pack(side="left")
 
         if cc.can_admin(self.app):
@@ -95,7 +105,7 @@ class TaxReportingUI:
 
         headers = ["Meldung", "Status", "Fällig", "Zuständig", "Freigabepflicht", "Prüfung", "Meldedatum", "Freigabe", "Nachweise", "Kommentar", "Aktion"]
         for c, h in enumerate(headers):
-            tk.Label(table, text=h, bg=cc.HEADER, fg=cc.TEXT, font=("Segoe UI", 10, "bold"), padx=6, pady=6).grid(row=0, column=c, sticky="nsew", padx=1, pady=1)
+            tk.Label(table, text=h, bg=cc.HEADER, fg=cc.TEXT, font=zfont(self.app, 12, "bold"), padx=6, pady=6).grid(row=0, column=c, sticky="nsew", padx=1, pady=1)
 
         for i, r in enumerate(self.reports(), start=1):
             approval = bool(r.get("approval_required", True))
@@ -117,9 +127,9 @@ class TaxReportingUI:
                 str(len(r.get("comments", []))),
             ]
             for c, v in enumerate(vals):
-                tk.Label(table, text=v, bg=cc.WHITE, fg=cc.TEXT, padx=6, pady=5, anchor="w", wraplength=180).grid(row=i, column=c, sticky="nsew", padx=1, pady=1)
+                tk.Label(table, text=v, bg=cc.WHITE, fg=cc.TEXT, font=zfont(self.app, 12), padx=6, pady=5, anchor="w", wraplength=180).grid(row=i, column=c, sticky="nsew", padx=1, pady=1)
 
-            tk.Button(table, text="Öffnen", command=lambda rr=r: self.detail(rr), bg=cc.BLUE, fg="white", bd=0).grid(row=i, column=10, sticky="nsew", padx=1, pady=1)
+            tk.Button(table, text="Öffnen", font=zfont(self.app, 12, "bold"), command=lambda rr=r: self.detail(rr), bg=cc.BLUE, fg="white", bd=0).grid(row=i, column=10, sticky="nsew", padx=1, pady=1)
 
         self.app.active_scroll_canvas = canvas
 
@@ -157,15 +167,15 @@ class TaxReportingUI:
         ]
 
         for i, (lab, var, kind) in enumerate(rows):
-            tk.Label(form, text=lab, bg=cc.BG, fg=cc.TEXT, font=("Segoe UI", 10, "bold")).grid(row=i, column=0, sticky="w", pady=5)
+            tk.Label(form, text=lab, bg=cc.BG, fg=cc.TEXT, font=zfont(self.app, 12, "bold")).grid(row=i, column=0, sticky="w", pady=5)
             if kind == "combo":
                 ttk.Combobox(form, textvariable=var, values=STATUS_VALUES, state="readonly", width=28).grid(row=i, column=1, sticky="w", pady=5)
             else:
-                tk.Entry(form, textvariable=var, width=55, bg=cc.WHITE).grid(row=i, column=1, sticky="we", pady=5)
+                tk.Entry(form, textvariable=var, width=55, bg=cc.WHITE, font=zfont(self.app, 12)).grid(row=i, column=1, sticky="we", pady=5)
 
         # Nachweise
-        tk.Label(form, text="Nachweise", bg=cc.BG, fg=cc.TEXT, font=("Segoe UI", 11, "bold")).grid(row=8, column=0, sticky="w", pady=(16, 4))
-        attach_box = tk.Listbox(form, height=5, width=86)
+        tk.Label(form, text="Nachweise", bg=cc.BG, fg=cc.TEXT, font=zfont(self.app, 13, "bold")).grid(row=8, column=0, sticky="w", pady=(16, 4))
+        attach_box = tk.Listbox(form, height=5, width=86, font=zfont(self.app, 12))
         attach_box.grid(row=9, column=0, columnspan=3, sticky="we")
 
         def refresh_attach():
@@ -249,13 +259,13 @@ class TaxReportingUI:
         rows = []
         headers = ["ID", "Titel", "Aktiv", "Nachweis Pflicht", "Freigabe Pflicht", "4-Augen", "Owner-Key", "Prüfer-Key", "Kalender-Sync"]
         for c, h in enumerate(headers):
-            tk.Label(frame, text=h, bg=cc.HEADER, fg=cc.TEXT, font=("Segoe UI", 9, "bold")).grid(row=0, column=c, padx=1, pady=1, sticky="nsew")
+            tk.Label(frame, text=h, bg=cc.HEADER, fg=cc.TEXT, font=zfont(self.app, 11, "bold")).grid(row=0, column=c, padx=1, pady=1, sticky="nsew")
 
         for i, rt in enumerate(cfg.get("report_types", []), start=1):
             vars_ = [tk.StringVar(value=str(rt.get(k, ""))) for k in ["id", "title", "active", "evidence_required", "approval_required", "four_eye", "owner_user_key", "reviewer_user_key", "sync_with_calendar"]]
             rows.append((rt, vars_))
             for c, var in enumerate(vars_):
-                tk.Entry(frame, textvariable=var, width=14, bg=cc.WHITE).grid(row=i, column=c, padx=1, pady=1)
+                tk.Entry(frame, textvariable=var, width=14, bg=cc.WHITE, font=zfont(self.app, 12)).grid(row=i, column=c, padx=1, pady=1)
 
         def save_cfg():
             for rt, vars_ in rows:

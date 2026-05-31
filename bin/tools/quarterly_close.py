@@ -19,6 +19,40 @@ except Exception:
         import compliance_common as cc
     except Exception:
         cc = None
+
+# v0.434 Paket 1B: direkte, scharfe Modulschrift für Abschluss-/Stichtagsmodule.
+# Der Bereichszoom aus Fibu_mate.py wird berücksichtigt, ohne Kopf-/Fußleisten nachzuskalieren.
+def zfont(app, size=12, weight=None, underline=False, scale=1.0):
+    try:
+        scope_zoom = float(getattr(app, "current_scope_zoom", 1.0) or 1.0)
+        final = max(9, int(round(float(size) * 1.28 * scope_zoom * float(scale))))
+    except Exception:
+        final = int(size)
+    styles = []
+    if weight:
+        styles.append(weight)
+    if underline:
+        styles.append("underline")
+    return tuple(["Segoe UI", final] + styles)
+
+
+def apply_readable_fonts(widget, app, base_size=12):
+    """Setzt direkte Tk-Fonts für neu erzeugte Modulwidgets nach."""
+    try:
+        try:
+            cls = widget.winfo_class().lower()
+        except Exception:
+            cls = ""
+        if cls in ("label", "button", "entry", "text", "listbox", "checkbutton", "radiobutton", "menubutton"):
+            try:
+                current = str(widget.cget("font") or "")
+                widget.configure(font=zfont(app, base_size, "bold" if "bold" in current.lower() else None))
+            except Exception:
+                pass
+        for child in widget.winfo_children():
+            apply_readable_fonts(child, app, base_size)
+    except Exception:
+        pass
 STATUS_OPEN = "Offen"
 STATUS_IN_PROGRESS = "In Bearbeitung"
 STATUS_DONE = "Erledigt"
@@ -600,6 +634,7 @@ class QuarterlyCloseUI:
         self.canvas.create_window(0, 132, window=self.frame, anchor="nw", width=self.canvas.winfo_width(), height=max(400, self.canvas.winfo_height() - 172))
         self.ensure_task_ids()
         self.render_dashboard()
+        apply_readable_fonts(self.frame, self.app, 12)
 
     def handle_escape(self):
         if self.selected_team:
@@ -787,7 +822,7 @@ class QuarterlyCloseUI:
     def ask_reopen_reason(self):
         result = {"reason": None}
         win = tk.Toplevel(self.root); win.title("Zeitraum öffnen"); win.configure(bg=COLORS["bg"]); win.geometry("560x300"); win.transient(self.root); win.grab_set()
-        tk.Label(win, text="Begründung der Wiederöffnung", bg=COLORS["bg"], fg=COLORS["text"], font=("Segoe UI", 13, "bold")).pack(anchor="w", padx=14, pady=(14,6))
+        tk.Label(win, text="Begründung der Wiederöffnung", bg=COLORS["bg"], fg=COLORS["text"], font=zfont(self.app, 15, "bold")).pack(anchor="w", padx=14, pady=(14,6))
         tk.Label(win, text="Bitte gib eine Begründung ein. Ohne Begründung kann der Zeitraum nicht wieder geöffnet werden.", bg=COLORS["bg"], fg=COLORS["text2"], wraplength=520, justify="left").pack(anchor="w", padx=14, pady=(0,8))
         txt = tk.Text(win, height=7, bg="white", fg=COLORS["text"], relief="solid", bd=1); txt.pack(fill="both", expand=True, padx=14, pady=(0,10))
         def ok():
@@ -830,7 +865,7 @@ class QuarterlyCloseUI:
     def show_change_log(self):
         self.ensure_close_metadata()
         win=tk.Toplevel(self.root); win.title("Änderungsprotokoll"); win.configure(bg=COLORS["bg"]); win.geometry("1050x620")
-        txt=tk.Text(win,bg="white",fg=COLORS["text"],wrap="word",font=("Segoe UI",10)); txt.pack(fill="both",expand=True,padx=12,pady=12)
+        txt=tk.Text(win,bg="white",fg=COLORS["text"],wrap="word",font=zfont(self.app, 12)); txt.pack(fill="both",expand=True,padx=12,pady=12)
         txt.insert("end", f"Änderungsprotokoll {period_label(self.period)}\n\n")
         txt.insert("end", "Abschluss-/Wiederöffnungsprotokoll:\n")
         for e in self.data.get("close_events", []):
@@ -880,7 +915,7 @@ class QuarterlyCloseUI:
             if not self.require_unlocked("Aufgabenübernahme ist nicht möglich"): return
             win = tk.Toplevel(self.root); win.title("In Monatsabschluss übernehmen"); win.configure(bg=COLORS["bg"]); win.transient(self.root); win.grab_set(); win.geometry("540x250")
             default_period = self._target_period_from_current(); mode_var = tk.StringVar(value="all")
-            tk.Label(win, text="Aufgabe inklusive Unteraufgaben übernehmen", bg=COLORS["bg"], fg=COLORS["text"], font=("Segoe UI", 13, "bold")).pack(anchor="w", padx=16, pady=(16, 10))
+            tk.Label(win, text="Aufgabe inklusive Unteraufgaben übernehmen", bg=COLORS["bg"], fg=COLORS["text"], font=zfont(self.app, 15, "bold")).pack(anchor="w", padx=16, pady=(16, 10))
             tk.Radiobutton(win, text=f"In alle Monatsabschlusse ab {self._target_display(default_period)}", variable=mode_var, value="all", bg=COLORS["bg"], activebackground=COLORS["bg"]).pack(anchor="w", padx=18, pady=4)
             tk.Radiobutton(win, text=f"In Monatsabschluss {self._target_display(default_period)}", variable=mode_var, value="single", bg=COLORS["bg"], activebackground=COLORS["bg"]).pack(anchor="w", padx=18, pady=4)
             period_var = tk.StringVar(value=default_period); options = self._target_periods_from(default_period, True)
@@ -1078,8 +1113,8 @@ class QuarterlyCloseUI:
         win.title("Zuständigkeit ändern")
         win.configure(bg=COLORS["bg"])
         win.transient(self.root); win.grab_set(); win.geometry("500x205")
-        tk.Label(win, text="Zuständigkeit ändern", bg=COLORS["bg"], fg=COLORS["text"], font=("Segoe UI", 14, "bold")).pack(anchor="w", padx=16, pady=(16, 8))
-        tk.Label(win, text="Soll die Zuständigkeit nur für diesen Zeitraum oder permanent für alle Folgezeiträume geändert werden?", bg=COLORS["bg"], fg=COLORS["text2"], font=("Segoe UI", 10), wraplength=455, justify="left").pack(anchor="w", padx=16, pady=(0, 12))
+        tk.Label(win, text="Zuständigkeit ändern", bg=COLORS["bg"], fg=COLORS["text"], font=zfont(self.app, 16, "bold")).pack(anchor="w", padx=16, pady=(16, 8))
+        tk.Label(win, text="Soll die Zuständigkeit nur für diesen Zeitraum oder permanent für alle Folgezeiträume geändert werden?", bg=COLORS["bg"], fg=COLORS["text2"], font=zfont(self.app, 12), wraplength=455, justify="left").pack(anchor="w", padx=16, pady=(0, 12))
         frame = tk.Frame(win, bg=COLORS["bg"]); frame.pack(fill="x", padx=16)
         def choose(scope): result["scope"] = scope; win.destroy()
         tk.Button(frame, text="Nur dieser Zeitraum", command=lambda: choose("current"), bg=COLORS["blue"], fg="white", bd=0, padx=12, pady=7, cursor="hand2").pack(fill="x", pady=(0,6))
@@ -1398,11 +1433,11 @@ class QuarterlyCloseUI:
         win.transient(self.root)
         win.grab_set()
         win.geometry("520x245")
-        tk.Label(win, text="Aufgabe löschen", bg=COLORS["bg"], fg=COLORS["text"], font=("Segoe UI", 14, "bold")).pack(anchor="w", padx=16, pady=(16, 8))
+        tk.Label(win, text="Aufgabe löschen", bg=COLORS["bg"], fg=COLORS["text"], font=zfont(self.app, 16, "bold")).pack(anchor="w", padx=16, pady=(16, 8))
         msg = f"Welche Zeiträume sollen bereinigt werden?\n\n{task.get('title', '')}"
         if task.get("attachments"):
             msg += "\n\nHinweis: Anlagen-Dateien bleiben im Anlagenordner erhalten; nur die Referenz in der Aufgabe wird entfernt."
-        tk.Label(win, text=msg, bg=COLORS["bg"], fg=COLORS["text2"], font=("Segoe UI", 10), justify="left", wraplength=480).pack(anchor="w", padx=16, pady=(0, 14))
+        tk.Label(win, text=msg, bg=COLORS["bg"], fg=COLORS["text2"], font=zfont(self.app, 12), justify="left", wraplength=480).pack(anchor="w", padx=16, pady=(0, 14))
         buttons = tk.Frame(win, bg=COLORS["bg"])
         buttons.pack(fill="x", padx=16, pady=(0, 16))
         def choose(scope):
@@ -1437,7 +1472,7 @@ class QuarterlyCloseUI:
         c.create_rectangle(0, 0, width, height, fill="#D6DCE4", outline="#C2CAD5")
         fill_w = int(width * max(0, min(100, percent)) / 100)
         if fill_w: c.create_rectangle(0, 0, fill_w, height, fill=progress_color(percent), outline=progress_color(percent))
-        c.create_text(width / 2, height / 2, text=f"{percent}%", fill=COLORS["text"], font=("Segoe UI", 9, "bold"))
+        c.create_text(width / 2, height / 2, text=f"{percent}%", fill=COLORS["text"], font=zfont(self.app, 11, "bold"))
         return c
 
     def render_period_controls(self, parent):
@@ -1489,7 +1524,7 @@ class QuarterlyCloseUI:
             padx=5,
             pady=2,
             cursor="hand2",
-            font=("Segoe UI", 8, "bold"),
+            font=zfont(self.app, 10, "bold"),
         )
         if photo:
             btn.image = photo
@@ -1522,8 +1557,8 @@ class QuarterlyCloseUI:
         win.transient(self.root)
         win.grab_set()
         win.geometry("460x190")
-        tk.Label(win, text="Zuständigkeit delegieren", bg=COLORS["bg"], fg=COLORS["text"], font=("Segoe UI", 14, "bold")).pack(anchor="w", padx=16, pady=(16, 8))
-        tk.Label(win, text="Bitte neue Zuständigkeit wählen.", bg=COLORS["bg"], fg=COLORS["text2"], font=("Segoe UI", 10), wraplength=420, justify="left").pack(anchor="w", padx=16, pady=(0, 10))
+        tk.Label(win, text="Zuständigkeit delegieren", bg=COLORS["bg"], fg=COLORS["text"], font=zfont(self.app, 16, "bold")).pack(anchor="w", padx=16, pady=(16, 8))
+        tk.Label(win, text="Bitte neue Zuständigkeit wählen.", bg=COLORS["bg"], fg=COLORS["text2"], font=zfont(self.app, 12), wraplength=420, justify="left").pack(anchor="w", padx=16, pady=(0, 10))
         selected = tk.StringVar(value=current_label)
         menu = tk.OptionMenu(win, selected, *labels)
         menu.config(bg=COLORS["white"], fg=COLORS["text"], bd=1, highlightthickness=0)
@@ -1559,7 +1594,7 @@ class QuarterlyCloseUI:
         tk.Button(footer, text="Abbrechen", command=win.destroy, bg=COLORS["header"], fg=COLORS["text"], bd=0, padx=14, pady=7, cursor="hand2").pack(side="right", padx=(0, 8))
 
     def show_tooltip(self, widget, text):
-        self.hide_tooltip(); self.tooltip = tk.Toplevel(widget); self.tooltip.wm_overrideredirect(True); self.tooltip.geometry(f"+{widget.winfo_rootx() + 12}+{widget.winfo_rooty() + 34}"); tk.Label(self.tooltip, text=text, bg="#111827", fg="white", font=("Segoe UI", 9), padx=6, pady=3).pack()
+        self.hide_tooltip(); self.tooltip = tk.Toplevel(widget); self.tooltip.wm_overrideredirect(True); self.tooltip.geometry(f"+{widget.winfo_rootx() + 12}+{widget.winfo_rooty() + 34}"); tk.Label(self.tooltip, text=text, bg="#111827", fg="white", font=zfont(self.app, 11), padx=6, pady=3).pack()
 
     def hide_tooltip(self):
         if self.tooltip:
@@ -1574,7 +1609,7 @@ class QuarterlyCloseUI:
     def render_edit_tools(self, parent, team=None):
         if not (self.can_edit() and self.edit_mode): return
         row = tk.Frame(parent, bg=COLORS["edit_bg"], bd=1, relief="solid"); row.pack(fill="x", padx=24, pady=(0, 8))
-        tk.Label(row, text="Bearbeitungsmodus aktiv", bg=COLORS["edit_bg"], fg=COLORS["text"], font=("Segoe UI", 10, "bold")).pack(side="left", padx=10, pady=7)
+        tk.Label(row, text="Bearbeitungsmodus aktiv", bg=COLORS["edit_bg"], fg=COLORS["text"], font=zfont(self.app, 12, "bold")).pack(side="left", padx=10, pady=7)
         if team:
             tk.Button(row, text="+ Aufgabe hinzufügen", command=lambda: self.open_task_dialog(team), bg=COLORS["blue"], fg="white", bd=0, padx=12, pady=5).pack(side="left", padx=8)
             tk.Button(row, text="Aufgaben allen vorhandenen Perioden zuweisen", command=self.apply_current_tasks_to_all_periods, bg=COLORS["orange"], fg="white", bd=0, padx=12, pady=5).pack(side="left", padx=8)
@@ -1604,10 +1639,10 @@ class QuarterlyCloseUI:
         stats = calc_stats(self.tasks())
         top = tk.Frame(self.frame, bg=COLORS["white"], bd=1, relief="solid"); top.pack(fill="x", padx=24, pady=(8, 10))
         title_row = tk.Frame(top, bg=COLORS["white"]); title_row.pack(fill="x", padx=14, pady=(6, 2))
-        tk.Label(title_row, text=f"Quartalsabschluss {period_label(self.period)}", bg=COLORS["white"], fg=COLORS["text"], font=("Segoe UI", 22, "bold")).pack(side="left")
+        tk.Label(title_row, text=f"Quartalsabschluss {period_label(self.period)}", bg=COLORS["white"], fg=COLORS["text"], font=zfont(self.app, 24, "bold")).pack(side="left")
         cutoff_text = format_date_de(self.data.get("closing_cutoff_date")) or "nicht gepflegt"
-        tk.Label(title_row, text="Abschluss-Stichtag", bg=COLORS["white"], fg=COLORS["text2"], font=("Segoe UI", 10, "bold")).pack(side="left", padx=(24, 6))
-        tk.Label(title_row, text=cutoff_text, bg="#F8FAFC", fg=COLORS["text"], font=("Segoe UI", 10, "bold"), relief="solid", bd=1, padx=8, pady=3).pack(side="left")
+        tk.Label(title_row, text="Abschluss-Stichtag", bg=COLORS["white"], fg=COLORS["text2"], font=zfont(self.app, 12, "bold")).pack(side="left", padx=(24, 6))
+        tk.Label(title_row, text=cutoff_text, bg="#F8FAFC", fg=COLORS["text"], font=zfont(self.app, 12, "bold"), relief="solid", bd=1, padx=8, pady=3).pack(side="left")
         toggle_text = f"{period_label(self.period)} {'öffnen' if self.is_period_closed() else 'abschließen'}"
         enabled = self.can_toggle_period_close() and (self.is_period_closed() or self.is_after_cutoff())
         tooltip = "Abschluss erst nach Ablauf des Abschluss-Stichtags möglich" if self.can_toggle_period_close() and not self.is_period_closed() and not self.is_after_cutoff() else ""
@@ -1617,8 +1652,8 @@ class QuarterlyCloseUI:
         tk.Button(title_row, text="Änderungsprotokoll anzeigen", command=self.show_change_log, bg=COLORS["white"], fg=COLORS["text"], bd=1, padx=10, pady=4, cursor="hand2").pack(side="left", padx=(8,0))
         status_text = self.close_status_text()
         if status_text:
-            tk.Label(top, text=status_text, bg=COLORS["white"], fg=COLORS["orange"] if not self.is_period_closed() else COLORS["dark_green"], font=("Segoe UI", 10, "bold")).pack(anchor="w", padx=14, pady=(2,0))
-        tk.Label(top, text=f"Gesamt: {stats['done']} erledigt / {stats['in_progress']} in Bearbeitung / {stats['open']} offen / {stats['critical']} kritisch / {stats['overdue']} überfällig", bg=COLORS["white"], fg=COLORS["text2"], font=("Segoe UI", 11)).pack(anchor="w", padx=14)
+            tk.Label(top, text=status_text, bg=COLORS["white"], fg=COLORS["orange"] if not self.is_period_closed() else COLORS["dark_green"], font=zfont(self.app, 12, "bold")).pack(anchor="w", padx=14, pady=(2,0))
+        tk.Label(top, text=f"Gesamt: {stats['done']} erledigt / {stats['in_progress']} in Bearbeitung / {stats['open']} offen / {stats['critical']} kritisch / {stats['overdue']} überfällig", bg=COLORS["white"], fg=COLORS["text2"], font=zfont(self.app, 13)).pack(anchor="w", padx=14)
         holder = tk.Frame(top, bg=COLORS["white"]); holder.pack(anchor="w", padx=14, pady=(8, 10)); self.draw_progress(holder, stats["percent"], width=520, height=24, bg=COLORS["white"]).pack(side="left")
         self.render_warnings(self.frame)
         cards = tk.Frame(self.frame, bg=COLORS["bg"]); cards.pack(fill="both", expand=True, padx=24, pady=8)
@@ -1628,11 +1663,11 @@ class QuarterlyCloseUI:
         warnings = [t for t in self.tasks() if warning_level(t) in ("overdue", "today", "orange", "yellow") and t.get("status") != STATUS_DONE]
         box = tk.Frame(parent, bg="#FFF7ED" if warnings else "#ECFDF5", bd=1, relief="solid"); box.pack(fill="x", padx=24, pady=(0, 8))
         if warnings:
-            tk.Label(box, text=f"⚠ Fristwarnungen im ausgewählten Zeitraum: {len(warnings)} Aufgabe(n)", bg=box["bg"], fg=COLORS["red"], font=("Segoe UI", 12, "bold")).pack(anchor="w", padx=12, pady=(8, 3))
+            tk.Label(box, text=f"⚠ Fristwarnungen im ausgewählten Zeitraum: {len(warnings)} Aufgabe(n)", bg=box["bg"], fg=COLORS["red"], font=zfont(self.app, 14, "bold")).pack(anchor="w", padx=12, pady=(8, 3))
             for task in sorted(warnings, key=lambda t: t.get("due_date", ""))[:5]:
-                tk.Label(box, text=f"- {task['title']} | {task['team']} | fällig am {format_date_de(task.get('due_date'))} | {task.get('deadline_type')}", bg=box["bg"], fg=COLORS["text"], font=("Segoe UI", 10)).pack(anchor="w", padx=20, pady=1)
+                tk.Label(box, text=f"- {task['title']} | {task['team']} | fällig am {format_date_de(task.get('due_date'))} | {task.get('deadline_type')}", bg=box["bg"], fg=COLORS["text"], font=zfont(self.app, 12)).pack(anchor="w", padx=20, pady=1)
         else:
-            tk.Label(box, text="✓ Keine kritischen Fristen im aktuellen Zeitraum", bg=box["bg"], fg=COLORS["dark_green"], font=("Segoe UI", 11, "bold")).pack(anchor="w", padx=12, pady=8)
+            tk.Label(box, text="✓ Keine kritischen Fristen im aktuellen Zeitraum", bg=box["bg"], fg=COLORS["dark_green"], font=zfont(self.app, 13, "bold")).pack(anchor="w", padx=12, pady=8)
 
     def next_relevant_task(self, tasks):
         open_tasks = [t for t in tasks if t.get("status") != STATUS_DONE and t.get("deadline_type") != "keine"]
@@ -1653,7 +1688,7 @@ class QuarterlyCloseUI:
             edit_box = tk.Text(card, height=3, width=42, bg="#F8FAFC", fg=COLORS["text"], relief="solid", bd=1); edit_box.insert("1.0", "\n".join(names)); edit_box.pack(anchor="w", padx=18, pady=(0, 6))
             tk.Button(card, text="Namen speichern", command=lambda t=team, w=edit_box: self.save_team_members_from_widget(t, w), bg=COLORS["blue"], fg="white", bd=0, padx=8, pady=3).pack(anchor="w", padx=18, pady=(0, 10))
         elif names:
-            tk.Label(card, text=" • ".join(names), bg=COLORS["white"], fg=COLORS["text2"], font=("Segoe UI", 10), wraplength=430, justify="left").pack(anchor="w", padx=18, pady=(0, 12))
+            tk.Label(card, text=" • ".join(names), bg=COLORS["white"], fg=COLORS["text2"], font=zfont(self.app, 12), wraplength=430, justify="left").pack(anchor="w", padx=18, pady=(0, 12))
 
     def render_team_card(self, parent, team, idx):
         row, col = divmod(idx, 2); tasks = self.team_tasks(team); stats = calc_stats(tasks)
@@ -1661,19 +1696,19 @@ class QuarterlyCloseUI:
         border = COLORS["red"] if warn in ("overdue", "today") else COLORS["orange"] if warn == "orange" else COLORS["line"]
         card = tk.Frame(parent, bg=COLORS["white"], bd=2, relief="solid", highlightbackground=border, highlightcolor=border, highlightthickness=2); card.grid(row=row, column=col, padx=12, pady=12, sticky="nsew")
         parent.grid_columnconfigure(col, weight=1); parent.grid_rowconfigure(row, weight=1)
-        tk.Label(card, text=team, bg=COLORS["white"], fg=COLORS["text"], font=("Segoe UI", 17, "bold")).pack(anchor="w", padx=18, pady=(16, 4))
-        tk.Label(card, text=f"{stats['done']} / {stats['total']} erledigt | offen: {stats['open']} | in Bearbeitung: {stats['in_progress']} | kritisch: {stats['critical']}", bg=COLORS["white"], fg=COLORS["text2"], font=("Segoe UI", 11)).pack(anchor="w", padx=18)
+        tk.Label(card, text=team, bg=COLORS["white"], fg=COLORS["text"], font=zfont(self.app, 19, "bold")).pack(anchor="w", padx=18, pady=(16, 4))
+        tk.Label(card, text=f"{stats['done']} / {stats['total']} erledigt | offen: {stats['open']} | in Bearbeitung: {stats['in_progress']} | kritisch: {stats['critical']}", bg=COLORS["white"], fg=COLORS["text2"], font=zfont(self.app, 13)).pack(anchor="w", padx=18)
         holder = tk.Frame(card, bg=COLORS["white"]); holder.pack(anchor="w", padx=18, pady=(10, 8)); self.draw_progress(holder, stats["percent"], width=420, height=26, bg=COLORS["white"]).pack()
         nxt = self.next_relevant_task(tasks); txt = "Nächste Frist: keine relevanten offenen Fristen" if not nxt else f"Nächste Frist: {format_date_de(nxt.get('due_date'))} | {nxt.get('title')}"
-        tk.Label(card, text=txt, bg=COLORS["white"], fg=COLORS["red"] if nxt and warning_level(nxt) in ("overdue", "today", "orange") else COLORS["text2"], font=("Segoe UI", 10, "bold")).pack(anchor="w", padx=18, pady=(0, 5))
+        tk.Label(card, text=txt, bg=COLORS["white"], fg=COLORS["red"] if nxt and warning_level(nxt) in ("overdue", "today", "orange") else COLORS["text2"], font=zfont(self.app, 12, "bold")).pack(anchor="w", padx=18, pady=(0, 5))
         self.render_team_members_on_card(card, team); self.bind_click_recursive(card, lambda t=team: self.render_team_detail(t))
 
     def render_team_detail(self, team):
         self.selected_team = team; self.clear_frame(); self.render_period_controls(self.frame); self.render_edit_tools(self.frame, team=team); stats = calc_stats(self.team_tasks(team))
         head = tk.Frame(self.frame, bg=COLORS["white"], bd=1, relief="solid"); head.pack(fill="x", padx=24, pady=(8, 10))
         tk.Button(head, text="< Zur Übersicht", command=self.render_dashboard, bg=COLORS["blue"], fg="white", bd=0, padx=12, pady=6).pack(anchor="w", padx=12, pady=(10, 4))
-        tk.Label(head, text=f"{team} | Quartalsabschluss {period_label(self.period)}", bg=COLORS["white"], fg=COLORS["text"], font=("Segoe UI", 19, "bold")).pack(anchor="w", padx=12)
-        tk.Label(head, text=f"Fortschritt: {stats['done']} / {stats['total']} erledigt | {stats['percent']}%", bg=COLORS["white"], fg=COLORS["text2"], font=("Segoe UI", 11)).pack(anchor="w", padx=12)
+        tk.Label(head, text=f"{team} | Quartalsabschluss {period_label(self.period)}", bg=COLORS["white"], fg=COLORS["text"], font=zfont(self.app, 21, "bold")).pack(anchor="w", padx=12)
+        tk.Label(head, text=f"Fortschritt: {stats['done']} / {stats['total']} erledigt | {stats['percent']}%", bg=COLORS["white"], fg=COLORS["text2"], font=zfont(self.app, 13)).pack(anchor="w", padx=12)
         bar = tk.Frame(head, bg=COLORS["white"]); bar.pack(anchor="w", padx=12, pady=(6, 10)); self.draw_progress(bar, stats["percent"], width=480, height=22, bg=COLORS["white"]).pack()
         self.render_task_table(team)
 
@@ -1761,7 +1796,7 @@ class QuarterlyCloseUI:
         if photo:
             btn.image = photo
         btn.pack(side="left", padx=(0, 3))
-        tk.Label(inner, text=str(self.attachment_count(item)), bg=parent.cget("bg"), fg=COLORS["blue"], font=("Segoe UI", 10, "bold")).pack(side="left")
+        tk.Label(inner, text=str(self.attachment_count(item)), bg=parent.cget("bg"), fg=COLORS["blue"], font=zfont(self.app, 12, "bold")).pack(side="left")
         return frame
 
     def draw_documentation_icon(self, canvas, has_documentation):
@@ -1799,7 +1834,7 @@ class QuarterlyCloseUI:
         win.geometry("720x270")
         win.transient(self.root)
         win.grab_set()
-        tk.Label(win, text="Dokumentation", bg=COLORS["bg"], fg=COLORS["text"], font=("Segoe UI", 14, "bold")).pack(anchor="w", padx=16, pady=(14, 8))
+        tk.Label(win, text="Dokumentation", bg=COLORS["bg"], fg=COLORS["text"], font=zfont(self.app, 16, "bold")).pack(anchor="w", padx=16, pady=(14, 8))
         body = tk.Frame(win, bg=COLORS["white"], bd=1, relief="solid")
         body.pack(fill="both", expand=True, padx=16, pady=(0, 12))
         doc = item.get("documentation", {})
@@ -1810,7 +1845,7 @@ class QuarterlyCloseUI:
         row.pack(fill="x", padx=12, pady=(14, 6))
         open_button = tk.Button(row, text="Dokumentation öffnen", command=lambda: self.open_attachment(path_var.get()), bg=COLORS["blue"], fg="white", bd=0, padx=12, pady=6, state="normal" if path_var.get() else "disabled")
         open_button.pack(side="left")
-        tk.Label(row, textvariable=name_var, bg=COLORS["white"], fg=COLORS["text"], font=("Segoe UI", 10), anchor="w").pack(side="left", padx=(10, 6), fill="x", expand=True)
+        tk.Label(row, textvariable=name_var, bg=COLORS["white"], fg=COLORS["text"], font=zfont(self.app, 12), anchor="w").pack(side="left", padx=(10, 6), fill="x", expand=True)
 
         def refresh_after_change():
             if self.selected_team:
@@ -1846,10 +1881,10 @@ class QuarterlyCloseUI:
                 delete_btn.image = trash_photo
             delete_btn.pack(side="right", padx=(6, 0))
 
-        change = tk.Label(body, text="Dokumentationspfad ändern" if path_var.get() else "Dokumentation anhängen", bg=COLORS["white"], fg=COLORS["blue"], font=("Segoe UI", 10, "underline"), cursor="hand2")
+        change = tk.Label(body, text="Dokumentationspfad ändern" if path_var.get() else "Dokumentation anhängen", bg=COLORS["white"], fg=COLORS["blue"], font=zfont(self.app, 12, None, underline=True), cursor="hand2")
         change.pack(anchor="w", padx=12, pady=(4, 10))
         change.bind("<Button-1>", lambda _e: choose_documentation())
-        tk.Label(body, text="Hinweis: Die Dokumentation ist für Aufgabenbeschreibungen bzw. Leitfäden vorgesehen. Ergebnisse und Bearbeitungskommentare bitte unter Anlagen pflegen.", bg=COLORS["white"], fg=COLORS["text2"], font=("Segoe UI", 9), wraplength=660, justify="left").pack(anchor="w", padx=12, pady=(0, 10))
+        tk.Label(body, text="Hinweis: Die Dokumentation ist für Aufgabenbeschreibungen bzw. Leitfäden vorgesehen. Ergebnisse und Bearbeitungskommentare bitte unter Anlagen pflegen.", bg=COLORS["white"], fg=COLORS["text2"], font=zfont(self.app, 11), wraplength=660, justify="left").pack(anchor="w", padx=12, pady=(0, 10))
         tk.Button(win, text="Schließen", command=win.destroy, bg=COLORS["blue"], fg="white", bd=0, padx=14, pady=7).pack(anchor="e", padx=16, pady=(0, 14))
 
     def render_task_table(self, team):
@@ -1882,7 +1917,7 @@ class QuarterlyCloseUI:
         if self.edit_mode and self.can_edit():
             headers.append("Bearbeiten")
         for col, h in enumerate(headers):
-            tk.Label(table, text=h, bg=COLORS["header"], fg=COLORS["text"], font=("Segoe UI", 10, "bold"), padx=6, pady=6).grid(row=0, column=col, sticky="nsew")
+            tk.Label(table, text=h, bg=COLORS["header"], fg=COLORS["text"], font=zfont(self.app, 12, "bold"), padx=6, pady=6).grid(row=0, column=col, sticky="nsew")
         row_idx = 1
         for task in self.team_tasks(team):
             sync_parent_status_from_subtasks(task)
@@ -1903,7 +1938,7 @@ class QuarterlyCloseUI:
         bg = "#ECFDF5" if task.get("status") == STATUS_DONE else "#FFF7ED" if warning_level(task) in ("overdue", "today", "orange") else COLORS["white"]
         can_finish = not task.get("subtasks") or all_subtasks_done(task)
         can_complete = self.can_complete_task(task)
-        btn = tk.Button(table, text="✓" if task.get("status") == STATUS_DONE else "□", command=lambda t=task: self.toggle_done(t), bg="#BBF7D0" if task.get("status") == STATUS_DONE else bg, fg=COLORS["dark_green"] if task.get("status") == STATUS_DONE else COLORS["text"], bd=0, font=("Segoe UI", 13, "bold"), state="normal" if can_complete else "disabled")
+        btn = tk.Button(table, text="✓" if task.get("status") == STATUS_DONE else "□", command=lambda t=task: self.toggle_done(t), bg="#BBF7D0" if task.get("status") == STATUS_DONE else bg, fg=COLORS["dark_green"] if task.get("status") == STATUS_DONE else COLORS["text"], bd=0, font=zfont(self.app, 15, "bold"), state="normal" if can_complete else "disabled")
         btn.grid(row=row_idx, column=0, sticky="nsew", padx=1, pady=1)
         if not can_complete:
             btn.bind("<Enter>", lambda _e, b=btn: self.show_tooltip(b, "Nur zuständige Person darf erledigen.")); btn.bind("<Leave>", lambda _e: self.hide_tooltip())
@@ -1912,7 +1947,7 @@ class QuarterlyCloseUI:
 
         task_cell = tk.Frame(table, bg=bg)
         task_cell.grid(row=row_idx, column=1, sticky="nsew", padx=1, pady=1)
-        tk.Label(task_cell, text=f"{self.task_uid_display(task)}  {task.get("title")}", bg=bg, fg=COLORS["text"], font=("Segoe UI", 10), padx=6, pady=6, anchor="w", justify="left").pack(side="left", fill="x", expand=True)
+        tk.Label(task_cell, text=f"{self.task_uid_display(task)}  {task.get("title")}", bg=bg, fg=COLORS["text"], font=zfont(self.app, 12), padx=6, pady=6, anchor="w", justify="left").pack(side="left", fill="x", expand=True)
         visible_subtasks = sorted([s for s in task.get("subtasks", []) if not s.get("deleted")], key=lambda s: str(s.get("title", "")).casefold())
         tk.Button(task_cell, text="PDF", command=lambda t=task: self.create_task_id_report(t), bg=COLORS["white"], fg=COLORS["blue"], bd=1, padx=4, pady=2, cursor="hand2").pack(side="right", padx=(4, 4))
         if visible_subtasks:
@@ -1930,7 +1965,7 @@ class QuarterlyCloseUI:
 
         owner_cell = tk.Frame(table, bg=bg)
         owner_cell.grid(row=row_idx, column=3, sticky="nsew", padx=1, pady=1)
-        tk.Label(owner_cell, text=task.get("owner"), bg=bg, fg=COLORS["text"], font=("Segoe UI", 10), padx=6, pady=6, anchor="center", justify="center").pack(side="left", fill="x", expand=True)
+        tk.Label(owner_cell, text=task.get("owner"), bg=bg, fg=COLORS["text"], font=zfont(self.app, 12), padx=6, pady=6, anchor="center", justify="center").pack(side="left", fill="x", expand=True)
         if self.can_edit():
             self.create_delegate_button(owner_cell, task).pack(side="right", padx=(2, 5), pady=3)
 
@@ -1938,7 +1973,7 @@ class QuarterlyCloseUI:
         aligns = [("w", "left"), ("center", "center"), ("center", "center"), ("center", "center")]
         for offset, val in enumerate(values):
             anchor, justify = aligns[offset]
-            tk.Label(table, text=val, bg=bg, fg=COLORS["text"], font=("Segoe UI", 10), padx=6, pady=6, anchor=anchor, justify=justify).grid(row=row_idx, column=4 + offset, sticky="nsew", padx=1, pady=1)
+            tk.Label(table, text=val, bg=bg, fg=COLORS["text"], font=zfont(self.app, 12), padx=6, pady=6, anchor=anchor, justify=justify).grid(row=row_idx, column=4 + offset, sticky="nsew", padx=1, pady=1)
         self.create_attachment_button(table, task, lambda t=task: self.show_attachments(t)).grid(row=row_idx, column=8, sticky="nsew", padx=1, pady=1)
         status_var = tk.StringVar(value=task.get("status", STATUS_OPEN))
         menu = tk.OptionMenu(table, status_var, *STATUSES, command=lambda value, t=task: self.set_status(t, value))
@@ -1954,16 +1989,16 @@ class QuarterlyCloseUI:
             for sub in visible_subtasks:
                 self.normalize_documentation_fields(sub)
                 sub_bg = "#ECFDF5" if sub.get("status") == STATUS_DONE else COLORS["subtask_bg"]
-                tk.Button(table, text="✓" if sub.get("status") == STATUS_DONE else "□", command=lambda t=task, s=sub: self.toggle_subtask(t, s), bg="#BBF7D0" if sub.get("status") == STATUS_DONE else sub_bg, fg=COLORS["dark_green"] if sub.get("status") == STATUS_DONE else COLORS["text"], bd=0, font=("Segoe UI", 12, "bold"), state="normal" if can_complete else "disabled").grid(row=row_idx, column=0, sticky="nsew", padx=1, pady=1)
-                tk.Label(table, text="↳ " + sub.get("title", ""), bg=sub_bg, fg=COLORS["text"], font=("Segoe UI", 10), padx=18, pady=5, anchor="w").grid(row=row_idx, column=1, sticky="nsew", padx=1, pady=1)
+                tk.Button(table, text="✓" if sub.get("status") == STATUS_DONE else "□", command=lambda t=task, s=sub: self.toggle_subtask(t, s), bg="#BBF7D0" if sub.get("status") == STATUS_DONE else sub_bg, fg=COLORS["dark_green"] if sub.get("status") == STATUS_DONE else COLORS["text"], bd=0, font=zfont(self.app, 14, "bold"), state="normal" if can_complete else "disabled").grid(row=row_idx, column=0, sticky="nsew", padx=1, pady=1)
+                tk.Label(table, text="↳ " + sub.get("title", ""), bg=sub_bg, fg=COLORS["text"], font=zfont(self.app, 12), padx=18, pady=5, anchor="w").grid(row=row_idx, column=1, sticky="nsew", padx=1, pady=1)
                 sub_doc = tk.Frame(table, bg=sub_bg); sub_doc.grid(row=row_idx, column=2, sticky="nsew", padx=1, pady=1)
                 self.create_documentation_button(sub_doc, sub, sub.get("title", "Unteraufgabe"), parent_task=task).pack(padx=5, pady=2)
                 sub_owner = tk.Frame(table, bg=sub_bg); sub_owner.grid(row=row_idx, column=3, sticky="nsew", padx=1, pady=1)
-                tk.Label(sub_owner, text=sub.get("owner", task.get("owner", "")), bg=sub_bg, fg=COLORS["text"], font=("Segoe UI", 10), padx=6, pady=5, anchor="center", justify="center").pack(side="left", fill="x", expand=True)
+                tk.Label(sub_owner, text=sub.get("owner", task.get("owner", "")), bg=sub_bg, fg=COLORS["text"], font=zfont(self.app, 12), padx=6, pady=5, anchor="center", justify="center").pack(side="left", fill="x", expand=True)
                 if self.can_edit():
                     self.create_delegate_button(sub_owner, sub, parent_task=task).pack(side="right", padx=(2, 5), pady=3)
                 for col in (4, 5, 6, 7):
-                    tk.Label(table, text="", bg=sub_bg, fg=COLORS["text"], font=("Segoe UI", 10), padx=6, pady=5).grid(row=row_idx, column=col, sticky="nsew", padx=1, pady=1)
+                    tk.Label(table, text="", bg=sub_bg, fg=COLORS["text"], font=zfont(self.app, 12), padx=6, pady=5).grid(row=row_idx, column=col, sticky="nsew", padx=1, pady=1)
                 self.create_attachment_button(table, sub, lambda s=sub, t=task: self.show_attachments(s, parent_task=t)).grid(row=row_idx, column=8, sticky="nsew", padx=1, pady=1)
                 tk.Label(table, text="", bg=sub_bg).grid(row=row_idx, column=9, sticky="nsew", padx=1, pady=1)
                 if self.edit_mode and self.can_edit():
@@ -2044,15 +2079,15 @@ class QuarterlyCloseUI:
         uid_entry = tk.Entry(form, textvariable=uid_var, width=18, state="normal" if self.is_task_id_editor() else "readonly")
         widgets = [("Aufgaben-ID", uid_entry), ("Aufgabenname", tk.Entry(form, textvariable=title_var, width=52)), ("Zuständig", tk.OptionMenu(form, owner_var, *user_labels.keys())), ("Fristart", tk.OptionMenu(form, deadline_var, *DEADLINE_TYPES)), ("Priorität", tk.OptionMenu(form, priority_var, *PRIORITIES)), ("Fälligkeitsart", tk.OptionMenu(form, due_mode_var, *DUE_LABEL_TO_VALUE.keys()))]
         for row, (label, widget) in enumerate(widgets):
-            tk.Label(form, text=label, bg=COLORS["bg"], fg=COLORS["text"], font=("Segoe UI", 10, "bold")).grid(row=row, column=0, sticky="w", pady=7, padx=8); widget.grid(row=row, column=1, sticky="w", pady=7)
+            tk.Label(form, text=label, bg=COLORS["bg"], fg=COLORS["text"], font=zfont(self.app, 12, "bold")).grid(row=row, column=0, sticky="w", pady=7, padx=8); widget.grid(row=row, column=1, sticky="w", pady=7)
             try: widget.config(bg="white", fg=COLORS["text"], bd=1, highlightthickness=0)
             except Exception: pass
-        day_label = tk.Label(form, text="Tag-Nr.", bg=COLORS["bg"], fg=COLORS["text"], font=("Segoe UI", 10, "bold")); day_entry = tk.Entry(form, textvariable=due_day_var, width=8)
-        workday_label = tk.Label(form, text="Werktag-Nr.", bg=COLORS["bg"], fg=COLORS["text"], font=("Segoe UI", 10, "bold")); workday_entry = tk.Entry(form, textvariable=due_workday_var, width=8)
-        fixed_label = tk.Label(form, text="Konkretes Datum (TT.MM.JJJJ)", bg=COLORS["bg"], fg=COLORS["text"], font=("Segoe UI", 10, "bold")); fixed_entry = tk.Entry(form, textvariable=due_fixed_var, width=14)
+        day_label = tk.Label(form, text="Tag-Nr.", bg=COLORS["bg"], fg=COLORS["text"], font=zfont(self.app, 12, "bold")); day_entry = tk.Entry(form, textvariable=due_day_var, width=8)
+        workday_label = tk.Label(form, text="Werktag-Nr.", bg=COLORS["bg"], fg=COLORS["text"], font=zfont(self.app, 12, "bold")); workday_entry = tk.Entry(form, textvariable=due_workday_var, width=8)
+        fixed_label = tk.Label(form, text="Konkretes Datum (TT.MM.JJJJ)", bg=COLORS["bg"], fg=COLORS["text"], font=zfont(self.app, 12, "bold")); fixed_entry = tk.Entry(form, textvariable=due_fixed_var, width=14)
         for r, lab, ent in [(6, day_label, day_entry), (7, workday_label, workday_entry), (8, fixed_label, fixed_entry)]: lab.grid(row=r, column=0, sticky="w", pady=7, padx=8); ent.grid(row=r, column=1, sticky="w", pady=7); ent.config(bg="white", fg=COLORS["text"], relief="solid", bd=1, highlightthickness=0)
-        tk.Checkbutton(form, text="Wiederkehrend", variable=recurring_var, bg=COLORS["bg"], fg=COLORS["text"], font=("Segoe UI", 10, "bold"), activebackground=COLORS["bg"]).grid(row=9, column=1, sticky="w", pady=7)
-        tk.Label(form, textvariable=calculated_var, bg=COLORS["bg"], fg=COLORS["text2"], font=("Segoe UI", 10, "bold")).grid(row=10, column=1, sticky="w", pady=(4, 10))
+        tk.Checkbutton(form, text="Wiederkehrend", variable=recurring_var, bg=COLORS["bg"], fg=COLORS["text"], font=zfont(self.app, 12, "bold"), activebackground=COLORS["bg"]).grid(row=9, column=1, sticky="w", pady=7)
+        tk.Label(form, textvariable=calculated_var, bg=COLORS["bg"], fg=COLORS["text2"], font=zfont(self.app, 12, "bold")).grid(row=10, column=1, sticky="w", pady=(4, 10))
         def refresh_due_input_visibility(*_):
             mode = DUE_LABEL_TO_VALUE.get(due_mode_var.get(), DUE_CUTOFF)
             for lab, ent in [(day_label, day_entry), (workday_label, workday_entry), (fixed_label, fixed_entry)]: lab.grid_remove(); ent.grid_remove()
@@ -2067,7 +2102,7 @@ class QuarterlyCloseUI:
         sub_list = tk.Frame(subtab, bg=COLORS["bg"]); sub_list.pack(fill="both", expand=True, padx=10, pady=10); new_sub_var = tk.StringVar()
         def render_subtasks_editor():
             for child in sub_list.winfo_children(): child.destroy()
-            tk.Label(sub_list, text="Unteraufgaben", bg=COLORS["bg"], fg=COLORS["text"], font=("Segoe UI", 12, "bold")).grid(row=0, column=0, columnspan=3, sticky="w", pady=(0, 8))
+            tk.Label(sub_list, text="Unteraufgaben", bg=COLORS["bg"], fg=COLORS["text"], font=zfont(self.app, 14, "bold")).grid(row=0, column=0, columnspan=3, sticky="w", pady=(0, 8))
             for idx, sub in enumerate(subtasks_work, start=1):
                 var = tk.StringVar(value=sub.get("title", "")); status_var = tk.BooleanVar(value=sub.get("status") == STATUS_DONE)
                 var.trace_add("write", lambda *_args, i=idx-1, v=var: subtasks_work[i].update({"title": v.get()}))
@@ -2174,8 +2209,8 @@ class QuarterlyCloseUI:
         win.transient(self.root)
         win.grab_set()
 
-        tk.Label(win, text=item_title, bg=COLORS["bg"], fg=COLORS["text"], font=("Segoe UI", 14, "bold")).pack(anchor="w", padx=16, pady=(14, 4))
-        tk.Label(win, text="Anlagen dienen zur Hinterlegung ausgearbeiteter Ergebnisse und Kommentare zur Bearbeitung. Dokumentationen/Leitfäden bitte in der Spalte Dokumentation pflegen.", bg=COLORS["bg"], fg=COLORS["text2"], font=("Segoe UI", 9), wraplength=820, justify="left").pack(anchor="w", padx=16, pady=(0, 8))
+        tk.Label(win, text=item_title, bg=COLORS["bg"], fg=COLORS["text"], font=zfont(self.app, 16, "bold")).pack(anchor="w", padx=16, pady=(14, 4))
+        tk.Label(win, text="Anlagen dienen zur Hinterlegung ausgearbeiteter Ergebnisse und Kommentare zur Bearbeitung. Dokumentationen/Leitfäden bitte in der Spalte Dokumentation pflegen.", bg=COLORS["bg"], fg=COLORS["text2"], font=zfont(self.app, 11), wraplength=820, justify="left").pack(anchor="w", padx=16, pady=(0, 8))
 
         list_frame = tk.Frame(win, bg=COLORS["white"], bd=1, relief="solid")
         list_frame.pack(fill="both", expand=True, padx=16, pady=(0, 10))
@@ -2188,7 +2223,7 @@ class QuarterlyCloseUI:
             self.normalize_documentation_fields(task)
             headers = ["Anlagenpfad", "Öffnen", "Entfernen", "Bemerkung"]
             for c, h in enumerate(headers):
-                tk.Label(list_frame, text=h, bg=COLORS["header"], fg=COLORS["text"], font=("Segoe UI", 9, "bold"), padx=6, pady=4).grid(row=0, column=c, sticky="nsew")
+                tk.Label(list_frame, text=h, bg=COLORS["header"], fg=COLORS["text"], font=zfont(self.app, 11, "bold"), padx=6, pady=4).grid(row=0, column=c, sticky="nsew")
             if not task.get("attachments"):
                 tk.Label(list_frame, text="Noch keine Anlage hinterlegt.", bg=COLORS["white"], fg=COLORS["text2"], padx=8, pady=8, anchor="w").grid(row=1, column=0, columnspan=4, sticky="ew")
                 return
@@ -2234,7 +2269,7 @@ class QuarterlyCloseUI:
         path_var = tk.StringVar()
         placeholder = "Bitte Pfad der Anlage wählen oder einfügen"
         path_var.set(placeholder)
-        tk.Label(form, text="Anlagenpfad", bg=COLORS["bg"], fg=COLORS["text"], font=("Segoe UI", 10, "bold")).grid(row=0, column=0, sticky="w", padx=(0, 8), pady=(0, 6))
+        tk.Label(form, text="Anlagenpfad", bg=COLORS["bg"], fg=COLORS["text"], font=zfont(self.app, 12, "bold")).grid(row=0, column=0, sticky="w", padx=(0, 8), pady=(0, 6))
         tk.Button(form, text="Anlage auswählen", command=choose_path, bg=COLORS["blue"], fg="white", bd=0, padx=10, pady=5).grid(row=0, column=1, sticky="w", padx=(0, 8), pady=(0, 6))
         entry = tk.Entry(form, textvariable=path_var, bg=COLORS["white"], fg=COLORS["text2"], relief="solid", bd=1, width=70)
         entry.grid(row=0, column=2, sticky="ew", pady=(0, 6))
@@ -2245,7 +2280,7 @@ class QuarterlyCloseUI:
                 entry.config(fg=COLORS["text"])
         entry.bind("<FocusIn>", clear_placeholder)
 
-        tk.Label(form, text="Bemerkungen und Informationen:", bg=COLORS["bg"], fg=COLORS["text"], font=("Segoe UI", 10, "bold")).grid(row=1, column=0, columnspan=3, sticky="w", pady=(4, 4))
+        tk.Label(form, text="Bemerkungen und Informationen:", bg=COLORS["bg"], fg=COLORS["text"], font=zfont(self.app, 12, "bold")).grid(row=1, column=0, columnspan=3, sticky="w", pady=(4, 4))
         comment_box = tk.Text(form, height=4, bg=COLORS["white"], fg=COLORS["text"], relief="solid", bd=1)
         comment_box.grid(row=2, column=0, columnspan=3, sticky="ew")
         tk.Button(form, text="Übernehmen", command=add_or_update_attachment, bg=COLORS["blue"], fg="white", bd=0, padx=16, pady=7).grid(row=3, column=2, sticky="e", pady=(8, 0))

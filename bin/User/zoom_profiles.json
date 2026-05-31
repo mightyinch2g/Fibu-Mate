@@ -1,0 +1,10 @@
+{
+  "wagnerm": {
+    "1280x800": {
+      "tool:audit_cockpit": 0.875,
+      "tool:tax_reporting": 1.1,
+      "tool:documentation_center": 1.0,
+      "tool:deadline_maintenance": 1.125
+    }
+  }
+}
