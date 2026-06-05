@@ -192,7 +192,7 @@ TOOL_REGISTRY = {
     "quarterly_close": {"title": "Quartalsabschluss", "module": "bin.tools.quarterly_close", "favorite_label": "Quartalsabschluss"},
     "yearly_close": {"title": "Jahresabschluss", "module": "bin.tools.yearly_close", "favorite_label": "Jahresabschluss"},
     "deadline_maintenance": {"title": "Stichtags- & Zuständigkeitspflege", "module": "bin.tools.deadline_maintenance", "favorite_label": "Stichtage"},
-"task_history": {"title": "Aufgaben-Historie nach ID", "module": "bin.tools.task_history", "favorite_label": "Historie"},
+"task_history": {"title": "Aufgabenmanager", "module": "bin.tools.task_history", "favorite_label": "Aufgabenmanager"},
     "x001_sap_test": {"title": "X001 SAP - Test", "module": "bin.tools.x001_sap_test", "favorite_label": "X001"},
     "tax_reporting": {"title": "Steuermeldungs-Cockpit", "module": "bin.tools.compliance_tax_reporting", "favorite_label": "Steuermeldungen"},
     "audit_cockpit": {"title": "Audit-Cockpit", "module": "bin.tools.compliance_audit_cockpit", "favorite_label": "Audit"},
@@ -209,7 +209,7 @@ MODULE_DESCRIPTIONS = {
     "documentation_center": "Zentrale Suche und Prüfung aller Nachweise, Anlagen, Dokumentationspfade und Berichte aus FiBu Mate inklusive fehlender oder ungültiger Dokumentationen.",
     "yearly_close": "Interaktives Jahresabschluss-Cockpit für Geschäftsjahre vom 01.10. bis 30.09.",
     "deadline_maintenance": "Pflege der Abschluss-Stichtage (Dekadenabschluss, 18-Uhr, 08-Uhr, Monatsabschluss) inkl. Feiertage BW und automatischer Übernahme in Monats-/Quartals-/Jahresabschluss.",
-"task_history": "Zentrale Aufgaben-Historie nach Aufgaben-ID mit Zeitraumverlauf und PDF-Berichten.",
+"task_history": "Aufgabenmanager mit Aufgaben-ID-Suche, Zeitraumverlauf und PDF-Berichten.",
     "x001_sap_test": "SAP-Scripting-Test; Scripting in SAP deaktiviert.",
     "invoice_pdf_collector": "In Excel gefilterte Rechnungsnummern aus PDF-Verzeichnis wählen und in neuen Sammelordner kopieren.",
 }
@@ -410,6 +410,75 @@ class Tile(tk.Canvas):
     def title_font(self):
         return FONT_TILE_SMALL if len(self.title) > 28 else FONT_TILE
 
+    def _font_with_size(self, font_spec, size):
+        try:
+            actual = tkfont.Font(root=self, font=font_spec).actual()
+            family = actual.get('family') or 'Segoe UI'
+            styles = []
+            if (actual.get('weight') or '').lower() == 'bold':
+                styles.append('bold')
+            if (actual.get('slant') or '').lower() == 'italic':
+                styles.append('italic')
+            if bool(actual.get('underline')):
+                styles.append('underline')
+            return tuple([family, max(8, int(size))] + styles)
+        except Exception:
+            try:
+                family = font_spec[0]
+                rest = list(font_spec[2:]) if len(font_spec) > 2 else []
+                return tuple([family, max(8, int(size))] + rest)
+            except Exception:
+                return ('Segoe UI', max(8, int(size)), 'bold')
+
+    def _measure_wrapped_text_height(self, text, font_spec, max_width):
+        try:
+            f = tkfont.Font(root=self, font=font_spec)
+            words = str(text or '').split() or ['']
+            lines = []
+            current = ''
+            for word in words:
+                candidate = word if not current else current + ' ' + word
+                if f.measure(candidate) <= max_width:
+                    current = candidate
+                    continue
+                if current:
+                    lines.append(current)
+                segment = ''
+                for ch in word:
+                    cand = segment + ch
+                    if not segment or f.measure(cand) <= max_width:
+                        segment = cand
+                    else:
+                        lines.append(segment)
+                        segment = ch
+                current = segment
+            if current:
+                lines.append(current)
+            line_h = max(1, int(f.metrics('linespace')))
+            return max(1, len(lines)) * line_h, max(1, len(lines))
+        except Exception:
+            return 0, 1
+
+    def fitted_title_font(self, max_width, max_height, centered=False):
+        base_font = self.app.zoomed_content_font(FONT_TILE_SMALL if len(self.title) > 24 else self.title_font())
+        try:
+            actual = tkfont.Font(root=self, font=base_font).actual()
+            start_size = abs(int(actual.get('size') or 12))
+        except Exception:
+            start_size = 12
+        min_size = 10 if not centered else 9
+        max_lines = 3 if not centered else 4
+        chosen = base_font
+        chosen_h = 0
+        for size in range(start_size, min_size - 1, -1):
+            candidate = self._font_with_size(base_font, size)
+            text_h, text_lines = self._measure_wrapped_text_height(self.title, candidate, max_width)
+            if text_h <= max_height and text_lines <= max_lines:
+                return candidate, text_h
+            chosen = candidate
+            chosen_h = text_h
+        return chosen, chosen_h
+
     def _draw_corner_fold(self, x1, y0):
         size = min(ui_s(30), max(18, int(self.tile_height * 0.20)))
         self.create_polygon(x1 - size, y0, x1, y0, x1, y0 + size, fill="#D6DCE4", outline="#C2CAD5")
@@ -522,15 +591,21 @@ class Tile(tk.Canvas):
         if self.corner_fold:
             self._draw_corner_fold(x1, y0)
         title_y = y0 + ui_s(14)
-        icon_y = y0 + int((y1 - y0) * 0.66)
-        title_font = self.app.zoomed_content_font(FONT_TILE_SMALL if len(self.title) > 24 else self.title_font())
         title_color = BLUE if self.lock_tile else "white"
         icon_to_draw = "lock" if self.lock_tile else self.icon_type
+        text_width = max(ui_s(110), self.tile_width - ui_s(44))
         if self.center_text and not icon_to_draw:
-            self.create_text((x0 + x1) / 2, (y0 + y1) / 2, text=self.title, anchor="center", fill=title_color, font=self.app.zoomed_content_font(self.title_font()), width=max(ui_s(110), self.tile_width - ui_s(44)), justify="center")
+            centered_font, _ = self.fitted_title_font(text_width, max(ui_s(40), self.tile_height - ui_s(28)), centered=True)
+            self.create_text((x0 + x1) / 2, (y0 + y1) / 2, text=self.title, anchor="center", fill=title_color, font=centered_font, width=text_width, justify="center")
         else:
-            self.create_text((x0 + x1) / 2, title_y, text=self.title, anchor="n", fill=title_color, font=title_font, width=max(ui_s(110), self.tile_width - ui_s(44)), justify="center")
+            title_max_h = max(ui_s(28), int((y1 - y0) * 0.36))
+            title_font, title_h = self.fitted_title_font(text_width, title_max_h, centered=False)
+            self.create_text((x0 + x1) / 2, title_y, text=self.title, anchor="n", fill=title_color, font=title_font, width=text_width, justify="center")
             if icon_to_draw:
+                min_icon_y = title_y + title_h + ui_s(20)
+                default_icon_y = y0 + int((y1 - y0) * 0.66)
+                icon_y = max(default_icon_y, min_icon_y)
+                icon_y = min(icon_y, y1 - ui_s(34))
                 close_period = self.app.current_close_period_label(self.tile_id) if hasattr(self.app, "current_close_period_label") else ""
                 if close_period and self.tile_id in ("monthly_close", "quarterly_close", "yearly_close"):
                     icon_x = x0 + 98
@@ -832,6 +907,7 @@ class FiBuMateApp:
         self.ensure_version_432_once()
         self.ensure_version_433_once()
         self.ensure_version_434_once()
+        self.ensure_version_435_once()
         self.normalize_version_after_zoom_patch()
         self.create_footer()
         self.canvas = tk.Canvas(self.root, highlightthickness=0, bg=BG, cursor="arrow")
@@ -2002,6 +2078,8 @@ class FiBuMateApp:
         """v0.434 technische Korrektur: Zoomleiste nur in Modulen und Einstellungen-Untermenüs anzeigen."""
         try:
             page = str(getattr(self, "current_page", "") or "")
+            if page == "tool:task_history":
+                return False
             if page.startswith("tool:"):
                 return True
             return page in {"tile_colors", "users", "permissions", "information", "versions"}
@@ -2759,16 +2837,51 @@ class FiBuMateApp:
         self.root.mainloop()
 
 
+    def ensure_version_435_once(self):
+        """Version 0.435: Audit-Cockpit-Korrektur und Zuständigkeitspflege mit Aufgabenverknüpfung."""
+        update_id = "2026-05-29_v0435_audit_cockpit_zustaendigkeit_verknuepfung"
+        bullets = [
+            "v0.435: Audit-Cockpit-Fehler korrigiert; Zeitraumformatierung akzeptiert den Zeitstempel-Kontext.",
+            "v0.435: Zuständigkeitspflege erweitert um Aufgabenverknüpfung mit gemeinsamer Aufgaben-ID.",
+            "v0.435: Mehrfachpräfixe M/Q/J umgesetzt, z. B. MQ oder QJ; Aufgaben erscheinen in allen passenden Übersichtsreitern.",
+            "v0.435: Zuständigkeit und Benutzer-Key werden gemeinsam als Feld Zuständigkeit gepflegt.",
+            "v0.435: Drop-downs in allen editierbaren Zuständigkeitspflege-Zellen, Checkboxen in der Aufgaben-ID-Spalte, Buttons Aufgaben verknüpfen und Löschen ergänzt.",
+        ]
+        try:
+            self.version_state.setdefault("applied_updates", [])
+            changed = False
+            current_build = int(self.version_state.get("build", DEFAULT_BUILD))
+            if current_build < 35 or current_build > 100:
+                self.version_state["build"] = 35
+                changed = True
+            if update_id not in self.version_state["applied_updates"]:
+                history = self.load_version_history()
+                history.setdefault("entries", [])
+                if not any(e.get("update_id") == update_id for e in history.get("entries", [])):
+                    history["entries"].insert(0, {
+                        "version": "v0.435",
+                        "date": now_date_str(),
+                        "update_id": update_id,
+                        "bullets": bullets,
+                    })
+                    self.save_version_history(history)
+                self.version_state["applied_updates"].append(update_id)
+                changed = True
+            if changed:
+                self.save_version_state()
+        except Exception:
+            pass
+
     def normalize_version_after_zoom_patch(self):
-        """Korrektur: versehentliche Versionssprünge 0.435-0.437 aus Zoom-Testpaketen zurücknehmen. Kein Versions-Bump."""
+        """Korrektur: versehentliche Versionssprünge aus Zoom-Testpaketen zurücknehmen, v0.435 aber beibehalten."""
         try:
             changed = False
             try:
                 build = int(self.version_state.get("build", DEFAULT_BUILD))
             except Exception:
                 build = DEFAULT_BUILD
-            if build > 34:
-                self.version_state["build"] = 34
+            if build > 35:
+                self.version_state["build"] = 35
                 changed = True
             applied = self.version_state.setdefault("applied_updates", [])
             for upd in ("2026-05-29_v0434_paket1c_fibu_mate_zoom_miniwidget", "2026-05-29_v0434_paket1d_fibu_mate_zoom_miniwidget_nachkorrektur", "2026-05-29_v0434_paket1e_zoomleiste"):
@@ -2783,8 +2896,9 @@ class FiBuMateApp:
             cleaned = []
             for entry in entries:
                 version = str(entry.get("version", ""))
+                update_id = str(entry.get("update_id", ""))
                 bullets = "\n".join(str(b) for b in entry.get("bullets", [])).lower()
-                accidental = version in ("v0.435", "v0.436", "v0.437") or "paket 1c" in bullets or "paket 1d" in bullets or "paket 1e" in bullets or "zoom-leiste" in bullets or "zoomleiste" in bullets
+                accidental = version in ("v0.436", "v0.437") or update_id in ("2026-05-29_v0434_paket1c_fibu_mate_zoom_miniwidget", "2026-05-29_v0434_paket1d_fibu_mate_zoom_miniwidget_nachkorrektur", "2026-05-29_v0434_paket1e_zoomleiste") or "paket 1c" in bullets or "paket 1d" in bullets or "paket 1e" in bullets or "zoom-leiste" in bullets or "zoomleiste" in bullets
                 if not accidental:
                     cleaned.append(entry)
             if len(cleaned) != len(entries):

@@ -1,6 +1,62 @@
 {
   "entries": [
     {
+      "timestamp": "2026-06-01T16:35:25",
+      "event_type": "Aufgabe geändert",
+      "module": "Stichtags- & Zuständigkeitspflege",
+      "title": "Stichtage/Zuständigkeiten gespeichert und übernommen",
+      "details": "2025/2026; Perioden: keine Feldänderung; synchronisierte Stichtagsdateien: 0; synchronisierte Zuständigkeitsdateien: 302",
+      "risk": "Info",
+      "period": "2025/2026",
+      "related_id": "",
+      "user_key": "wagnerm",
+      "user_name": "Matthias Wagnerm",
+      "public": true,
+      "archived": false
+    },
+    {
+      "timestamp": "2026-06-01T16:35:17",
+      "event_type": "Aufgabe geändert",
+      "module": "Stichtags- & Zuständigkeitspflege",
+      "title": "Stichtage/Zuständigkeiten gespeichert und übernommen",
+      "details": "2025/2026; Perioden: keine Feldänderung; synchronisierte Stichtagsdateien: 0; synchronisierte Zuständigkeitsdateien: 369",
+      "risk": "Info",
+      "period": "2025/2026",
+      "related_id": "",
+      "user_key": "wagnerm",
+      "user_name": "Matthias Wagnerm",
+      "public": true,
+      "archived": false
+    },
+    {
+      "timestamp": "2026-05-31T23:21:37",
+      "event_type": "Aufgabe geändert",
+      "module": "Stichtags- & Zuständigkeitspflege",
+      "title": "Stichtage/Zuständigkeiten gespeichert und übernommen",
+      "details": "2025/2026; Perioden: keine Feldänderung; synchronisierte Stichtagsdateien: 0; synchronisierte Zuständigkeitsdateien: 367",
+      "risk": "Info",
+      "period": "2025/2026",
+      "related_id": "",
+      "user_key": "wagnerm",
+      "user_name": "Matthias Wagnerm",
+      "public": true,
+      "archived": false
+    },
+    {
+      "timestamp": "2026-05-31T22:57:21",
+      "event_type": "Aufgabe geändert",
+      "module": "Stichtags- & Zuständigkeitspflege",
+      "title": "Stichtage gespeichert und übernommen",
+      "details": "2025/2026; Perioden: keine Feldänderung; synchronisierte Dateien: 0",
+      "risk": "Info",
+      "period": "2025/2026",
+      "related_id": "",
+      "user_key": "wagnerm",
+      "user_name": "Matthias Wagnerm",
+      "public": true,
+      "archived": false
+    },
+    {
       "timestamp": "2026-05-31T00:29:54",
       "event_type": "Nachweis hinzugefügt/geändert/entfernt",
       "module": "Dokumentationszentrale",

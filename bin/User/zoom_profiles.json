@@ -7,7 +7,7 @@
       "tool:deadline_maintenance": 1.125,
       "tool:quarterly_close": 1.0,
       "main": 1.0,
-      "tool:monthly_close": 1.025,
+      "tool:monthly_close": 0.975,
       "users": 1.8,
       "closing_calendar": 1.0,
       "versions": 0.975,
@@ -18,6 +18,10 @@
       "tool:nike_op_liste_pdf_check": 0.95,
       "tool:task_history": 1.8,
       "tool:yearly_close": 1.0
+    },
+    "1920x1080": {
+      "tool:deadline_maintenance": 1.05,
+      "users": 1.15
     }
   }
 }

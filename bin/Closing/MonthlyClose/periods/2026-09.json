@@ -35,8 +35,8 @@
       "id": "hauptbuch_01",
       "team": "Hauptbuch",
       "title": "Z4-Meldung",
-      "owner": "Wall",
-      "owner_user_key": "wall",
+      "owner": "Julia Neuwirth",
+      "owner_user_key": "neuwirth",
       "due_mode": "workday_next_month",
       "due_day": null,
       "due_workday": 7,
@@ -60,7 +60,7 @@
       "id": "hauptbuch_02",
       "team": "Hauptbuch",
       "title": "ZM-Meldung",
-      "owner": "Neuwirth",
+      "owner": "Julia Neuwirth",
       "owner_user_key": "neuwirth",
       "due_mode": "fixed_date",
       "due_day": null,
@@ -103,7 +103,7 @@
       "done_at": null,
       "done_by": null,
       "due_date": "2026-10-14",
-      "task_uid": "MQ003",
+      "task_uid": "MQ001",
       "documentation": {}
     },
     {
@@ -132,7 +132,7 @@
           "attachments": [],
           "comments": [],
           "documentation": {},
-          "task_uid": "M004-u1",
+          "task_uid": "MQ001-u1",
           "done_at": null,
           "done_by": null
         },
@@ -143,7 +143,7 @@
           "attachments": [],
           "comments": [],
           "documentation": {},
-          "task_uid": "M004-u2",
+          "task_uid": "MQ001-u2",
           "done_at": null,
           "done_by": null
         },
@@ -154,7 +154,7 @@
           "attachments": [],
           "comments": [],
           "documentation": {},
-          "task_uid": "M004-u3",
+          "task_uid": "MQ001-u3",
           "done_at": null,
           "done_by": null
         },
@@ -165,7 +165,7 @@
           "attachments": [],
           "comments": [],
           "documentation": {},
-          "task_uid": "M004-u4",
+          "task_uid": "MQ001-u4",
           "done_at": null,
           "done_by": null
         },
@@ -176,7 +176,7 @@
           "attachments": [],
           "comments": [],
           "documentation": {},
-          "task_uid": "M004-u5",
+          "task_uid": "MQ001-u5",
           "done_at": null,
           "done_by": null
         },
@@ -187,7 +187,7 @@
           "attachments": [],
           "comments": [],
           "documentation": {},
-          "task_uid": "M004-u6",
+          "task_uid": "MQ001-u6",
           "done_at": null,
           "done_by": null
         }
@@ -195,7 +195,7 @@
       "done_at": null,
       "done_by": null,
       "due_date": "2026-10-02",
-      "task_uid": "M004",
+      "task_uid": "MQ001",
       "documentation": {}
     },
     {
@@ -226,7 +226,7 @@
           "documentation": {},
           "owner_user_key": "fellhauer",
           "owner": "Fellhauer",
-          "task_uid": "M005-u1",
+          "task_uid": "MQ001-u1",
           "done_at": null,
           "done_by": null
         },
@@ -239,7 +239,7 @@
           "documentation": {},
           "owner_user_key": "fellhauer",
           "owner": "Fellhauer",
-          "task_uid": "M005-u2",
+          "task_uid": "MQ001-u2",
           "done_at": null,
           "done_by": null
         },
@@ -252,7 +252,7 @@
           "documentation": {},
           "owner_user_key": "fellhauer",
           "owner": "Fellhauer",
-          "task_uid": "M005-u3",
+          "task_uid": "MQ001-u3",
           "done_at": null,
           "done_by": null
         },
@@ -265,7 +265,7 @@
           "documentation": {},
           "owner_user_key": "fellhauer",
           "owner": "Fellhauer",
-          "task_uid": "M005-u4",
+          "task_uid": "MQ001-u4",
           "done_at": null,
           "done_by": null
         },
@@ -278,7 +278,7 @@
           "documentation": {},
           "owner_user_key": "fellhauer",
           "owner": "Fellhauer",
-          "task_uid": "M005-u5",
+          "task_uid": "MQ001-u5",
           "done_at": null,
           "done_by": null
         },
@@ -291,7 +291,7 @@
           "documentation": {},
           "owner_user_key": "fellhauer",
           "owner": "Fellhauer",
-          "task_uid": "M005-u6",
+          "task_uid": "MQ001-u6",
           "done_at": null,
           "done_by": null
         },
@@ -304,7 +304,7 @@
           "documentation": {},
           "owner_user_key": "fellhauer",
           "owner": "Fellhauer",
-          "task_uid": "M005-u7",
+          "task_uid": "MQ001-u7",
           "done_at": null,
           "done_by": null
         }
@@ -312,7 +312,7 @@
       "done_at": null,
       "done_by": null,
       "due_date": "2026-10-02",
-      "task_uid": "M005",
+      "task_uid": "MQ001",
       "documentation": {}
     },
     {
@@ -337,7 +337,7 @@
       "done_at": null,
       "done_by": null,
       "due_date": "2026-10-02",
-      "task_uid": "M006",
+      "task_uid": "M011",
       "documentation": {}
     },
     {
@@ -366,7 +366,7 @@
           "attachments": [],
           "comments": [],
           "documentation": {},
-          "task_uid": "M007-u1",
+          "task_uid": "MQ001-u1",
           "done_at": null,
           "done_by": null
         },
@@ -377,7 +377,7 @@
           "attachments": [],
           "comments": [],
           "documentation": {},
-          "task_uid": "M007-u2",
+          "task_uid": "MQ001-u2",
           "done_at": null,
           "done_by": null
         }
@@ -385,14 +385,14 @@
       "done_at": null,
       "done_by": null,
       "due_date": "2026-10-02",
-      "task_uid": "M007",
+      "task_uid": "MQ001",
       "documentation": {}
     },
     {
       "id": "hauptbuch_07",
       "team": "Hauptbuch",
       "title": "Aufgabenpool - Grit Kern",
-      "owner": "Kern",
+      "owner": "Grit Kern",
       "owner_user_key": "kern",
       "due_mode": "closing_cutoff",
       "due_day": null,
@@ -462,7 +462,7 @@
           "attachments": [],
           "comments": [],
           "documentation": {},
-          "task_uid": "M009-u1",
+          "task_uid": "MQ001-u1",
           "done_at": null,
           "done_by": null
         },
@@ -473,7 +473,7 @@
           "attachments": [],
           "comments": [],
           "documentation": {},
-          "task_uid": "M009-u2",
+          "task_uid": "MQ001-u2",
           "done_at": null,
           "done_by": null
         },
@@ -484,7 +484,7 @@
           "attachments": [],
           "comments": [],
           "documentation": {},
-          "task_uid": "M009-u3",
+          "task_uid": "MQ001-u3",
           "done_at": null,
           "done_by": null
         },
@@ -495,7 +495,7 @@
           "attachments": [],
           "comments": [],
           "documentation": {},
-          "task_uid": "M009-u4",
+          "task_uid": "MQ001-u4",
           "done_at": null,
           "done_by": null
         },
@@ -506,7 +506,7 @@
           "attachments": [],
           "comments": [],
           "documentation": {},
-          "task_uid": "M009-u5",
+          "task_uid": "MQ001-u5",
           "done_at": null,
           "done_by": null
         },
@@ -517,7 +517,7 @@
           "attachments": [],
           "comments": [],
           "documentation": {},
-          "task_uid": "M009-u6",
+          "task_uid": "MQ001-u6",
           "done_at": null,
           "done_by": null
         },
@@ -528,7 +528,7 @@
           "attachments": [],
           "comments": [],
           "documentation": {},
-          "task_uid": "M009-u7",
+          "task_uid": "MQ001-u7",
           "done_at": null,
           "done_by": null
         },
@@ -539,7 +539,7 @@
           "attachments": [],
           "comments": [],
           "documentation": {},
-          "task_uid": "M009-u8",
+          "task_uid": "MQ001-u8",
           "done_at": null,
           "done_by": null
         },
@@ -550,7 +550,7 @@
           "attachments": [],
           "comments": [],
           "documentation": {},
-          "task_uid": "M009-u9",
+          "task_uid": "MQ001-u9",
           "done_at": null,
           "done_by": null
         },
@@ -561,7 +561,7 @@
           "attachments": [],
           "comments": [],
           "documentation": {},
-          "task_uid": "M009-u10",
+          "task_uid": "MQ001-u10",
           "done_at": null,
           "done_by": null
         },
@@ -572,7 +572,7 @@
           "attachments": [],
           "comments": [],
           "documentation": {},
-          "task_uid": "M009-u11",
+          "task_uid": "MQ001-u11",
           "done_at": null,
           "done_by": null
         },
@@ -583,7 +583,7 @@
           "attachments": [],
           "comments": [],
           "documentation": {},
-          "task_uid": "M009-u12",
+          "task_uid": "MQ001-u12",
           "done_at": null,
           "done_by": null
         }
@@ -591,7 +591,7 @@
       "done_at": null,
       "done_by": null,
       "due_date": "2026-10-02",
-      "task_uid": "M009",
+      "task_uid": "MQ001",
       "documentation": {}
     },
     {
@@ -620,9 +620,11 @@
           "attachments": [],
           "comments": [],
           "documentation": {},
-          "task_uid": "M010-u1",
+          "task_uid": "MQ001-u1",
           "done_at": null,
-          "done_by": null
+          "done_by": null,
+          "owner": "Wall",
+          "owner_user_key": "wall"
         },
         {
           "id": "sub_02_153212859310",
@@ -631,9 +633,11 @@
           "attachments": [],
           "comments": [],
           "documentation": {},
-          "task_uid": "M010-u2",
+          "task_uid": "MQ001-u2",
           "done_at": null,
-          "done_by": null
+          "done_by": null,
+          "owner": "Wall",
+          "owner_user_key": "wall"
         },
         {
           "id": "sub_03_153216801728",
@@ -642,9 +646,11 @@
           "attachments": [],
           "comments": [],
           "documentation": {},
-          "task_uid": "M010-u3",
+          "task_uid": "MQ001-u3",
           "done_at": null,
-          "done_by": null
+          "done_by": null,
+          "owner": "Wall",
+          "owner_user_key": "wall"
         },
         {
           "id": "sub_04_153221181539",
@@ -653,9 +659,11 @@
           "attachments": [],
           "comments": [],
           "documentation": {},
-          "task_uid": "M010-u4",
+          "task_uid": "MQ001-u4",
           "done_at": null,
-          "done_by": null
+          "done_by": null,
+          "owner": "Wall",
+          "owner_user_key": "wall"
         },
         {
           "id": "sub_05_153225184684",
@@ -664,9 +672,11 @@
           "attachments": [],
           "comments": [],
           "documentation": {},
-          "task_uid": "M010-u5",
+          "task_uid": "MQ001-u5",
           "done_at": null,
-          "done_by": null
+          "done_by": null,
+          "owner": "Wall",
+          "owner_user_key": "wall"
         },
         {
           "id": "sub_06_153229314092",
@@ -675,9 +685,11 @@
           "attachments": [],
           "comments": [],
           "documentation": {},
-          "task_uid": "M010-u6",
+          "task_uid": "MQ001-u6",
           "done_at": null,
-          "done_by": null
+          "done_by": null,
+          "owner": "Wall",
+          "owner_user_key": "wall"
         },
         {
           "id": "sub_07_153233447868",
@@ -686,9 +698,11 @@
           "attachments": [],
           "comments": [],
           "documentation": {},
-          "task_uid": "M010-u7",
+          "task_uid": "MQ001-u7",
           "done_at": null,
-          "done_by": null
+          "done_by": null,
+          "owner": "Wall",
+          "owner_user_key": "wall"
         },
         {
           "id": "sub_08_153236915856",
@@ -697,15 +711,17 @@
           "attachments": [],
           "comments": [],
           "documentation": {},
-          "task_uid": "M010-u8",
+          "task_uid": "MQ001-u8",
           "done_at": null,
-          "done_by": null
+          "done_by": null,
+          "owner": "Wall",
+          "owner_user_key": "wall"
         }
       ],
       "done_at": null,
       "done_by": null,
       "due_date": "2026-10-02",
-      "task_uid": "M010",
+      "task_uid": "MQ001",
       "documentation": {}
     }
   ],

@@ -10,7 +10,7 @@
       "due_date": "2026-06-02",
       "due_source": "Kalender/Manuell",
       "last_due_change": "2026-05-27T14:39:35",
-      "owner_user_key": "",
+      "owner_user_key": "wall",
       "reviewer_user_key": "",
       "reported_at": "",
       "reported_by": "",
@@ -45,7 +45,7 @@
       "approval_required": true,
       "four_eye": false,
       "sync_with_calendar": true,
-      "task_uid": "MQ002"
+      "task_uid": "TAX003"
     },
     {
       "type_id": "Z4",
@@ -55,7 +55,7 @@
       "due_date": "2026-06-02",
       "due_source": "Kalender/Manuell",
       "last_due_change": "2026-05-27T14:39:35",
-      "owner_user_key": "",
+      "owner_user_key": "wall",
       "reviewer_user_key": "",
       "reported_at": "",
       "reported_by": "",
@@ -82,7 +82,7 @@
       "approval_required": true,
       "four_eye": false,
       "sync_with_calendar": true,
-      "task_uid": "MQ001"
+      "task_uid": "TAX003"
     },
     {
       "type_id": "Z5a",
@@ -92,7 +92,7 @@
       "due_date": "2026-06-02",
       "due_source": "Kalender/Manuell",
       "last_due_change": "2026-05-27T14:39:35",
-      "owner_user_key": "",
+      "owner_user_key": "wall",
       "reviewer_user_key": "",
       "reported_at": "",
       "reported_by": "",
@@ -119,7 +119,7 @@
       "approval_required": true,
       "four_eye": false,
       "sync_with_calendar": true,
-      "task_uid": "MQ003"
+      "task_uid": "TAX003"
     },
     {
       "type_id": "Intrastat",
@@ -143,7 +143,7 @@
       "approval_required": true,
       "four_eye": false,
       "sync_with_calendar": false,
-      "task_uid": ""
+      "task_uid": "TAX001"
     },
     {
       "type_id": "UStVA",
@@ -167,7 +167,7 @@
       "approval_required": true,
       "four_eye": false,
       "sync_with_calendar": false,
-      "task_uid": ""
+      "task_uid": "TAX002"
     }
   ]
 }

@@ -587,13 +587,72 @@ class YearlyCloseUI:
         self.canvas.create_window(0, 132, window=self.frame, anchor="nw", width=self.canvas.winfo_width(), height=max(400, self.canvas.winfo_height() - 172))
         self.ensure_task_ids()
         self.render_dashboard()
-        apply_readable_fonts(self.frame, self.app, 12)  
+        apply_readable_fonts(self.frame, self.app, 12)
+        self.bind_module_ctrl_mousewheel_guard()  
     def handle_escape(self):
         if self.selected_team:
             self.selected_team = None
             self.render_dashboard()
             return True
         return False
+
+    def _module_ctrl_mousewheel_direction(self, event):
+        try:
+            if getattr(event, "num", None) == 4:
+                return 1
+            if getattr(event, "num", None) == 5:
+                return -1
+            delta = int(getattr(event, "delta", 0) or 0)
+            return 1 if delta > 0 else (-1 if delta < 0 else 0)
+        except Exception:
+            return 0
+
+    def handle_module_ctrl_mousewheel(self, event=None):
+        """v0.435: Strg+Mausrad im Abschlusskalender bleibt im aktuellen Kontext.
+
+        Hintergrund: Der globale Tool-Zoom kann das externe Tool neu laden und dadurch aus
+        der Teamübersicht zurück ins Dashboard springen. Deshalb wird der Zoom hier lokal
+        angewendet und die aktuell ausgewählte Teamansicht anschließend wiederhergestellt.
+        """
+        direction = self._module_ctrl_mousewheel_direction(event)
+        if not direction:
+            return "break"
+        try:
+            current = float(getattr(self.app, "current_scope_zoom", 1.0) or 1.0)
+        except Exception:
+            current = 1.0
+        try:
+            step = float(getattr(self.app, "GLOBAL_TEXT_ZOOM_STEP", 0.025) or 0.025)
+        except Exception:
+            step = 0.025
+        new_zoom = max(0.70, min(1.80, current + (step * direction)))
+        try:
+            setattr(self.app, "current_scope_zoom", new_zoom)
+        except Exception:
+            pass
+        team = self.selected_team
+        if team:
+            try:
+                self.render_team_detail(team)
+            except Exception:
+                apply_readable_fonts(self.frame, self.app, 12)
+        else:
+            try:
+                self.render_dashboard()
+            except Exception:
+                apply_readable_fonts(self.frame, self.app, 12)
+        return "break"
+
+    def bind_module_ctrl_mousewheel_guard(self, widget=None):
+        """Bindet Strg+Mausrad auf alle Modulwidgets, damit der globale Handler nicht navigiert."""
+        widget = widget or self.frame
+        try:
+            for sequence in ("<Control-MouseWheel>", "<Control-Button-4>", "<Control-Button-5>"):
+                widget.bind(sequence, self.handle_module_ctrl_mousewheel)
+            for child in widget.winfo_children():
+                self.bind_module_ctrl_mousewheel_guard(child)
+        except Exception:
+            pass
 
     def can_edit(self):
         return self.role_rank_value() >= 3 and not self.is_period_closed()
@@ -1610,6 +1669,7 @@ class YearlyCloseUI:
         self.render_warnings(self.frame)
         cards = tk.Frame(self.frame, bg=COLORS["bg"]); cards.pack(fill="both", expand=True, padx=24, pady=8)
         for idx, team in enumerate(TEAMS): self.render_team_card(cards, team, idx)
+        self.bind_module_ctrl_mousewheel_guard()
 
     def render_warnings(self, parent):
         warnings = [t for t in self.tasks() if warning_level(t) in ("overdue", "today", "orange", "yellow") and t.get("status") != STATUS_DONE]
@@ -1663,6 +1723,7 @@ class YearlyCloseUI:
         tk.Label(head, text=f"Fortschritt: {stats['done']} / {stats['total']} erledigt | {stats['percent']}%", bg=COLORS["white"], fg=COLORS["text2"], font=("Segoe UI", 11)).pack(anchor="w", padx=12)
         bar = tk.Frame(head, bg=COLORS["white"]); bar.pack(anchor="w", padx=12, pady=(6, 10)); self.draw_progress(bar, stats["percent"], width=480, height=22, bg=COLORS["white"]).pack()
         self.render_task_table(team)
+        self.bind_module_ctrl_mousewheel_guard()
 
     def toggle_subtasks_visibility(self, task_id):
         if task_id in self.expanded_tasks:

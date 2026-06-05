@@ -18,7 +18,7 @@ def zfont(app, size=12, weight=None):
     return ("Segoe UI", final, weight) if weight else ("Segoe UI", final)
 
 
-STATUS_VALUES = ["Offen", "Zur Prüfung", "Freigegeben", "Gemeldet", "Nicht relevant"]
+STATUS_VALUES = ["Offen", "Gemeldet", "Nicht relevant"]
 
 class TaxReportingUI:
     def __init__(self, app):
@@ -81,8 +81,6 @@ class TaxReportingUI:
         tk.Label(top, text=cc.period_label(self.period), bg=cc.BG, fg=cc.TEXT, font=zfont(self.app, 16, "bold"), padx=16).pack(side="left")
         tk.Button(top, text="▶", command=lambda: self.switch(1), bg=cc.WHITE, fg=cc.BLUE, bd=1, width=4).pack(side="left")
 
-        if cc.can_admin(self.app):
-            tk.Button(top, text="Meldearten/Stammdaten", command=self.config_popup, bg=cc.BLUE, fg="white", bd=0, padx=12, pady=6).pack(side="right", padx=4)
 
         tk.Button(top, text="PDF-Bericht", command=self.export_pdf, bg=cc.WHITE, fg=cc.BLUE, bd=1, padx=12, pady=6).pack(side="right", padx=4)
 
@@ -103,33 +101,25 @@ class TaxReportingUI:
         canvas.pack(side="left", fill="both", expand=True)
         sb.pack(side="right", fill="y")
 
-        headers = ["Meldung", "Status", "Fällig", "Zuständig", "Freigabepflicht", "Prüfung", "Meldedatum", "Freigabe", "Nachweise", "Kommentar", "Aktion"]
+        headers = ["Meldung", "Status", "Fällig", "Zuständig", "Prüfer", "Meldedatum", "Nachweise", "Aktion"]
         for c, h in enumerate(headers):
             tk.Label(table, text=h, bg=cc.HEADER, fg=cc.TEXT, font=zfont(self.app, 12, "bold"), padx=6, pady=6).grid(row=0, column=c, sticky="nsew", padx=1, pady=1)
 
         for i, r in enumerate(self.reports(), start=1):
-            approval = bool(r.get("approval_required", True))
-            freigabepf = "Ja" if approval else "Nein"
-            reviewer = self.owner_name(r.get("reviewer_user_key"))
-            pruefung = reviewer or ("4-Augen" if r.get("four_eye") else "")
-            freigabe = "nicht benötigt" if not approval else self.fmt(r.get("approved_at"))
-
+            attachment_count = len(r.get("attachments", []))
             vals = [
-                r.get("title"),
-                r.get("status"),
+                r.get("title", ""),
+                r.get("status", ""),
                 self.fmt(r.get("due_date")),
                 self.owner_name(r.get("owner_user_key")),
-                freigabepf,
-                pruefung,
+                self.owner_name(r.get("reviewer_user_key")),
                 self.fmt(r.get("reported_at")),
-                freigabe,
-                str(len(r.get("attachments", []))),
-                str(len(r.get("comments", []))),
+                str(attachment_count),
             ]
             for c, v in enumerate(vals):
-                tk.Label(table, text=v, bg=cc.WHITE, fg=cc.TEXT, font=zfont(self.app, 12), padx=6, pady=5, anchor="w", wraplength=180).grid(row=i, column=c, sticky="nsew", padx=1, pady=1)
+                tk.Label(table, text=v, bg=cc.WHITE, fg=cc.TEXT, font=zfont(self.app, 12), padx=8, pady=7, anchor="w", wraplength=220).grid(row=i, column=c, sticky="nsew", padx=1, pady=1)
 
-            tk.Button(table, text="Öffnen", font=zfont(self.app, 12, "bold"), command=lambda rr=r: self.detail(rr), bg=cc.BLUE, fg="white", bd=0).grid(row=i, column=10, sticky="nsew", padx=1, pady=1)
+            tk.Button(table, text="Öffnen", font=zfont(self.app, 12, "bold"), command=lambda rr=r: self.detail(rr), bg=cc.BLUE, fg="white", bd=0, padx=10, pady=6).grid(row=i, column=7, sticky="nsew", padx=1, pady=1)
 
         self.app.active_scroll_canvas = canvas
 
@@ -246,10 +236,10 @@ class TaxReportingUI:
             pass
         tk.Button(form, text="Speichern", command=save, bg=cc.DARK_GREEN, fg="white", bd=0, padx=18, pady=8).grid(row=11, column=2, sticky="e", pady=14)
 
-    def config_popup(self):
+    def config_popup_legacy_hidden(self):
         cfg = cc.load_tax_config()
         win = tk.Toplevel(self.root)
-        win.title("Meldearten/Stammdaten")
+        win.title("Ausgeblendete Stammdaten")
         win.geometry("900x520")
         win.configure(bg=cc.BG)
 

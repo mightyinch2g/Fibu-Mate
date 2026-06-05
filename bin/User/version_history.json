@@ -1,6 +1,18 @@
 {
   "entries": [
     {
+      "version": "v0.435",
+      "date": "260601",
+      "update_id": "2026-05-29_v0435_audit_cockpit_zustaendigkeit_verknuepfung",
+      "bullets": [
+        "v0.435: Audit-Cockpit-Fehler korrigiert; Zeitraumformatierung akzeptiert den Zeitstempel-Kontext.",
+        "v0.435: Zuständigkeitspflege erweitert um Aufgabenverknüpfung mit gemeinsamer Aufgaben-ID.",
+        "v0.435: Mehrfachpräfixe M/Q/J umgesetzt, z. B. MQ oder QJ; Aufgaben erscheinen in allen passenden Übersichtsreitern.",
+        "v0.435: Zuständigkeit und Benutzer-Key werden gemeinsam als Feld Zuständigkeit gepflegt.",
+        "v0.435: Drop-downs in allen editierbaren Zuständigkeitspflege-Zellen, Checkboxen in der Aufgaben-ID-Spalte, Buttons Aufgaben verknüpfen und Löschen ergänzt."
+      ]
+    },
+    {
       "version": "v0.434",
       "date": "260531",
       "bullets": [

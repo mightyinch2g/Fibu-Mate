@@ -16,6 +16,63 @@ def zfont(app, size=12, weight=None):
     return ("Segoe UI", final, weight) if weight else ("Segoe UI", final)
 
 
+
+def _parse_audit_date(value):
+    from datetime import datetime
+    raw = str(value or "").strip()
+    for fmt in ("%d.%m.%Y", "%Y-%m-%d", "%Y-%m-%dT%H:%M:%S"):
+        try:
+            return datetime.strptime(raw[:19] if "T" in raw else raw[:10], fmt).date()
+        except Exception:
+            pass
+    return None
+
+def _fiscal_period_for_date(value):
+    d = _parse_audit_date(value)
+    if not d:
+        return ""
+    start = d.year if d.month >= 10 else d.year - 1
+    return f"GJ {start}/{start + 1}"
+
+def normalize_audit_period_value(period, timestamp=None):
+    """v0.435: Geschäftsjahre einheitlich als GJ JJJJ/JJJJ darstellen und erkannte Fehlzuordnungen korrigieren."""
+    import re
+    raw = str(period or "").strip()
+    ts_period = _fiscal_period_for_date(timestamp)
+    m = re.fullmatch(r"(?:GJ\s*)?(\d{4})/(\d{4})", raw)
+    if m:
+        normalized = f"GJ {m.group(1)}/{m.group(2)}"
+        # bekannte Fehlzuordnung: Ereignisse am 30.05.2026 gehören ins GJ 2025/2026, nicht GJ 2026/2027.
+        if str(timestamp or "").startswith(("2026-05-30", "30.05.2026")) and normalized == "GJ 2026/2027":
+            return "GJ 2025/2026"
+        return normalized
+    if raw:
+        try:
+            if hasattr(cc, "format_any_period_display"):
+                formatted = cc.format_any_period_display(raw)
+                if formatted:
+                    return formatted
+        except Exception:
+            pass
+    return ts_period or raw
+
+def save_audit_if_possible(data):
+    try:
+        if hasattr(cc, "save_audit"):
+            cc.save_audit(data)
+            return
+    except Exception:
+        pass
+    for attr in ("AUDIT_PATH", "AUDIT_LOG_PATH", "AUDIT_FILE"):
+        try:
+            path = getattr(cc, attr, None)
+            if path:
+                import json
+                Path(path).write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+                return
+        except Exception:
+            pass
+
 class AuditCockpitUI:
     def __init__(self, app):
         self.app=app; self.root=app.root; self.canvas=app.canvas
@@ -25,8 +82,11 @@ class AuditCockpitUI:
         self.render()
     def format_ts(self, value):
         return cc.format_date_de(value) if hasattr(cc,"format_date_de") else str(value or "")
-    def format_period(self, value):
-        return cc.format_any_period_display(value) if hasattr(cc,"format_any_period_display") else str(value or "")
+    def format_period(self, value, timestamp=None):
+        try:
+            return normalize_audit_period_value(value, timestamp)
+        except Exception:
+            return cc.format_any_period_display(value) if hasattr(cc,"format_any_period_display") else str(value or "")
     def visible_entries(self):
         data=cc.load_audit().get("entries",[]); out=[]
         for e in data:
@@ -71,7 +131,7 @@ class AuditCockpitUI:
         headers=["Zeitpunkt","Ereignis","Modul","Risiko","Zeitraum","Benutzer","Details"]
         for c,h in enumerate(headers): tk.Label(table,text=h,bg=cc.HEADER,fg=cc.TEXT,font=zfont(self.app, 12, "bold"),padx=6,pady=6).grid(row=0,column=c,sticky="nsew",padx=1,pady=1)
         for r,e in enumerate(entries,1):
-            vals=[self.format_ts(e.get("timestamp","")),e.get("event_type",""),e.get("module",""),e.get("risk",""),self.format_period(e.get("period","")),e.get("user_name","")]
+            vals=[self.format_ts(e.get("timestamp","")),e.get("event_type",""),e.get("module",""),e.get("risk",""),self.format_period(e.get("period",""), e.get("timestamp","")),e.get("user_name","")]
             for c,v in enumerate(vals): tk.Label(table,text=v,bg=cc.WHITE,fg=cc.TEXT,font=zfont(self.app, 12),padx=6,pady=5,anchor="w",wraplength=220).grid(row=r,column=c,sticky="nsew",padx=1,pady=1)
             tk.Button(table,text="öffnen",font=zfont(self.app, 12, "bold"),command=lambda ee=e: self.show_details(ee),bg=cc.WHITE,fg=cc.BLUE,bd=1,padx=6,pady=5).grid(row=r,column=6,sticky="nsew",padx=1,pady=1)
         self.app.active_scroll_canvas=canvas
@@ -89,7 +149,7 @@ class AuditCockpitUI:
     def export_pdf(self):
         entries=self.visible_entries(); path=filedialog.asksaveasfilename(defaultextension=".pdf",filetypes=[("PDF","*.pdf")],initialfile="Audit-Bericht.pdf")
         if not path: return
-        rows=[["Zeitpunkt","Ereignis","Modul","Risiko","Zeitraum","Benutzer","Details"]]+[[self.format_ts(e.get("timestamp")),e.get("event_type"),e.get("module"),e.get("risk"),self.format_period(e.get("period")),e.get("user_name"),e.get("details")] for e in entries]
+        rows=[["Zeitpunkt","Ereignis","Modul","Risiko","Zeitraum","Benutzer","Details"]]+[[self.format_ts(e.get("timestamp")),e.get("event_type"),e.get("module"),e.get("risk"),self.format_period(e.get("period"), e.get("timestamp")),e.get("user_name"),e.get("details")] for e in entries]
         cc.write_simple_pdf(path,"Audit-Bericht",rows); cc.log_audit(self.app,"PDF-Bericht erstellt","Audit-Cockpit",Path(path).name,path,"Info",public=False)
         if messagebox.askyesno("PDF erstellt","PDF öffnen?"): cc.open_path(path)
 def render(app): AuditCockpitUI(app)

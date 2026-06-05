@@ -19,7 +19,7 @@
       "approval_required": true,
       "four_eye": false,
       "sync_with_calendar": true,
-      "task_uid": "MQ002"
+      "task_uid": "TAX003"
     },
     {
       "type_id": "Z4",
@@ -38,7 +38,7 @@
       "approval_required": true,
       "four_eye": false,
       "sync_with_calendar": true,
-      "task_uid": "MQ001"
+      "task_uid": "TAX004"
     },
     {
       "type_id": "Z5a",
@@ -57,7 +57,7 @@
       "approval_required": true,
       "four_eye": false,
       "sync_with_calendar": true,
-      "task_uid": "MQ003"
+      "task_uid": "TAX005"
     },
     {
       "type_id": "Intrastat",
@@ -76,7 +76,7 @@
       "approval_required": true,
       "four_eye": false,
       "sync_with_calendar": false,
-      "task_uid": ""
+      "task_uid": "TAX001"
     },
     {
       "type_id": "UStVA",
@@ -95,7 +95,7 @@
       "approval_required": true,
       "four_eye": false,
       "sync_with_calendar": false,
-      "task_uid": ""
+      "task_uid": "TAX002"
     }
   ]
 }

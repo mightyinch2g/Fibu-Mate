@@ -69,14 +69,65 @@ def archive_audit_entries(entries,app=None,note="Manuelle Archivierung"):
     p=ensure_dirs()/"Audit"/"archive"/f"audit_archive_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"; json_save(p,{"archived_at":now_iso(),"archived_by":user_name(app) if app else "System","note":note,"entries":entries}); return p
 def tax_config_path(): return ensure_dirs()/"TaxReporting"/"tax_reporting_config.json"
 def tax_period_path(period): return ensure_dirs()/"TaxReporting"/"periods"/f"{period}.json"
+TAX_GROUP_MEMBER_IDS = {'ZM', 'Z4', 'Z5A', 'TAX'}
+TAX_GROUP_MEMBER_TITLES = {'ZM', 'Z4', 'Z5A', 'TAX'}
+TAX_GROUP_SHARED_TITLE = 'Tax'
+TAX_GROUP_SHARED_TEAM = 'Steuermeldung'
+TAX_GROUP_SHARED_DEFAULT_UID = 'TAX001'
+
+def _tax_alias_key(value):
+    return str(value or '').strip().upper()
+
+def is_tax_group_member(type_id='', title=''):
+    return _tax_alias_key(type_id) in TAX_GROUP_MEMBER_IDS or _tax_alias_key(title) in TAX_GROUP_MEMBER_TITLES
+
+def tax_group_shared_uid_from_cfg(cfg=None):
+    cfg = cfg or {}
+    for rt in cfg.get('report_types', []) or []:
+        if is_tax_group_member(rt.get('id'), rt.get('title')):
+            uid = str(rt.get('task_uid', '') or '').strip()
+            if uid:
+                return uid
+    return TAX_GROUP_SHARED_DEFAULT_UID
+
+def normalize_tax_config(cfg):
+    cfg = cfg or {}
+    cfg.setdefault('report_types', [])
+    cfg.setdefault('next_task_uid', 1)
+    changed = False
+    shared_uid = tax_group_shared_uid_from_cfg(cfg)
+    shared_owner = next((str(rt.get('owner_user_key', '') or '').strip() for rt in cfg.get('report_types', []) if is_tax_group_member(rt.get('id'), rt.get('title')) and str(rt.get('owner_user_key', '') or '').strip()), '')
+    shared_reviewer = next((str(rt.get('reviewer_user_key', '') or '').strip() for rt in cfg.get('report_types', []) if is_tax_group_member(rt.get('id'), rt.get('title')) and str(rt.get('reviewer_user_key', '') or '').strip()), '')
+    shared_sync = any(bool(rt.get('sync_with_calendar', False)) for rt in cfg.get('report_types', []) if is_tax_group_member(rt.get('id'), rt.get('title')))
+    for rt in cfg.get('report_types', []):
+        before = dict(rt)
+        rt.setdefault('task_uid', rt.get('id', ''))
+        rt.setdefault('active', True)
+        rt.setdefault('evidence_required', True)
+        rt.setdefault('approval_required', True)
+        rt.setdefault('four_eye', False)
+        rt.setdefault('owner_user_key', '')
+        rt.setdefault('reviewer_user_key', '')
+        rt.setdefault('sync_with_calendar', False)
+        if is_tax_group_member(rt.get('id'), rt.get('title')):
+            rt['task_uid'] = shared_uid
+            rt['owner_user_key'] = shared_owner
+            rt['reviewer_user_key'] = shared_reviewer
+            rt['sync_with_calendar'] = shared_sync if shared_sync else bool(rt.get('sync_with_calendar', True))
+            rt['responsibility_title'] = TAX_GROUP_SHARED_TITLE
+            rt['responsibility_team'] = TAX_GROUP_SHARED_TEAM
+        if rt != before:
+            changed = True
+    return cfg, changed
+
 def default_tax_config():
-    return {"report_types":[{"id":"ZM","title":"ZM","task_uid":"MQ002","active":True,"evidence_required":True,"approval_required":True,"four_eye":False,"owner_user_key":"","reviewer_user_key":"","sync_with_calendar":True},{"id":"Z4","title":"Z4","task_uid":"MQ001","active":True,"evidence_required":True,"approval_required":True,"four_eye":False,"owner_user_key":"","reviewer_user_key":"","sync_with_calendar":True},{"id":"Z5a","title":"Z5a","task_uid":"MQ003","active":True,"evidence_required":True,"approval_required":True,"four_eye":False,"owner_user_key":"","reviewer_user_key":"","sync_with_calendar":True}],"warning_days":{"yellow":10,"orange":5},"next_task_uid":1}
+    return {"report_types":[{"id":"ZM","title":"ZM","task_uid":TAX_GROUP_SHARED_DEFAULT_UID,"active":True,"evidence_required":True,"approval_required":False,"four_eye":False,"owner_user_key":"","reviewer_user_key":"","sync_with_calendar":True,"responsibility_title":TAX_GROUP_SHARED_TITLE,"responsibility_team":TAX_GROUP_SHARED_TEAM},{"id":"Z4","title":"Z4","task_uid":TAX_GROUP_SHARED_DEFAULT_UID,"active":True,"evidence_required":True,"approval_required":False,"four_eye":False,"owner_user_key":"","reviewer_user_key":"","sync_with_calendar":True,"responsibility_title":TAX_GROUP_SHARED_TITLE,"responsibility_team":TAX_GROUP_SHARED_TEAM},{"id":"Z5a","title":"Z5a","task_uid":TAX_GROUP_SHARED_DEFAULT_UID,"active":True,"evidence_required":True,"approval_required":False,"four_eye":False,"owner_user_key":"","reviewer_user_key":"","sync_with_calendar":True,"responsibility_title":TAX_GROUP_SHARED_TITLE,"responsibility_team":TAX_GROUP_SHARED_TEAM}],"warning_days":{"yellow":10,"orange":5},"next_task_uid":1}
 def load_tax_config():
-    d=json_load(tax_config_path(),default_tax_config()); d.setdefault("report_types",[]); d.setdefault("next_task_uid",1)
-    for r in d["report_types"]:
-        r.setdefault("task_uid",r.get("id","")); r.setdefault("active",True); r.setdefault("evidence_required",True); r.setdefault("approval_required",True); r.setdefault("four_eye",False); r.setdefault("owner_user_key",""); r.setdefault("reviewer_user_key",""); r.setdefault("sync_with_calendar",False)
+    d=json_load(tax_config_path(),default_tax_config()); d, _changed = normalize_tax_config(d)
     return d
-def save_tax_config(d): json_save(tax_config_path(),d)
+def save_tax_config(d):
+    d, _changed = normalize_tax_config(d)
+    json_save(tax_config_path(),d)
 def next_tax_task_uid(cfg):
     ex={r.get('task_uid','') for r in cfg.get('report_types',[])}; n=int(cfg.get('next_task_uid',1) or 1)
     while True:
@@ -91,12 +142,22 @@ def default_due(period):
     end = date(y, m, calendar.monthrange(y, m)[1])
     return default_closing_cutoff_after_period_end(end)
 def ensure_tax_period(period):
-    cfg=load_tax_config(); d=json_load(tax_period_path(period),{"period":period,"created_at":now_iso(),"reports":[]}); d.setdefault("reports",[]); ex={r.get('type_id'):r for r in d['reports']}; ch=False
+    cfg = load_tax_config(); cfg, cfg_changed = normalize_tax_config(cfg)
+    if cfg_changed:
+        save_tax_config(cfg)
+    d = json_load(tax_period_path(period), {"period":period,"created_at":now_iso(),"reports":[]}); d.setdefault("reports",[]); ex={r.get('type_id'):r for r in d['reports']}; ch=False
     for rt in cfg.get('report_types',[]):
         if not rt.get('active',True): continue
         rid=rt.get('id') or rt.get('title')
         if rid not in ex:
             d['reports'].append({"type_id":rid,"title":rt.get('title',rid),"period":period,"status":"Offen","due_date":default_due(period),"owner_user_key":rt.get('owner_user_key',''),"reviewer_user_key":rt.get('reviewer_user_key',''),"reported_at":"","approved_at":"","comments":[],"attachments":[],"history":[],"evidence_required":rt.get('evidence_required',True),"approval_required":rt.get('approval_required',True),"four_eye":rt.get('four_eye',False),"sync_with_calendar":rt.get('sync_with_calendar',False),"task_uid":rt.get('task_uid','')}); ch=True
+    cfg_map = {(rt.get('id') or rt.get('title')): rt for rt in cfg.get('report_types',[])}
+    for report in d.get('reports',[]) or []:
+        rt = cfg_map.get(report.get('type_id'))
+        if rt:
+            for key, value in [('owner_user_key', rt.get('owner_user_key','')), ('reviewer_user_key', rt.get('reviewer_user_key','')), ('sync_with_calendar', bool(rt.get('sync_with_calendar',False))), ('task_uid', rt.get('task_uid','')), ('evidence_required', bool(rt.get('evidence_required',True))), ('approval_required', bool(rt.get('approval_required',True))), ('four_eye', bool(rt.get('four_eye',False)))]:
+                if report.get(key) != value:
+                    report[key] = value; ch = True
     if sync_tax_period_with_deadlines(period, d):
         ch = True
     if ch: json_save(tax_period_path(period),d)
@@ -623,3 +684,254 @@ def audit_entry_long_text(e):
         f"Details:\n{e.get('details','')}\n\n"
         f"Referenz-ID: {e.get('related_id','')}"
     )
+
+
+# ---- v0.435: Zuständigkeitspflege und modulübergreifend eindeutige Aufgaben-IDs ----
+def responsibility_catalog_path():
+    return ensure_dirs() / 'responsibility_catalog.json'
+
+def load_responsibility_catalog():
+    d = json_load(responsibility_catalog_path(), {'items': [], 'next': {'monthly': 1, 'quarterly': 1, 'yearly': 1, 'tax': 1}})
+    d.setdefault('items', []); d.setdefault('next', {'monthly': 1, 'quarterly': 1, 'yearly': 1, 'tax': 1})
+    return d
+
+def save_responsibility_catalog_data(data):
+    data.setdefault('items', []); data.setdefault('next', {'monthly': 1, 'quarterly': 1, 'yearly': 1, 'tax': 1})
+    json_save(responsibility_catalog_path(), data)
+
+def responsibility_prefix(kind):
+    return {'monthly':'M', 'quarterly':'Q', 'yearly':'J', 'tax':'TAX'}.get(str(kind or '').lower(), 'A')
+
+def next_responsibility_task_uid(cat, kind):
+    prefix = responsibility_prefix(kind)
+    used = {str(i.get('task_uid','')).strip() for i in cat.get('items', []) if str(i.get('task_uid','')).strip()}
+    n = int(cat.setdefault('next', {}).get(kind, 1) or 1)
+    while True:
+        uid = f'{prefix}{n:03d}' if prefix != 'TAX' else f'TAX{n:03d}'
+        n += 1
+        if uid not in used:
+            cat['next'][kind] = n
+            return uid
+
+def _resp_key(kind, title='', team='', type_id=''):
+    return f"{kind}|{type_id or ''}|{team or ''}|{title or ''}"
+
+def _closing_module_for_kind(kind):
+    return {'monthly':'MonthlyClose', 'quarterly':'QuarterlyClose', 'yearly':'YearlyClose'}.get(deadline_kind_name(kind))
+
+def _merge_resp(cat, item):
+    item = dict(item); item['key'] = item.get('key') or _resp_key(item.get('kind'), item.get('title'), item.get('team'), item.get('type_id'))
+    cur = next((x for x in cat.get('items', []) if x.get('key') == item['key']), None)
+    if cur is None:
+        if not item.get('task_uid'): item['task_uid'] = next_responsibility_task_uid(cat, item.get('kind'))
+        cat.setdefault('items', []).append(item); return item
+    for k, v in item.items():
+        cur.setdefault(k, v)
+        if cur.get(k) in ('', None) and v not in ('', None): cur[k] = v
+    if not cur.get('task_uid'): cur['task_uid'] = next_responsibility_task_uid(cat, cur.get('kind'))
+    return cur
+
+def collect_responsibility_catalog(kind, include_tax_for_monthly=False):
+    kind = deadline_kind_name(kind); cat = load_responsibility_catalog(); module = _closing_module_for_kind(kind)
+    if module:
+        period_dir = bin_dir() / 'Closing' / module / 'periods'
+        if period_dir.exists():
+            for p in sorted(period_dir.glob('*.json')):
+                try: data = json.loads(p.read_text(encoding='utf-8'))
+                except Exception: continue
+                for t in data.get('tasks', []) or []:
+                    if t.get('deleted'): continue
+                    _merge_resp(cat, {'kind': kind, 'source': 'closing_period', 'period': p.stem, 'type_id': t.get('id',''), 'team': t.get('team',''), 'title': t.get('title',''), 'task_uid': t.get('task_uid',''), 'owner': t.get('owner',''), 'owner_user_key': t.get('owner_user_key',''), 'sync_with_calendar': True})
+    if include_tax_for_monthly and kind == 'monthly':
+        cfg = load_tax_config()
+        for rt in cfg.get('report_types', []) or []:
+            tid = rt.get('id') or rt.get('title','')
+            _merge_resp(cat, {'kind': 'tax', 'source': 'tax_config', 'type_id': tid, 'team': 'Steuermeldung', 'title': rt.get('title', tid), 'task_uid': rt.get('task_uid',''), 'owner': rt.get('owner',''), 'owner_user_key': rt.get('owner_user_key',''), 'sync_with_calendar': rt.get('sync_with_calendar', True)})
+    used = set()
+    for it in cat.get('items', []):
+        uid = str(it.get('task_uid','')).strip()
+        if not uid or uid in used: it['task_uid'] = next_responsibility_task_uid(cat, it.get('kind'))
+        used.add(it['task_uid'])
+    save_responsibility_catalog_data(cat)
+    wanted = {kind} | ({'tax'} if include_tax_for_monthly and kind == 'monthly' else set())
+    return sorted([x for x in cat.get('items', []) if x.get('kind') in wanted], key=lambda x:(x.get('kind',''), x.get('team',''), x.get('title','')))
+
+def save_responsibility_rows(rows):
+    cat = load_responsibility_catalog(); by_key = {x.get('key'): x for x in cat.get('items', [])}; seen=set(); changed=0
+    for row in rows:
+        key = row.get('key') or _resp_key(row.get('kind'), row.get('title'), row.get('team'), row.get('type_id'))
+        item = by_key.get(key)
+        if item is None: item={'key':key}; cat.setdefault('items', []).append(item)
+        uid=str(row.get('task_uid','')).strip()
+        if not uid or uid in seen: uid=next_responsibility_task_uid(cat, row.get('kind'))
+        seen.add(uid); item.update(row); item['key']=key; item['task_uid']=uid
+        changed += _sync_responsibility_row(item)
+    save_responsibility_catalog_data(cat); return changed
+
+def _sync_responsibility_row(row):
+    row = normalize_responsibility_row(row, tax_group_shared_uid_from_cfg(load_tax_config())) if 'normalize_responsibility_row' in globals() else dict(row or {})
+    kind=row.get('kind'); changed=0
+    if is_tax_group_member(row.get('type_id'), row.get('title')) or row.get('responsibility_title') == TAX_GROUP_SHARED_TITLE:
+        return _sync_tax_group_targets(row) if '_sync_tax_group_targets' in globals() else 0
+    module = _closing_module_for_kind(kind)
+    if not module: return 0
+    period_dir = bin_dir() / 'Closing' / module / 'periods'
+    for p in period_dir.glob('*.json') if period_dir.exists() else []:
+        try: data=json.loads(p.read_text(encoding='utf-8'))
+        except Exception: continue
+        fch=False
+        for t in data.get('tasks', []) or []:
+            if t.get('task_uid') == row.get('task_uid') or (t.get('title') == row.get('title') and t.get('team') == row.get('team')) or (t.get('id') and t.get('id') == row.get('type_id')):
+                for k,v in [('task_uid',row.get('task_uid','')),('owner',row.get('owner','')),('owner_user_key',row.get('owner_user_key',''))]:
+                    if t.get(k) != v: t[k]=v; fch=True
+        if fch: p.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding='utf-8'); changed += 1
+    return changed
+
+
+# ---- v0.435 FINAL: Aufgabenverknüpfung, Mehrfachpräfixe und gemeinsame Zuständigkeit ----
+def responsibility_uid_prefix(task_uid):
+    m = re.match(r'^([A-Z]+)', str(task_uid or '').strip().upper())
+    return m.group(1) if m else ''
+
+def responsibility_uid_number(task_uid):
+    m = re.search(r'(\d+)$', str(task_uid or '').strip())
+    return int(m.group(1)) if m else None
+
+def responsibility_prefix(kind):
+    return {'monthly':'M', 'quarterly':'Q', 'yearly':'J', 'tax':'M', 'all':'A'}.get(str(kind or '').lower(), 'A')
+
+def responsibility_uid_letters(task_uid, fallback_kind=''):
+    letters = {c for c in responsibility_uid_prefix(task_uid) if c in {'M','Q','J'}}
+    if letters:
+        return letters
+    return {'monthly': {'M'}, 'quarterly': {'Q'}, 'yearly': {'J'}, 'tax': {'M'}}.get(deadline_kind_name(fallback_kind), set())
+
+def responsibility_row_visible_for_kind(row, target_kind):
+    target = deadline_kind_name(target_kind)
+    if target == 'all':
+        return True
+    letters = responsibility_uid_letters(row.get('task_uid',''), row.get('kind', target))
+    return responsibility_prefix(target) in letters
+
+def responsibility_combined_uid(prefix_letters, preferred_numbers=None, cat=None):
+    prefix = ''.join(c for c in 'MQJ' if c in set(prefix_letters or [])) or 'M'
+    nums = [int(n) for n in (preferred_numbers or []) if n]
+    return f'{prefix}{(min(nums) if nums else 1):03d}'
+
+def normalize_responsibility_row(row, shared_tax_uid=''):
+    row = dict(row or {})
+    row['kind'] = deadline_kind_name(row.get('kind'))
+    if is_tax_group_member(row.get('type_id',''), row.get('title','')):
+        row['task_uid'] = str(shared_tax_uid or row.get('task_uid') or tax_group_shared_uid_from_cfg(load_tax_config())).strip() or TAX_GROUP_SHARED_DEFAULT_UID
+        row['responsibility_title'] = TAX_GROUP_SHARED_TITLE
+        row['responsibility_team'] = TAX_GROUP_SHARED_TEAM
+    return row
+
+def _tax_group_match(value):
+    return _tax_alias_key(value) in TAX_GROUP_MEMBER_IDS or _tax_alias_key(value) in TAX_GROUP_MEMBER_TITLES
+
+def _sync_tax_group_targets(row):
+    changed = 0
+    cfg = load_tax_config(); cfg, _ = normalize_tax_config(cfg)
+    shared_uid = str(row.get('task_uid','') or tax_group_shared_uid_from_cfg(cfg)).strip() or TAX_GROUP_SHARED_DEFAULT_UID
+    owner_user_key = str(row.get('owner_user_key','') or '').strip()
+    reviewer_user_key = str(row.get('reviewer_user_key','') or '').strip()
+    sync_with_calendar = bool(row.get('sync_with_calendar', True))
+    owner_name = str(row.get('owner','') or '').strip()
+    cfg_changed = False
+    for rt in cfg.get('report_types',[]) or []:
+        if is_tax_group_member(rt.get('id'), rt.get('title')):
+            for key, value in [('task_uid', shared_uid), ('owner_user_key', owner_user_key), ('reviewer_user_key', reviewer_user_key), ('sync_with_calendar', sync_with_calendar), ('responsibility_title', TAX_GROUP_SHARED_TITLE), ('responsibility_team', TAX_GROUP_SHARED_TEAM)]:
+                if rt.get(key) != value:
+                    rt[key] = value; cfg_changed = True
+    if cfg_changed:
+        save_tax_config(cfg); changed += 1
+    period_dir = ensure_dirs() / 'TaxReporting' / 'periods'
+    for p in period_dir.glob('*.json') if period_dir.exists() else []:
+        try: data = json.loads(p.read_text(encoding='utf-8'))
+        except Exception: continue
+        fch = False
+        for report in data.get('reports',[]) or []:
+            if is_tax_group_member(report.get('type_id'), report.get('title')):
+                for key, value in [('task_uid', shared_uid), ('owner_user_key', owner_user_key), ('reviewer_user_key', reviewer_user_key), ('sync_with_calendar', sync_with_calendar)]:
+                    if report.get(key) != value:
+                        report[key] = value; fch = True
+        if fch:
+            p.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding='utf-8'); changed += 1
+    for module in ('MonthlyClose','QuarterlyClose','YearlyClose'):
+        period_dir = bin_dir() / 'Closing' / module / 'periods'
+        for p in period_dir.glob('*.json') if period_dir.exists() else []:
+            try: data = json.loads(p.read_text(encoding='utf-8'))
+            except Exception: continue
+            fch = False
+            for task in data.get('tasks',[]) or []:
+                if _tax_group_match(task.get('id')) or _tax_group_match(task.get('title')) or str(task.get('task_uid','') or '').strip() == shared_uid:
+                    for key, value in [('task_uid', shared_uid), ('owner', owner_name), ('owner_user_key', owner_user_key)]:
+                        if task.get(key) != value:
+                            task[key] = value; fch = True
+            if fch:
+                p.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding='utf-8'); changed += 1
+    return changed
+
+def collect_responsibility_catalog(kind, include_tax_for_monthly=False):
+    kind = deadline_kind_name(kind)
+    cat = load_responsibility_catalog()
+    cfg = load_tax_config()
+    shared_uid = tax_group_shared_uid_from_cfg(cfg)
+    scan_kinds = ['monthly','quarterly','yearly'] if kind == 'all' else [kind]
+    for scan_kind in scan_kinds:
+        module = _closing_module_for_kind(scan_kind) if '_closing_module_for_kind' in globals() else {'monthly':'MonthlyClose','quarterly':'QuarterlyClose','yearly':'YearlyClose'}.get(scan_kind)
+        period_dir = bin_dir() / 'Closing' / module / 'periods' if module else None
+        if period_dir and period_dir.exists():
+            for p in sorted(period_dir.glob('*.json')):
+                try: data=json.loads(p.read_text(encoding='utf-8'))
+                except Exception: continue
+                for t in data.get('tasks', []) or []:
+                    if t.get('deleted'): continue
+                    item = normalize_responsibility_row({'kind':scan_kind,'source':'closing_period','period':p.stem,'type_id':t.get('id',''),'team':t.get('team',''),'title':t.get('title',''),'task_uid':t.get('task_uid','') or f"{responsibility_prefix(scan_kind)}001",'owner':t.get('owner',''),'owner_user_key':t.get('owner_user_key',''),'sync_with_calendar':True}, shared_uid)
+                    _merge_resp(cat, item)
+    if include_tax_for_monthly and kind in ('monthly','all'):
+        for rt in cfg.get('report_types', []) or []:
+            item = normalize_responsibility_row({'kind':'tax','source':'tax_config','type_id':rt.get('id') or rt.get('title',''),'team':rt.get('responsibility_team') or TAX_GROUP_SHARED_TEAM,'title':rt.get('title', rt.get('id','')),'task_uid':rt.get('task_uid',''),'owner':rt.get('owner',''),'owner_user_key':rt.get('owner_user_key',''),'sync_with_calendar':rt.get('sync_with_calendar', True)}, shared_uid)
+            _merge_resp(cat, item)
+    used = set(); changed = False; normalized_items = []
+    for item in cat.get('items', []):
+        norm = normalize_responsibility_row(item, shared_uid)
+        uid = str(norm.get('task_uid','') or '').strip()
+        if not uid:
+            norm['task_uid'] = next_responsibility_task_uid(cat, norm.get('kind'))
+        elif uid in used and not is_tax_group_member(norm.get('type_id'), norm.get('title')):
+            norm['task_uid'] = next_responsibility_task_uid(cat, norm.get('kind'))
+        used.add(norm.get('task_uid'))
+        if norm != item:
+            changed = True
+        normalized_items.append(norm)
+    cat['items'] = normalized_items
+    if changed:
+        save_responsibility_catalog_data(cat)
+    rows = [normalize_responsibility_row(x, shared_uid) for x in cat.get('items', []) if not x.get('deleted') and responsibility_row_visible_for_kind(normalize_responsibility_row(x, shared_uid), kind)]
+    return sorted(rows, key=lambda x:(responsibility_uid_prefix(x.get('task_uid','')), responsibility_uid_number(x.get('task_uid','')) or 0, x.get('kind',''), x.get('team',''), x.get('title','')))
+
+def save_responsibility_rows(rows):
+    cat = load_responsibility_catalog(); cfg = load_tax_config(); shared_uid = tax_group_shared_uid_from_cfg(cfg); by_key={x.get('key'):x for x in cat.get('items', []) if x.get('key')}; changed=0
+    for row in rows or []:
+        row = normalize_responsibility_row(row, shared_uid)
+        key=row.get('key') or f"{row.get('kind')}|{row.get('type_id','')}|{row.get('team','')}|{row.get('title','')}"
+        item=by_key.get(key)
+        if item is None:
+            item={'key':key}; cat.setdefault('items', []).append(item); by_key[key]=item
+        item.update(row); item['key']=key; item['task_uid']=str(row.get('task_uid','')).strip() or item.get('task_uid') or (shared_uid if is_tax_group_member(row.get('type_id'), row.get('title')) else f"{responsibility_prefix(row.get('kind'))}001")
+        try: changed += _sync_responsibility_row(item)
+        except Exception: pass
+    save_responsibility_catalog_data(cat); return changed
+
+def delete_responsibility_rows(rows):
+    cat=load_responsibility_catalog(); cfg = load_tax_config(); shared_uid = tax_group_shared_uid_from_cfg(cfg); by_key={x.get('key'):x for x in cat.get('items', []) if x.get('key')}; count=0
+    for row in rows or []:
+        row = normalize_responsibility_row(row, shared_uid)
+        key=row.get('key') or f"{row.get('kind')}|{row.get('type_id','')}|{row.get('team','')}|{row.get('title','')}"
+        item=by_key.get(key)
+        if item is None:
+            item=dict(row); item['key']=key; cat.setdefault('items', []).append(item)
+        item['deleted']=True; count+=1
+    save_responsibility_catalog_data(cat); return count

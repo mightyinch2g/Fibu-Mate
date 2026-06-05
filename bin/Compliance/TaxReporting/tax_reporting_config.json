@@ -4,7 +4,7 @@
       "id": "ZM",
       "title": "ZM",
       "active": true,
-      "task_uid": "MQ002",
+      "task_uid": "TAX003",
       "evidence_required": true,
       "approval_required": true,
       "four_eye": false,
@@ -16,7 +16,7 @@
       "id": "Z4",
       "title": "Z4",
       "active": true,
-      "task_uid": "MQ001",
+      "task_uid": "TAX004",
       "evidence_required": true,
       "approval_required": true,
       "four_eye": false,
@@ -28,7 +28,7 @@
       "id": "Z5a",
       "title": "Z5a",
       "active": true,
-      "task_uid": "MQ003",
+      "task_uid": "TAX005",
       "evidence_required": true,
       "approval_required": true,
       "four_eye": false,
@@ -46,7 +46,7 @@
       "owner_user_key": "",
       "reviewer_user_key": "",
       "sync_with_calendar": false,
-      "task_uid": ""
+      "task_uid": "TAX001"
     },
     {
       "id": "UStVA",
@@ -58,11 +58,12 @@
       "owner_user_key": "",
       "reviewer_user_key": "",
       "sync_with_calendar": false,
-      "task_uid": ""
+      "task_uid": "TAX002"
     }
   ],
   "warning_days": {
     "yellow": 10,
     "orange": 5
-  }
+  },
+  "next_task_uid": 1
 }
