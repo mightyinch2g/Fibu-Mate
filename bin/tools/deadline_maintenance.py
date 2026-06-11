@@ -1,3 +1,4 @@
+## FiBuMate_PATCH_MARKER: 20260609_v0436_NUR_STICHTAGSPFLEGE
 import json
 import calendar
 import re
@@ -45,7 +46,7 @@ def apply_readable_fonts(widget, app, base_size=12):
     except Exception:
         pass
 
-MODULE_TITLE = "Stichtags- & Zuständigkeitspflege"
+MODULE_TITLE = "Stichtagspflege"
 
 
 def ensure_large_ui_styles(app):
@@ -384,9 +385,9 @@ class DeadlineMaintenanceUI:
         tk.Button(top, text="Speichern + Übernehmen", command=self.save_all, bg=cc.BLUE, fg="white", bd=0, padx=14, pady=8, font=zfont(self.app, 12, "bold")).pack(side="right", padx=8)
         ensure_large_ui_styles(self.app)
         main_nb = ttk.Notebook(self.frame, style="DeadlineMaintenance.TNotebook"); main_nb.pack(fill="both", expand=True, padx=24, pady=(0, 12))
-        tab_deadlines = tk.Frame(main_nb, bg=cc.BG); tab_resp = tk.Frame(main_nb, bg=cc.BG)
-        main_nb.add(tab_deadlines, text="Stichtagspflege"); main_nb.add(tab_resp, text="Zuständigkeitspflege")
-        self._build_stichtagspflege_tab(tab_deadlines); self._build_responsibility_tab(tab_resp)
+        tab_deadlines = tk.Frame(main_nb, bg=cc.BG)
+        main_nb.add(tab_deadlines, text="Stichtagspflege")
+        self._build_stichtagspflege_tab(tab_deadlines)
         try: cc.install_entry_grid_navigation(main_nb)
         except Exception: pass
 
@@ -745,7 +746,7 @@ class DeadlineMaintenanceUI:
         resp_rows = self._collect_responsibility_rows_from_ui() if hasattr(self, '_collect_responsibility_rows_from_ui') else []
         resp_synced = cc.save_responsibility_rows(resp_rows) if resp_rows and hasattr(cc, 'save_responsibility_rows') else 0
         self._saved_snapshot = self._current_snapshot()
-        cc.log_audit(self.app, "Aufgabe geändert", MODULE_TITLE, "Stichtage/Zuständigkeiten gespeichert und übernommen", f"{fiscal_year_label(self.year)}; Perioden: {', '.join(changed_periods) if changed_periods else 'keine Feldänderung'}; synchronisierte Stichtagsdateien: {propagated}; synchronisierte Zuständigkeitsdateien: {resp_synced}", "Info", period=fiscal_year_label(self.year), public=True)
+        cc.log_audit(self.app, "Aufgabe geändert", MODULE_TITLE, "Stichtage/Stichtage gespeichert und übernommen", f"{fiscal_year_label(self.year)}; Perioden: {', '.join(changed_periods) if changed_periods else 'keine Feldänderung'}; synchronisierte Stichtagsdateien: {propagated}; synchronisierte Zuständigkeitsdateien: {resp_synced}", "Info", period=fiscal_year_label(self.year), public=True)
         messagebox.showinfo(MODULE_TITLE, "Gespeichert. Änderungen wurden in Monats-/Quartals-/Jahresabschluss und Steuermeldungs-Cockpit übernommen.")
 
     def _current_snapshot(self):

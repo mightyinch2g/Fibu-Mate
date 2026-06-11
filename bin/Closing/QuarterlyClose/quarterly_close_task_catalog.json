@@ -15,7 +15,8 @@
       "priority": "normal",
       "required": true,
       "recurring": true,
-      "start_period": "2026-Q2"
+      "start_period": "2026-Q2",
+      "task_uid": "Q001"
     },
     {
       "catalog_id": "rec_20260513155206274835",
@@ -32,7 +33,8 @@
       "priority": "normal",
       "required": true,
       "recurring": true,
-      "start_period": "2026-Q2"
+      "start_period": "2026-Q2",
+      "task_uid": "Q002"
     },
     {
       "catalog_id": "rec_20260526165717298491",
@@ -49,7 +51,8 @@
       "priority": "normal",
       "required": true,
       "recurring": true,
-      "start_period": "2026-Q2"
+      "start_period": "2026-Q2",
+      "task_uid": "Q006"
     }
   ]
 }

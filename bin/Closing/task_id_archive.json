@@ -1,0 +1,39 @@
+{
+  "entries": [
+    {
+      "old_task_uid": "M013",
+      "new_task_uid": "M009",
+      "title": "Aufgabenpool - Olga Wall 1/2",
+      "deactivation_date": "2026-06-09T16:07:30",
+      "changed_by": "System"
+    },
+    {
+      "old_task_uid": "M014",
+      "new_task_uid": "M010",
+      "title": "Aufgabenpool - Olga Wall 2/2",
+      "deactivation_date": "2026-06-09T16:07:30",
+      "changed_by": "System"
+    },
+    {
+      "old_task_uid": "Q010",
+      "new_task_uid": "MQ001",
+      "title": "Z4-Meldung",
+      "deactivation_date": "2026-06-09T16:07:47",
+      "changed_by": "System"
+    },
+    {
+      "old_task_uid": "Q006",
+      "new_task_uid": "MQ002",
+      "title": "ZM-Meldung",
+      "deactivation_date": "2026-06-09T16:07:47",
+      "changed_by": "System"
+    },
+    {
+      "old_task_uid": "Q010",
+      "new_task_uid": "MQ003",
+      "title": "Z5a-Meldung",
+      "deactivation_date": "2026-06-09T16:07:47",
+      "changed_by": "System"
+    }
+  ]
+}

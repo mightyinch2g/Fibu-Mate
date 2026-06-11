@@ -24,7 +24,6 @@
       "done_at": null,
       "done_by": null,
       "due_date": "2026-05-12",
-      "task_uid": "MQ001",
       "documentation": {}
     },
     {
@@ -49,7 +48,6 @@
       "done_at": null,
       "done_by": null,
       "due_date": "2026-06-25",
-      "task_uid": "MQ002",
       "documentation": {}
     },
     {
@@ -74,7 +72,6 @@
       "done_at": null,
       "done_by": null,
       "due_date": "2026-05-18",
-      "task_uid": "MQ001",
       "documentation": {}
     },
     {
@@ -102,8 +99,7 @@
           "status": "Offen",
           "attachments": [],
           "comments": [],
-          "documentation": {},
-          "task_uid": "M004-u1"
+          "documentation": {}
         },
         {
           "id": "sub_02_161612013507",
@@ -111,8 +107,7 @@
           "status": "Offen",
           "attachments": [],
           "comments": [],
-          "documentation": {},
-          "task_uid": "M004-u2"
+          "documentation": {}
         },
         {
           "id": "sub_03_161627158732",
@@ -120,8 +115,7 @@
           "status": "Offen",
           "attachments": [],
           "comments": [],
-          "documentation": {},
-          "task_uid": "M004-u3"
+          "documentation": {}
         },
         {
           "id": "sub_04_161637304527",
@@ -129,8 +123,7 @@
           "status": "Offen",
           "attachments": [],
           "comments": [],
-          "documentation": {},
-          "task_uid": "M004-u4"
+          "documentation": {}
         },
         {
           "id": "sub_05_161656079484",
@@ -138,8 +131,7 @@
           "status": "Offen",
           "attachments": [],
           "comments": [],
-          "documentation": {},
-          "task_uid": "M004-u5"
+          "documentation": {}
         },
         {
           "id": "sub_06_161710241590",
@@ -147,14 +139,12 @@
           "status": "Offen",
           "attachments": [],
           "comments": [],
-          "documentation": {},
-          "task_uid": "M004-u6"
+          "documentation": {}
         }
       ],
       "done_at": null,
       "done_by": null,
       "due_date": "2026-05-02",
-      "task_uid": "M004",
       "documentation": {}
     },
     {
@@ -184,8 +174,7 @@
           "comments": [],
           "documentation": {},
           "owner_user_key": "fellhauer",
-          "owner": "Fellhauer",
-          "task_uid": "M005-u1"
+          "owner": "Fellhauer"
         },
         {
           "id": "sub_02_090704058104",
@@ -195,8 +184,7 @@
           "comments": [],
           "documentation": {},
           "owner_user_key": "fellhauer",
-          "owner": "Fellhauer",
-          "task_uid": "M005-u2"
+          "owner": "Fellhauer"
         },
         {
           "id": "sub_03_090723276152",
@@ -206,8 +194,7 @@
           "comments": [],
           "documentation": {},
           "owner_user_key": "fellhauer",
-          "owner": "Fellhauer",
-          "task_uid": "M005-u3"
+          "owner": "Fellhauer"
         },
         {
           "id": "sub_04_090728460974",
@@ -217,8 +204,7 @@
           "comments": [],
           "documentation": {},
           "owner_user_key": "fellhauer",
-          "owner": "Fellhauer",
-          "task_uid": "M005-u4"
+          "owner": "Fellhauer"
         },
         {
           "id": "sub_05_090751671577",
@@ -228,8 +214,7 @@
           "comments": [],
           "documentation": {},
           "owner_user_key": "fellhauer",
-          "owner": "Fellhauer",
-          "task_uid": "M005-u5"
+          "owner": "Fellhauer"
         },
         {
           "id": "sub_06_090802668325",
@@ -239,8 +224,7 @@
           "comments": [],
           "documentation": {},
           "owner_user_key": "fellhauer",
-          "owner": "Fellhauer",
-          "task_uid": "M005-u6"
+          "owner": "Fellhauer"
         },
         {
           "id": "sub_07_090815384336",
@@ -250,14 +234,12 @@
           "comments": [],
           "documentation": {},
           "owner_user_key": "fellhauer",
-          "owner": "Fellhauer",
-          "task_uid": "M005-u7"
+          "owner": "Fellhauer"
         }
       ],
       "done_at": null,
       "done_by": null,
       "due_date": "2026-05-02",
-      "task_uid": "M005",
       "documentation": {}
     },
     {
@@ -281,8 +263,7 @@
       "subtasks": [],
       "done_at": null,
       "done_by": null,
-      "due_date": "2026-05-02",
-      "task_uid": "M011"
+      "due_date": "2026-05-02"
     },
     {
       "id": "hauptbuch_06",
@@ -309,8 +290,7 @@
           "status": "Offen",
           "attachments": [],
           "comments": [],
-          "documentation": {},
-          "task_uid": "M012-u1"
+          "documentation": {}
         },
         {
           "id": "sub_02_145818932750",
@@ -318,14 +298,12 @@
           "status": "Offen",
           "attachments": [],
           "comments": [],
-          "documentation": {},
-          "task_uid": "M012-u2"
+          "documentation": {}
         }
       ],
       "done_at": null,
       "done_by": null,
       "due_date": "2026-05-02",
-      "task_uid": "M012",
       "documentation": {}
     },
     {
@@ -353,8 +331,7 @@
           "status": "Offen",
           "attachments": [],
           "comments": [],
-          "documentation": {},
-          "task_uid": "M008-u1"
+          "documentation": {}
         },
         {
           "id": "sub_02_145642198289",
@@ -362,14 +339,12 @@
           "status": "Offen",
           "attachments": [],
           "comments": [],
-          "documentation": {},
-          "task_uid": "M008-u2"
+          "documentation": {}
         }
       ],
       "done_at": null,
       "done_by": null,
       "due_date": "2026-05-02",
-      "task_uid": "M008",
       "documentation": {}
     },
     {
@@ -397,8 +372,7 @@
           "status": "Offen",
           "attachments": [],
           "comments": [],
-          "documentation": {},
-          "task_uid": "M013-u1"
+          "documentation": {}
         },
         {
           "id": "sub_02_152858450204",
@@ -406,8 +380,7 @@
           "status": "Offen",
           "attachments": [],
           "comments": [],
-          "documentation": {},
-          "task_uid": "M013-u2"
+          "documentation": {}
         },
         {
           "id": "sub_03_152906271939",
@@ -415,8 +388,7 @@
           "status": "Offen",
           "attachments": [],
           "comments": [],
-          "documentation": {},
-          "task_uid": "M013-u3"
+          "documentation": {}
         },
         {
           "id": "sub_04_152911391021",
@@ -424,8 +396,7 @@
           "status": "Offen",
           "attachments": [],
           "comments": [],
-          "documentation": {},
-          "task_uid": "M013-u4"
+          "documentation": {}
         },
         {
           "id": "sub_05_152917963102",
@@ -433,8 +404,7 @@
           "status": "Offen",
           "attachments": [],
           "comments": [],
-          "documentation": {},
-          "task_uid": "M013-u5"
+          "documentation": {}
         },
         {
           "id": "sub_06_152922845934",
@@ -442,8 +412,7 @@
           "status": "Offen",
           "attachments": [],
           "comments": [],
-          "documentation": {},
-          "task_uid": "M013-u6"
+          "documentation": {}
         },
         {
           "id": "sub_07_152925672739",
@@ -451,8 +420,7 @@
           "status": "Offen",
           "attachments": [],
           "comments": [],
-          "documentation": {},
-          "task_uid": "M013-u7"
+          "documentation": {}
         },
         {
           "id": "sub_08_152930126962",
@@ -460,8 +428,7 @@
           "status": "Offen",
           "attachments": [],
           "comments": [],
-          "documentation": {},
-          "task_uid": "M013-u8"
+          "documentation": {}
         },
         {
           "id": "sub_09_152934036417",
@@ -469,8 +436,7 @@
           "status": "Offen",
           "attachments": [],
           "comments": [],
-          "documentation": {},
-          "task_uid": "M013-u9"
+          "documentation": {}
         },
         {
           "id": "sub_10_152937408136",
@@ -478,8 +444,7 @@
           "status": "Offen",
           "attachments": [],
           "comments": [],
-          "documentation": {},
-          "task_uid": "M013-u10"
+          "documentation": {}
         },
         {
           "id": "sub_11_152941634078",
@@ -487,8 +452,7 @@
           "status": "Offen",
           "attachments": [],
           "comments": [],
-          "documentation": {},
-          "task_uid": "M013-u11"
+          "documentation": {}
         },
         {
           "id": "sub_12_152947718057",
@@ -496,14 +460,12 @@
           "status": "Offen",
           "attachments": [],
           "comments": [],
-          "documentation": {},
-          "task_uid": "M013-u12"
+          "documentation": {}
         }
       ],
       "done_at": null,
       "done_by": null,
       "due_date": "2026-05-02",
-      "task_uid": "M013",
       "documentation": {}
     },
     {
@@ -531,8 +493,7 @@
           "status": "Offen",
           "attachments": [],
           "comments": [],
-          "documentation": {},
-          "task_uid": "M014-u1"
+          "documentation": {}
         },
         {
           "id": "sub_02_153212859310",
@@ -540,8 +501,7 @@
           "status": "Offen",
           "attachments": [],
           "comments": [],
-          "documentation": {},
-          "task_uid": "M014-u2"
+          "documentation": {}
         },
         {
           "id": "sub_03_153216801728",
@@ -549,8 +509,7 @@
           "status": "Offen",
           "attachments": [],
           "comments": [],
-          "documentation": {},
-          "task_uid": "M014-u3"
+          "documentation": {}
         },
         {
           "id": "sub_04_153221181539",
@@ -558,8 +517,7 @@
           "status": "Offen",
           "attachments": [],
           "comments": [],
-          "documentation": {},
-          "task_uid": "M014-u4"
+          "documentation": {}
         },
         {
           "id": "sub_05_153225184684",
@@ -567,8 +525,7 @@
           "status": "Offen",
           "attachments": [],
           "comments": [],
-          "documentation": {},
-          "task_uid": "M014-u5"
+          "documentation": {}
         },
         {
           "id": "sub_06_153229314092",
@@ -576,8 +533,7 @@
           "status": "Offen",
           "attachments": [],
           "comments": [],
-          "documentation": {},
-          "task_uid": "M014-u6"
+          "documentation": {}
         },
         {
           "id": "sub_07_153233447868",
@@ -585,8 +541,7 @@
           "status": "Offen",
           "attachments": [],
           "comments": [],
-          "documentation": {},
-          "task_uid": "M014-u7"
+          "documentation": {}
         },
         {
           "id": "sub_08_153236915856",
@@ -594,14 +549,12 @@
           "status": "Offen",
           "attachments": [],
           "comments": [],
-          "documentation": {},
-          "task_uid": "M014-u8"
+          "documentation": {}
         }
       ],
       "done_at": null,
       "done_by": null,
       "due_date": "2026-05-02",
-      "task_uid": "M014",
       "documentation": {}
     }
   ],

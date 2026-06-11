@@ -52,7 +52,7 @@
       "approval_required": true,
       "four_eye": false,
       "sync_with_calendar": true,
-      "task_uid": "TAX004"
+      "task_uid": "TAX003"
     },
     {
       "type_id": "Z5a",
@@ -78,7 +78,7 @@
       "approval_required": true,
       "four_eye": false,
       "sync_with_calendar": true,
-      "task_uid": "TAX005"
+      "task_uid": "TAX003"
     },
     {
       "type_id": "Intrastat",

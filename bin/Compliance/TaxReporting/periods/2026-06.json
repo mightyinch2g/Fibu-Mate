@@ -31,6 +31,18 @@
           "user": "System",
           "action": "Fälligkeit aus Stichtagspflege synchronisiert",
           "new_due_date": "2026-07-02"
+        },
+        {
+          "timestamp": "2026-06-09T16:34:09",
+          "user": "System",
+          "action": "Fälligkeit aus Stichtagspflege synchronisiert",
+          "new_due_date": "2026-07-10"
+        },
+        {
+          "timestamp": "2026-06-09T16:34:21",
+          "user": "System",
+          "action": "Fälligkeit aus Stichtagspflege synchronisiert",
+          "new_due_date": "2026-07-02"
         }
       ],
       "evidence_required": true,
@@ -68,6 +80,18 @@
           "user": "System",
           "action": "Fälligkeit aus Stichtagspflege synchronisiert",
           "new_due_date": "2026-07-02"
+        },
+        {
+          "timestamp": "2026-06-09T16:34:09",
+          "user": "System",
+          "action": "Fälligkeit aus Stichtagspflege synchronisiert",
+          "new_due_date": "2026-07-10"
+        },
+        {
+          "timestamp": "2026-06-09T16:34:21",
+          "user": "System",
+          "action": "Fälligkeit aus Stichtagspflege synchronisiert",
+          "new_due_date": "2026-07-02"
         }
       ],
       "evidence_required": true,
@@ -102,6 +126,18 @@
         },
         {
           "timestamp": "2026-05-30T22:50:53",
+          "user": "System",
+          "action": "Fälligkeit aus Stichtagspflege synchronisiert",
+          "new_due_date": "2026-07-02"
+        },
+        {
+          "timestamp": "2026-06-09T16:34:09",
+          "user": "System",
+          "action": "Fälligkeit aus Stichtagspflege synchronisiert",
+          "new_due_date": "2026-07-10"
+        },
+        {
+          "timestamp": "2026-06-09T16:34:21",
           "user": "System",
           "action": "Fälligkeit aus Stichtagspflege synchronisiert",
           "new_due_date": "2026-07-02"

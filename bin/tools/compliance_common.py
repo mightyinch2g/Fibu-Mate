@@ -935,3 +935,199 @@ def delete_responsibility_rows(rows):
             item=dict(row); item['key']=key; cat.setdefault('items', []).append(item)
         item['deleted']=True; count+=1
     save_responsibility_catalog_data(cat); return count
+
+# ---- v0.437: robuste Aufgaben-ID-Zuordnung Abschlusskalender ----
+TEAM_ALIASES_V0437 = {'Kreditoren': 'Zentralregulierung', 'Controlling': 'Treasury'}
+TAX_TITLE_UIDS_V0437 = {'Z4-MELDUNG': 'MQ001', 'ZM-MELDUNG': 'MQ002', 'Z5A-MELDUNG': 'MQ003', 'Z5A': 'MQ003'}
+
+def normalize_team_v0437(team):
+    return TEAM_ALIASES_V0437.get(str(team or '').strip(), str(team or '').strip())
+
+def normalize_title_key_v0437(value):
+    return re.sub(r'\s+', ' ', str(value or '').strip()).upper()
+
+def kind_v0437(kind):
+    try:
+        return deadline_kind_name(kind)
+    except Exception:
+        return str(kind or '').strip().lower()
+
+def prefix_v0437(kind):
+    return {'monthly':'M','quarterly':'Q','yearly':'J','tax':'MQ','all':'MQ'}.get(kind_v0437(kind),'A')
+
+def is_valid_uid_v0437(uid):
+    return bool(re.fullmatch(r'[A-Z]+\d{3,}', str(uid or '').strip().upper()))
+
+def tax_uid_for_task_v0437(task):
+    title = normalize_title_key_v0437(task.get('title',''))
+    return TAX_TITLE_UIDS_V0437.get(title, '')
+
+def identity_key_v0437(kind, task):
+    k=kind_v0437(kind); team=normalize_team_v0437(task.get('team','')); title=normalize_title_key_v0437(task.get('title',''))
+    tax=tax_uid_for_task_v0437(task)
+    if tax:
+        return f'all|tax:{tax}|{team}|{title}'
+    cid=str(task.get('catalog_id','') or '').strip()
+    if cid:
+        return f'{k}|catalog:{cid}|{team}|{title}'
+    return f'{k}|id:{str(task.get("id","") or "").strip()}|{team}|{title}'
+
+def uid_number_v0437(uid):
+    m=re.search(r'(\d+)$', str(uid or ''))
+    return int(m.group(1)) if m else 0
+
+def load_resp_cat_v0437():
+    try:
+        return load_responsibility_catalog()
+    except Exception:
+        return {'items': [], 'next': {'monthly':1,'quarterly':1,'yearly':1,'all':4,'tax':4}}
+
+def save_resp_cat_v0437(cat):
+    try:
+        save_responsibility_catalog_data(cat)
+    except Exception:
+        pass
+
+def find_resp_item_v0437(cat, kind, task):
+    key=identity_key_v0437(kind, task); team=normalize_team_v0437(task.get('team','')); title=normalize_title_key_v0437(task.get('title','')); cid=str(task.get('catalog_id','') or '').strip(); tax=tax_uid_for_task_v0437(task)
+    for it in cat.get('items',[]) or []:
+        if it.get('key') == key:
+            return it
+    if tax:
+        for it in cat.get('items',[]) or []:
+            if str(it.get('task_uid','')).strip().upper() == tax:
+                return it
+    if cid:
+        for it in cat.get('items',[]) or []:
+            if str(it.get('type_id','') or '').strip() == cid:
+                return it
+    for it in cat.get('items',[]) or []:
+        if normalize_team_v0437(it.get('team','')) == team and normalize_title_key_v0437(it.get('title','')) == title:
+            ik=kind_v0437(it.get('kind',''))
+            if ik in (kind_v0437(kind),'all'):
+                return it
+    return None
+
+def next_uid_v0437(cat, kind, used, pref=None):
+    k=kind_v0437(kind); p=pref or prefix_v0437(k); next_key='all' if p=='MQ' else k
+    n=int(cat.setdefault('next',{}).get(next_key, 4 if p=='MQ' else 1) or (4 if p=='MQ' else 1))
+    existing={str(i.get('task_uid','')).strip().upper() for i in cat.get('items',[]) if str(i.get('task_uid','')).strip()}
+    existing |= {str(u).strip().upper() for u in used if str(u).strip()}
+    while True:
+        uid=f'{p}{n:03d}'; n+=1
+        if uid.upper() not in existing:
+            cat.setdefault('next',{})[next_key]=n
+            return uid
+
+def merge_resp_item_v0437(cat, kind, task, uid):
+    item=find_resp_item_v0437(cat, kind, task)
+    if item is None:
+        item={'key': identity_key_v0437(kind, task)}; cat.setdefault('items',[]).append(item)
+    item['kind']='all' if uid.startswith('MQ') and tax_uid_for_task_v0437(task) else kind_v0437(kind)
+    item['type_id']=str(task.get('catalog_id') or task.get('id') or '').strip()
+    item['team']=normalize_team_v0437(task.get('team',''))
+    item['title']=str(task.get('title','') or '').strip()
+    item['task_uid']=uid
+    item['owner']=str(task.get('owner','') or '').strip()
+    item['owner_user_key']=str(task.get('owner_user_key','') or '').strip()
+    item['sync_with_calendar']=True
+    item['updated_by_v0437']=now_iso() if 'now_iso' in globals() else datetime.now().isoformat(timespec='seconds')
+    return item
+
+def unique_tech_id_v0437(team, n, used):
+    safe=re.sub(r'[^a-z0-9]+','_',normalize_team_v0437(team).casefold()).strip('_') or 'task'
+    i=max(1,int(n or 1))
+    while True:
+        cand=f'{safe}_{i:02d}'
+        if cand not in used:
+            used.add(cand); return cand
+        i+=1
+
+def archive_task_uid_change_v0437(old_uid,new_uid,title='',changed_by='System'):
+    old_uid=str(old_uid or '').strip(); new_uid=str(new_uid or '').strip()
+    if not old_uid or not new_uid or old_uid==new_uid: return False
+    try:
+        p=bin_dir()/'Closing'/'task_id_archive.json'; data=json_load(p,{'entries':[]}); data.setdefault('entries',[])
+        key=(old_uid,new_uid,str(title or '').strip())
+        if any((e.get('old_task_uid'),e.get('new_task_uid'),str(e.get('title','')).strip())==key for e in data.get('entries',[])): return False
+        data['entries'].append({'old_task_uid':old_uid,'new_task_uid':new_uid,'title':str(title or '').strip(),'deactivation_date':now_iso() if 'now_iso' in globals() else datetime.now().isoformat(timespec='seconds'),'changed_by':changed_by})
+        json_save(p,data); return True
+    except Exception:
+        return False
+
+def normalize_subtask_uids_v0437(task):
+    changed=False; uid=str(task.get('task_uid','') or '').strip()
+    if not uid: return False
+    for idx, sub in enumerate(task.get('subtasks',[]) or [], start=1):
+        desired=f'{uid}-u{idx}'
+        if sub.get('task_uid') != desired:
+            sub['task_uid']=desired; changed=True
+        sub.setdefault('id', f'sub_{idx:02d}')
+        sub.setdefault('status','Offen')
+    return changed
+
+def ensure_task_identity_for_period_v0437(kind, period, data, changed_by='System', update_catalog=True):
+    if not isinstance(data,dict): return False
+    cat=load_resp_cat_v0437(); changed=False; used_ids=set(); used_uids=set(); team_counts={}
+    for task in data.get('tasks',[]) or []:
+        if task.get('deleted'): continue
+        old_team=task.get('team',''); task['team']=normalize_team_v0437(old_team)
+        if task['team'] != old_team: changed=True
+    for task in data.get('tasks',[]) or []:
+        if task.get('deleted'): continue
+        team=task.get('team',''); team_counts[team]=team_counts.get(team,0)+1
+        old_id=str(task.get('id','') or '').strip()
+        if not old_id or old_id in used_ids:
+            task['id']=unique_tech_id_v0437(team, team_counts[team], used_ids); changed=True
+        else:
+            used_ids.add(old_id)
+        old_uid=str(task.get('task_uid','') or '').strip()
+        tax=tax_uid_for_task_v0437(task)
+        item=find_resp_item_v0437(cat, kind, task)
+        if tax:
+            desired=tax
+        elif item and str(item.get('task_uid','') or '').strip():
+            desired=str(item.get('task_uid','')).strip()
+        elif is_valid_uid_v0437(old_uid) and old_uid not in used_uids:
+            desired=old_uid
+        else:
+            desired=next_uid_v0437(cat, kind, used_uids)
+        if desired in used_uids:
+            desired=next_uid_v0437(cat, kind, used_uids)
+        if old_uid != desired:
+            archive_task_uid_change_v0437(old_uid, desired, task.get('title',''), changed_by); task['task_uid']=desired; changed=True
+        used_uids.add(desired)
+        merge_resp_item_v0437(cat, kind, task, desired)
+        if normalize_subtask_uids_v0437(task): changed=True
+    if update_catalog: save_resp_cat_v0437(cat)
+    return changed
+
+def sync_task_catalog_uids_v0437(kind, catalog_data, changed_by='System'):
+    if not isinstance(catalog_data,dict): return False
+    cat=load_resp_cat_v0437(); changed=False; used=set()
+    for entry in catalog_data.get('tasks',[]) or []:
+        old_team=entry.get('team',''); entry['team']=normalize_team_v0437(old_team)
+        if entry['team'] != old_team: changed=True
+        pseudo=dict(entry); pseudo.setdefault('id', entry.get('catalog_id',''))
+        old_uid=str(entry.get('task_uid','') or '').strip(); tax=tax_uid_for_task_v0437(pseudo); item=find_resp_item_v0437(cat, kind, pseudo)
+        if tax: uid=tax
+        elif item and str(item.get('task_uid','') or '').strip(): uid=str(item.get('task_uid','')).strip()
+        elif is_valid_uid_v0437(old_uid) and old_uid not in used: uid=old_uid
+        else: uid=next_uid_v0437(cat, kind, used)
+        if uid in used and not tax: uid=next_uid_v0437(cat, kind, used)
+        if old_uid != uid: entry['task_uid']=uid; changed=True
+        used.add(uid); merge_resp_item_v0437(cat, kind, pseudo, uid)
+    save_resp_cat_v0437(cat); return changed
+
+def dedupe_task_id_archive_v0437():
+    try:
+        p=bin_dir()/'Closing'/'task_id_archive.json'; data=json_load(p,{'entries':[]}); seen=set(); out=[]; changed=False
+        for e in data.get('entries',[]) or []:
+            key=(str(e.get('old_task_uid','')),str(e.get('new_task_uid','')),str(e.get('title','')).strip())
+            if key in seen: changed=True; continue
+            seen.add(key); out.append(e)
+        if changed: data['entries']=out; json_save(p,data)
+        return changed
+    except Exception:
+        return False
+

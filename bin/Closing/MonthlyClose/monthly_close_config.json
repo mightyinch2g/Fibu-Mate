@@ -1,9 +1,9 @@
 {
   "teams": [
     "Hauptbuch",
-    "Kreditoren",
+    "Zentralregulierung",
     "Debitoren",
-    "Controlling"
+    "Treasury"
   ],
   "warning_days": {
     "yellow": 10,

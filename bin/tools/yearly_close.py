@@ -1,3 +1,4 @@
+## FiBuMate_PATCH_MARKER: 20260609_v0436_DREI_MODULE_OHNE_ID_ZUWEISUNG
 
 import calendar
 import json
@@ -325,9 +326,9 @@ def due_display(task):
 
 
 def make_task_id(team, index):
-    safe = str(team).lower().replace(" ", "_").replace("/", "_")
-    return f"{safe}_{index:02d}"
-
+    safe = str(team).lower().replace(' ', '_').replace('/', '_')
+    safe = ''.join(ch if ch.isalnum() or ch == '_' else '_' for ch in safe).strip('_') or 'task'
+    return f"{safe}_{int(index or 1):02d}"
 
 def ensure_storage():
     BASE_DIR.mkdir(parents=True, exist_ok=True)
@@ -402,7 +403,7 @@ def migrate_due_fields(task, data, period):
 
 def normalize_task(task, data, period):
     task["team"] = normalize_team_name(task.get("team"))
-    task.setdefault("task_uid", "")
+    task.pop("task_uid", None)  # v0.436: Aufgaben-ID-Zuweisung vollständig entfernt.
     task.setdefault("owner_user_key", "")
     task.setdefault("attachments", [])
     task.setdefault("comments", [])
@@ -422,6 +423,7 @@ def normalize_task(task, data, period):
         sub.setdefault("id", f"sub_{idx:02d}")
         sub.setdefault("title", "")
         sub.setdefault("status", STATUS_OPEN)
+        sub.pop("task_uid", None)  # v0.436: Unteraufgaben-ID-Zuweisung entfernt.
     sync_parent_status_from_subtasks(task)
     return task
 
@@ -433,11 +435,21 @@ def load_catalog():
     except Exception:
         data = {"tasks": []}
     data.setdefault("tasks", [])
+    try:
+        if cc is not None and hasattr(cc, 'sync_task_catalog_uids_v0437') and cc.sync_task_catalog_uids_v0437('yearly', data):
+            save_catalog(data)
+    except Exception:
+        pass
     return data
 
 
 def save_catalog(data):
     data.setdefault("tasks", [])
+    try:
+        if cc is not None and hasattr(cc, 'sync_task_catalog_uids_v0437'):
+            cc.sync_task_catalog_uids_v0437('yearly', data)
+    except Exception:
+        pass
     CATALOG_PATH.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
@@ -461,6 +473,11 @@ def load_period(period):
         old_team = task.get("team")
         normalize_task(task, data, period)
         changed = changed or old_team != task.get("team")
+    try:
+        if cc is not None and hasattr(cc, 'ensure_task_identity_for_period_v0437'):
+            changed = cc.ensure_task_identity_for_period_v0437('yearly', period, data) or changed
+    except Exception:
+        pass
     if changed:
         save_period(period, data)
     return data
@@ -472,6 +489,11 @@ def save_period(period, data):
     normalize_cutoff(data, period)
     for task in data.get("tasks", []):
         normalize_task(task, data, period)
+    try:
+        if cc is not None and hasattr(cc, 'ensure_task_identity_for_period_v0437'):
+            cc.ensure_task_identity_for_period_v0437('yearly', period, data)
+    except Exception:
+        pass
     period_path(period).write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
@@ -585,7 +607,7 @@ class YearlyCloseUI:
         self.app.widget_items.append(self.frame)
         self.app.module_escape_handler = self.handle_escape
         self.canvas.create_window(0, 132, window=self.frame, anchor="nw", width=self.canvas.winfo_width(), height=max(400, self.canvas.winfo_height() - 172))
-        self.ensure_task_ids()
+        self.strip_task_ids_all_periods()
         self.render_dashboard()
         apply_readable_fonts(self.frame, self.app, 12)
         self.bind_module_ctrl_mousewheel_guard()  
@@ -742,7 +764,6 @@ class YearlyCloseUI:
             "user": self.current_user_full_name(),
             "user_key": getattr(self.app, "current_user_key", ""),
             "action": action,
-            "task_uid": task.get("task_uid", "") if isinstance(task, dict) else "",
             "task_title": task.get("title", "") if isinstance(task, dict) else "",
             "field": field,
             "old": str(old) if old is not None else "",
@@ -953,7 +974,7 @@ class YearlyCloseUI:
 
     def save(self):
         self.ensure_close_metadata()
-        self.ensure_task_ids()
+        self.strip_task_ids_from_data(self.data)
         save_period(self.period, self.data)
 
     def tasks(self):
@@ -973,23 +994,12 @@ class YearlyCloseUI:
         return role in ("Administrator", "System-Administrator", "Wagnerm")
 
     def normalize_task_uid_value(self, value):
-        raw = str(value or "").strip().upper().replace("[", "").replace("]", "").replace("AUFGABEN-ID", "").strip()
-        raw = raw.replace(" ", "")
-        if not raw:
-            return ""
-        for prefix in ("QMJ", "QM", "QJ", "MJ", "M", "Q", "J"):
-            if raw.startswith(prefix):
-                suffix = raw[len(prefix):]
-                if suffix.isdigit():
-                    return f"{prefix}{int(suffix):03d}"
-                return raw
-        if raw.isdigit():
-            return f"{CLOSING_SCOPE}{int(raw):03d}"
-        return raw
+        # v0.436: Aufgaben-ID-Zuweisung wurde vollständig entfernt.
+        return ""
 
     def task_uid_display(self, task):
-        uid = self.normalize_task_uid_value(task.get("task_uid", ""))
-        return uid or ""
+        # v0.436: Es wird keine Aufgaben-ID mehr angezeigt.
+        return ""
 
     def initial_uid_for_task(self, task):
         return INITIAL_TASK_IDS.get((normalize_team_name(task.get("team")), str(task.get("title") or "")), "")
@@ -999,33 +1009,12 @@ class YearlyCloseUI:
         return sorted(PERIOD_DIR.glob("*.json"))
 
     def collect_used_task_uids(self, exclude_task=None):
-        used = set()
-        exclude_key = None
-        if exclude_task:
-            exclude_key = (self.normalize_task_uid_value(exclude_task.get("task_uid")), exclude_task.get("id"), exclude_task.get("title"), exclude_task.get("team"))
-        for path in self.all_period_files():
-            try:
-                data = json.loads(path.read_text(encoding="utf-8"))
-            except Exception:
-                continue
-            for task in data.get("tasks", []):
-                uid = self.normalize_task_uid_value(task.get("task_uid", ""))
-                if not uid:
-                    continue
-                key = (uid, task.get("id"), task.get("title"), task.get("team"))
-                if exclude_key and key == exclude_key:
-                    continue
-                used.add(uid)
-        return used
+        # v0.436: Keine Aufgaben-ID-Verwaltung mehr.
+        return set()
 
     def next_free_task_uid(self):
-        used = self.collect_used_task_uids()
-        n = 1
-        while True:
-            candidate = f"{CLOSING_SCOPE}{n:03d}"
-            if candidate not in used:
-                return candidate
-            n += 1
+        # v0.436: Keine Aufgaben-ID-Zuweisung mehr.
+        return ""
 
     def task_identity_key_for_initial_id(self, task):
         catalog_id = str(task.get("catalog_id") or "").strip()
@@ -1036,85 +1025,51 @@ class YearlyCloseUI:
             return ("initial", initial)
         return ("local", normalize_team_name(task.get("team")), str(task.get("title") or "").strip().casefold())
 
-    def ensure_task_ids(self):
+    def strip_task_ids_from_data(self, data):
+        """Entfernt alte Aufgaben-ID-Felder aus geladenen/gespeicherten Daten, ohne andere Inhalte zu verändern."""
+        changed = False
+        try:
+            for task in data.get("tasks", []) or []:
+                if "task_uid" in task:
+                    task.pop("task_uid", None); changed = True
+                for sub in task.get("subtasks", []) or []:
+                    if "task_uid" in sub:
+                        sub.pop("task_uid", None); changed = True
+        except Exception:
+            pass
+        return changed
+
+    def strip_task_ids_all_periods(self):
         ensure_storage()
-        known = {}
-        used = set()
         for path in self.all_period_files():
             try:
                 data = json.loads(path.read_text(encoding="utf-8"))
             except Exception:
                 continue
-            for task in data.get("tasks", []):
-                uid = self.normalize_task_uid_value(task.get("task_uid", ""))
-                initial_uid = self.initial_uid_for_task(task)
-                if initial_uid and uid != initial_uid:
-                    uid = initial_uid
-                    task["task_uid"] = uid
-                if uid:
-                    known.setdefault(self.task_identity_key_for_initial_id(task), uid)
-                    used.add(uid)
-        next_num = 1
-        def next_uid():
-            nonlocal next_num
-            while f"{CLOSING_SCOPE}{next_num:03d}" in used:
-                next_num += 1
-            uid = f"{CLOSING_SCOPE}{next_num:03d}"
-            used.add(uid); next_num += 1
-            return uid
-        for path in self.all_period_files():
-            try:
-                data = json.loads(path.read_text(encoding="utf-8"))
-            except Exception:
-                continue
-            changed = False
-            for task in data.get("tasks", []):
-                initial_uid = self.initial_uid_for_task(task)
-                uid = self.normalize_task_uid_value(task.get("task_uid", ""))
-                if initial_uid:
-                    uid = initial_uid
-                if not uid:
-                    uid = known.setdefault(self.task_identity_key_for_initial_id(task), next_uid())
-                if task.get("task_uid") != uid:
-                    task["task_uid"] = uid; changed = True
-                for idx, sub in enumerate([s for s in task.get("subtasks", []) if not s.get("deleted")], start=1):
-                    sub_uid = f"{uid}-u{idx}"
-                    if sub.get("task_uid") != sub_uid:
-                        sub["task_uid"] = sub_uid; changed = True
-            if changed:
-                save_period(path.stem, data)
-                if path.stem == self.period:
-                    self.data = data
+            if self.strip_task_ids_from_data(data):
+                try:
+                    save_period(path.stem, data)
+                    if path.stem == self.period:
+                        self.data = data
+                except Exception:
+                    pass
+
+    def ensure_task_ids(self):
+        # v0.436: Kompatibilitätsmethode; weist keine IDs mehr zu, sondern entfernt alte ID-Felder.
+        self.strip_task_ids_all_periods()
 
     def archive_task_uid_change(self, task, old_uid, new_uid):
-        if not old_uid or old_uid == new_uid:
-            return
-        archive_path = BASE_DIR / "task_id_archive.json"
-        try:
-            archive = json.loads(archive_path.read_text(encoding="utf-8")) if archive_path.exists() else {"entries": []}
-        except Exception:
-            archive = {"entries": []}
-        archive.setdefault("entries", []).append({
-            "old_task_uid": old_uid,
-            "new_task_uid": new_uid,
-            "title": task.get("title", ""),
-            "team": task.get("team", ""),
-            "deactivation_date": datetime.now().isoformat(timespec="seconds"),
-            "changed_by": getattr(self.app, "current_user_display", "") or getattr(self.app, "current_user_key", ""),
-        })
-        archive_path.write_text(json.dumps(archive, ensure_ascii=False, indent=2), encoding="utf-8")
+        # v0.436: ID-Historie deaktiviert.
+        return False
 
     def task_match_key(self, task):
-        uid = self.normalize_task_uid_value(task.get("task_uid", ""))
-        if uid:
-            return ("uid", uid)
         catalog_id = str(task.get("catalog_id") or "").strip()
         if catalog_id:
             return ("catalog", catalog_id)
         return ("task", str(task.get("id") or "").strip(), normalize_team_name(task.get("team")), str(task.get("title") or "").strip().casefold())
 
     def get_expand_key(self, task):
-        return self.normalize_task_uid_value(task.get("task_uid", "")) or f"{task.get('id','')}|{task.get('team','')}|{task.get('title','')}"
+        return f"{task.get('id','')}|{task.get('team','')}|{task.get('title','')}"
 
     def ask_delegate_scope(self, item, parent_task=None):
         if parent_task is not None:
@@ -1134,13 +1089,13 @@ class YearlyCloseUI:
         win.wait_window()
         return result["scope"]
 
-    def apply_delegate_to_following_periods(self, task_uid, owner_name, owner_user_key):
+    def apply_delegate_to_following_periods(self, task_key, owner_name, owner_user_key):
         changed_periods = 0
         for period in self.following_periods():
             data = load_period(period)
             changed = False
             for task in data.get("tasks", []):
-                if self.normalize_task_uid_value(task.get("task_uid")) == task_uid:
+                if self.task_match_key(task) == task_key:
                     task["owner"] = owner_name
                     task["owner_user_key"] = owner_user_key
                     for sub in task.get("subtasks", []):
@@ -1148,6 +1103,7 @@ class YearlyCloseUI:
                         sub["owner_user_key"] = owner_user_key
                     changed = True
             if changed:
+                self.strip_task_ids_from_data(data)
                 save_period(period, data)
                 changed_periods += 1
         return changed_periods
@@ -1194,38 +1150,36 @@ class YearlyCloseUI:
         if not following:
             messagebox.showinfo("Vorlage verwenden", "Es sind keine Folgezeiträume vorhanden.")
             return
-        if not messagebox.askyesno("Zeitraum als Vorlage verwenden", f"{period_label(self.period)} als Vorlage für alle Folgezeiträume verwenden?\n\nAufgabenstruktur, Zuständigkeiten, Fälligkeiten und Unteraufgaben werden anhand der Aufgaben-ID übertragen. Status, Kommentare und Anlagen bleiben bei bereits vorhandenen Aufgaben erhalten."):
+        msg = f"{period_label(self.period)} als Vorlage für alle Folgezeiträume verwenden?\n\nAufgabenstruktur, Zuständigkeiten, Fälligkeiten und Unteraufgaben werden anhand von Katalog-/Aufgabenschlüsseln übertragen. Status, Kommentare und Anlagen bleiben bei bereits vorhandenen Aufgaben erhalten."
+        if not messagebox.askyesno("Zeitraum als Vorlage verwenden", msg):
             return
-        self.ensure_task_ids()
         source = [json.loads(json.dumps(t, ensure_ascii=False)) for t in self.tasks()]
-        source_by_uid = {self.normalize_task_uid_value(t.get("task_uid")): t for t in source if self.normalize_task_uid_value(t.get("task_uid"))}
         updated = 0
         for period in following:
             data = load_period(period)
-            old_by_uid = {self.normalize_task_uid_value(t.get("task_uid")): t for t in data.get("tasks", []) if self.normalize_task_uid_value(t.get("task_uid"))}
+            old_by_key = {self.task_match_key(t): t for t in data.get("tasks", [])}
             new_tasks = []
-            for uid, task in source_by_uid.items():
-                cloned = json.loads(json.dumps(task, ensure_ascii=False))
-                old = old_by_uid.get(uid)
+            for src in source:
+                key = self.task_match_key(src)
+                old = old_by_key.get(key)
+                new_task = json.loads(json.dumps(src, ensure_ascii=False))
                 if old:
-                    for keep in ("status", "done_at", "done_by", "attachments", "comments"):
-                        cloned[keep] = old.get(keep, cloned.get(keep))
-                    old_subs = {self.normalize_task_uid_value(s.get("task_uid")): s for s in old.get("subtasks", [])}
-                    for sub in cloned.get("subtasks", []):
-                        old_sub = old_subs.get(self.normalize_task_uid_value(sub.get("task_uid")))
+                    for keep in ("status", "attachments", "comments", "done_at", "done_by", "documentation"):
+                        if keep in old:
+                            new_task[keep] = old.get(keep)
+                    old_subs = {str(s.get("title", "")).strip().casefold(): s for s in old.get("subtasks", [])}
+                    for sub in new_task.get("subtasks", []):
+                        old_sub = old_subs.get(str(sub.get("title", "")).strip().casefold())
                         if old_sub:
-                            for keep in ("status", "done_at", "done_by", "attachments", "comments"):
-                                sub[keep] = old_sub.get(keep, sub.get(keep))
-                cloned["due_date"] = resolve_due_date(cloned, data, period)
-                new_tasks.append(cloned)
+                            for keep in ("status", "attachments", "comments", "done_at", "done_by", "documentation", "owner", "owner_user_key"):
+                                if keep in old_sub:
+                                    sub[keep] = old_sub.get(keep)
+                new_tasks.append(new_task)
             data["tasks"] = new_tasks
-            data["template_source_period"] = self.period
-            data["template_updated_at"] = datetime.now().isoformat(timespec="seconds")
+            self.strip_task_ids_from_data(data)
             save_period(period, data)
             updated += 1
-        self.reload()
-        messagebox.showinfo("Vorlage verwenden", f"Folgezeiträume aktualisiert: {updated}")
-        self.render_team_detail(self.selected_team) if self.selected_team else self.render_dashboard()
+        messagebox.showinfo("Vorlage verwenden", f"Vorlage wurde auf {updated} Folgezeiträume übertragen.")
 
     def _pdf_escape(self, text):
         return str(text).replace("\\", "\\\\").replace("(", "\\(").replace(")", "\\)")
@@ -1299,16 +1253,12 @@ class YearlyCloseUI:
                 except Exception: pass
 
     def build_report_rows(self):
-        rows = [["Abschnitt", "Information"]]
-        rows.append(["Bericht", f"Abschlussbericht {self.close_type_label()} {period_label(self.period)}"])
-        rows.append(["Status", "Abgeschlossen" if self.data.get("closed") else "Nicht abgeschlossen"])
-        rows.append(["Abschluss-Stichtag", format_date_de(self.data.get("closing_cutoff_date"))])
-        stats = calc_stats(self.tasks())
-        rows.append(["Management Summary", f"{stats['done']} erledigt, {stats['open']} offen, {stats['in_progress']} in Bearbeitung, {stats['overdue']} überfällig"])
+        rows = []
         for task in self.tasks():
-            rows.append([task.get("task_uid", ""), f"{task.get('title','')} | {task.get('owner','')} | {due_rule_text(task)} {format_date_de(task.get('due_date'))} | {task.get('status','')}"])
-            for c in task.get("comments", []): rows.append(["Kommentar", str(c)])
-            for a in task.get("attachments", []): rows.append(["Anlage", str(a)])
+            rows.append([f"{task.get('title','')} | {task.get('owner','')} | {due_rule_text(task)} {format_date_de(task.get('due_date'))} | {task.get('status','')}"])
+            for sub in task.get("subtasks", []) or []:
+                if not sub.get("deleted"):
+                    rows.append([f"  - {sub.get('title','')} | {sub.get('owner', task.get('owner',''))} | {sub.get('status','')}"])
         return rows
 
     def create_reportlab_pdf(self, path, with_signature=False):
@@ -1350,7 +1300,7 @@ class YearlyCloseUI:
             is_group=bool([s for s in task.get("subtasks",[]) if not s.get("deleted")])
             label="Aufgabengruppe" if is_group else "Aufgabe"
             critical = task.get("deadline_type")=="gesetzlich" or task.get("priority")=="kritisch"
-            story.append(Paragraph(f"{i}. {label}: {task.get('title','')} ({task.get('task_uid','')})", styles["FMHead" if critical else "FMText"]))
+            story.append(Paragraph(f"{i}. {label}: {task.get('title','')}", styles["FMHead" if critical else "FMText"]))
             story.append(Paragraph(f"Zuständigkeit: {task.get('owner','')} | Fälligkeit: {format_date_de(task.get('due_date'))} ({due_rule_text(task)}) | Status: {task.get('status','')} | Erledigt: {format_datetime_de(task.get('done_at'))}", styles["FMText"]))
             if 'z4' in task.get('title','').casefold() or 'zm-' in task.get('title','').casefold() or 'zm meldung' in task.get('title','').casefold() or 'z5a' in task.get('title','').casefold():
                 txt = f"<b><i>{task.get('title','')} erfolgt am {format_datetime_de(task.get('done_at'))}.</i></b>" if task.get('status')==STATUS_DONE else f"<b><i>{task.get('title','')} wurde im Zeitraum nicht als erledigt markiert.</i></b>"
@@ -1368,12 +1318,12 @@ class YearlyCloseUI:
                     else: rows.append([Path(str(a)).name, str(a)])
                 story.append(Paragraph(f"Anlagen: {len(attachments)}", styles["FMText"])); story.append(Table(rows, style=TableStyle([("GRID",(0,0),(-1,-1),0.25,colors.grey),("FONTSIZE",(0,0),(-1,-1),8)])))
             for j,sub in enumerate([s for s in task.get("subtasks",[]) if not s.get("deleted")],1):
-                story.append(Paragraph(f"{i}.{j} Aufgabe: {sub.get('title','')} ({sub.get('task_uid','')})", styles["FMText"]))
+                story.append(Paragraph(f"{i}.{j} Aufgabe: {sub.get('title','')}", styles["FMText"]))
                 story.append(Paragraph(f"Zuständigkeit: {sub.get('owner',task.get('owner',''))} | Status: {sub.get('status','')}", styles["Small"]))
         open_tasks=[t for t in self.tasks() if t.get("status")!=STATUS_DONE and not t.get("deleted")]
         story.append(Paragraph("Offene Punkte", styles["FMHead"]))
         if open_tasks:
-            for tsk in open_tasks: story.append(Paragraph(f"- {tsk.get('title','')} ({tsk.get('task_uid','')}), zuständig: {tsk.get('owner','')}, Status: {tsk.get('status','')}", styles["FMText"]))
+            for tsk in open_tasks: story.append(Paragraph(f"- {tsk.get('title','')}, zuständig: {tsk.get('owner','')}, Status: {tsk.get('status','')}", styles["FMText"]))
         else: story.append(Paragraph("Keine offenen Punkte.", styles["FMText"]))
         critical_tasks=[t for t in self.tasks() if (t.get("deadline_type")=="gesetzlich" or t.get("priority")=="kritisch" or warning_level(t) in ("overdue","today","orange")) and not t.get("deleted")]
         story.append(Paragraph("Kritische oder gesetzliche Fristen", styles["FMHead"]))
@@ -1392,15 +1342,17 @@ class YearlyCloseUI:
         doc.build(story)
 
     def create_task_id_report(self, task):
-        uid = self.normalize_task_uid_value(task.get("task_uid"))
-        rows = [["Zeitraum", "Aufgabe", "Zuständig", "Status", "Erledigt am", "Anlagen", "Kommentare"]]
+        task_key = self.task_match_key(task)
+        rows = []
         for path in self.all_period_files():
-            try: data = json.loads(path.read_text(encoding="utf-8"))
-            except Exception: continue
+            try:
+                data = json.loads(path.read_text(encoding="utf-8"))
+            except Exception:
+                continue
             for t in data.get("tasks", []):
-                if self.normalize_task_uid_value(t.get("task_uid")) == uid:
-                    rows.append([period_label(path.stem), t.get("title", ""), t.get("owner", ""), t.get("status", ""), format_date_de(t.get("done_at", "")), str(len(t.get("attachments", []))), str(len(t.get("comments", [])))])
-        self.create_simple_pdf(f"Gesamtbericht Aufgaben-ID {uid}", rows)
+                if self.task_match_key(t) == task_key:
+                    rows.append([path.stem, t.get("title", ""), t.get("owner", ""), t.get("status", ""), format_date_de(t.get("due_date", ""))])
+        self.create_simple_pdf(f"Gesamtbericht Aufgabe {task.get('title','')}", rows)
 
     def task_match_key(self, task):
         catalog_id = str(task.get("catalog_id") or "").strip()
@@ -1590,8 +1542,8 @@ class YearlyCloseUI:
             self.save()
             changed = 0
             if scope == "permanent" and parent_task is None:
-                uid = self.normalize_task_uid_value(item.get("task_uid"))
-                changed = self.apply_delegate_to_following_periods(uid, owner_name, user_key)
+                task_key = self.task_match_key(item)
+                changed = self.apply_delegate_to_following_periods(task_key, owner_name, user_key)
             if user_key:
                 self.send_delegation_email(user_key, display_name, task_for_team.get("title", item.get("title", "")), scope)
             if self.selected_team:
@@ -1635,7 +1587,7 @@ class YearlyCloseUI:
     def save_cutoff_from_entry(self, entry_var=None):
         messagebox.showinfo(
             "FiBu Mate",
-            "Der Abschluss-Stichtag wird zentral in der Stichtags- & Zuständigkeitspflege gepflegt.\n\n"
+            "Der Abschluss-Stichtag wird zentral in der Stichtagspflege gepflegt.\n\n"
             "Eine manuelle Änderung in der Zeitraumsübersicht ist nicht mehr möglich."
         )
 
@@ -1968,7 +1920,7 @@ class YearlyCloseUI:
 
         task_actions = tk.Frame(task_cell, bg=bg)
         task_actions.pack(side="right", padx=(6, 8), pady=3)
-        tk.Button(task_actions, text="PDF", command=lambda t=task: self.create_task_id_report(t), bg=COLORS["white"], fg=COLORS["blue"], bd=1, padx=4, pady=2, cursor="hand2").pack(side="right", padx=(4, 0))
+        tk.Button(task_actions, text="Bericht", command=lambda t=task: self.create_task_id_report(t), bg=COLORS["white"], fg=COLORS["blue"], bd=1, padx=4, pady=2, cursor="hand2").pack(side="right", padx=(4, 0))
         if visible_subtasks:
             expand_key = self.get_expand_key(task)
             expanded = expand_key in self.expanded_tasks
@@ -1977,9 +1929,6 @@ class YearlyCloseUI:
 
         task_text = tk.Frame(task_cell, bg=bg)
         task_text.pack(side="left", fill="both", expand=True, padx=(6, 4), pady=4)
-        uid = self.task_uid_display(task)
-        if uid:
-            tk.Label(task_text, text=uid, bg=bg, fg=COLORS["blue"], font=zfont(self.app, 12, "bold"), anchor="w", justify="left").pack(anchor="w")
         tk.Label(task_text, text=str(task.get("title", "")), bg=bg, fg=COLORS["text"], font=zfont(self.app, 12), anchor="w", justify="left", wraplength=430).pack(anchor="w", fill="x", expand=True)
 
         doc_frame = tk.Frame(table, bg=bg)
@@ -2098,12 +2047,10 @@ class YearlyCloseUI:
         notebook = ttk.Notebook(win); notebook.pack(fill="both", expand=True, padx=14, pady=14)
         form = tk.Frame(notebook, bg=COLORS["bg"]); subtab = tk.Frame(notebook, bg=COLORS["bg"])
         notebook.add(form, text="Aufgabe"); notebook.add(subtab, text="Unteraufgaben")
-        uid_var = tk.StringVar(value=self.normalize_task_uid_value(data.get("task_uid")) or self.next_free_task_uid())
         title_var = tk.StringVar(value=data.get("title", "")); deadline_var = tk.StringVar(value=data.get("deadline_type", "intern") if data.get("deadline_type") in DEADLINE_TYPES else "intern"); priority_var = tk.StringVar(value=data.get("priority", "normal")); recurring_var = tk.BooleanVar(value=bool(data.get("recurring")))
         due_mode_var = tk.StringVar(value=DUE_VALUE_TO_LABEL.get(data.get("due_mode", DUE_CUTOFF), "Abschluss-Stichtag")); due_day_var = tk.StringVar(value=str(data.get("due_day") or 1)); due_workday_var = tk.StringVar(value=str(data.get("due_workday") or 1)); due_fixed_var = tk.StringVar(value=format_date_de(data.get("due_fixed_date") or data.get("due_date") or "")); calculated_var = tk.StringVar(value="")
         users = self.user_choices(); user_labels = {label: key for key, label in users}; current_owner_key = data.get("owner_user_key", ""); current_owner_label = next((label for key, label in users if key == current_owner_key), data.get("owner", team)); owner_var = tk.StringVar(value=current_owner_label)
-        uid_entry = tk.Entry(form, textvariable=uid_var, width=18, state="normal" if self.is_task_id_editor() else "readonly")
-        widgets = [("Aufgaben-ID", uid_entry), ("Aufgabenname", tk.Entry(form, textvariable=title_var, width=52)), ("Zuständig", tk.OptionMenu(form, owner_var, *user_labels.keys())), ("Fristart", tk.OptionMenu(form, deadline_var, *DEADLINE_TYPES)), ("Priorität", tk.OptionMenu(form, priority_var, *PRIORITIES)), ("Fälligkeitsart", tk.OptionMenu(form, due_mode_var, *DUE_LABEL_TO_VALUE.keys()))]
+        widgets = [("Aufgabenname", tk.Entry(form, textvariable=title_var, width=52)), ("Zuständig", tk.OptionMenu(form, owner_var, *user_labels.keys())), ("Fristart", tk.OptionMenu(form, deadline_var, *DEADLINE_TYPES)), ("Priorität", tk.OptionMenu(form, priority_var, *PRIORITIES)), ("Fälligkeitsart", tk.OptionMenu(form, due_mode_var, *DUE_LABEL_TO_VALUE.keys()))]
         for row, (label, widget) in enumerate(widgets):
             tk.Label(form, text=label, bg=COLORS["bg"], fg=COLORS["text"], font=("Segoe UI", 10, "bold")).grid(row=row, column=0, sticky="w", pady=7, padx=8); widget.grid(row=row, column=1, sticky="w", pady=7)
             try: widget.config(bg="white", fg=COLORS["text"], bd=1, highlightthickness=0)
@@ -2165,7 +2112,6 @@ class YearlyCloseUI:
             else:
                 real = self.find_task(task["id"])
                 if not real: return
-                self.archive_task_uid_change(real, self.normalize_task_uid_value(real.get("task_uid")), new_uid)
                 real.update(payload)
             sync_parent_status_from_subtasks(real)
             if real.get("recurring"):

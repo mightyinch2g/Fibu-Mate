@@ -503,13 +503,13 @@ def render(app):
     bg = getattr(app, "BG", "#E8EEF5") if hasattr(app, "BG") else "#E8EEF5"
     frame = tk.Frame(canvas, bg=bg)
     w = max(900, canvas.winfo_width() - 160)
-    canvas.create_window(80, 150, window=frame, anchor="nw", width=w)
+    canvas.create_window(80, 185, window=frame, anchor="nw", width=w)
 
     font_title = ("Segoe UI", 14, "bold")
     font = ("Segoe UI", 10)
     font_small = ("Segoe UI", 9)
 
-    tk.Label(frame, text=MODULE_TITLE, bg=bg, font=font_title).grid(row=0, column=0, columnspan=3, sticky="w", pady=(0, 18))
+    tk.Label(frame, text=MODULE_TITLE, bg=bg, font=font_title).grid(row=0, column=0, columnspan=3, sticky="w", pady=(0, 10))
 
     template_var = tk.StringVar(value=DEFAULT_TEMPLATE_PATH)
     invoice_var = tk.StringVar(value=_desktop_path())

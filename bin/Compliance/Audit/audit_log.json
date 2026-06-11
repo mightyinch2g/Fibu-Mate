@@ -1,6 +1,34 @@
 {
   "entries": [
     {
+      "timestamp": "2026-06-09T16:34:21",
+      "event_type": "Aufgabe geändert",
+      "module": "Stichtagspflege",
+      "title": "Stichtage/Stichtage gespeichert und übernommen",
+      "details": "2025/2026; Perioden: monthly:2026-06; synchronisierte Stichtagsdateien: 1; synchronisierte Zuständigkeitsdateien: 0",
+      "risk": "Info",
+      "period": "2025/2026",
+      "related_id": "",
+      "user_key": "wagnerm",
+      "user_name": "Matthias Wagnerm",
+      "public": true,
+      "archived": false
+    },
+    {
+      "timestamp": "2026-06-09T16:34:09",
+      "event_type": "Aufgabe geändert",
+      "module": "Stichtagspflege",
+      "title": "Stichtage/Stichtage gespeichert und übernommen",
+      "details": "2025/2026; Perioden: monthly:2026-06; synchronisierte Stichtagsdateien: 4; synchronisierte Zuständigkeitsdateien: 0",
+      "risk": "Info",
+      "period": "2025/2026",
+      "related_id": "",
+      "user_key": "wagnerm",
+      "user_name": "Matthias Wagnerm",
+      "public": true,
+      "archived": false
+    },
+    {
       "timestamp": "2026-06-01T16:35:25",
       "event_type": "Aufgabe geändert",
       "module": "Stichtags- & Zuständigkeitspflege",

@@ -42,6 +42,9 @@
     "2026-05-29_v0434_paket1d_fibu_mate_zoom_miniwidget_nachkorrektur",
     "2026-05-29_v0434_paket1e_zoomleiste",
     "2026-05-29_v0435_aufgabenmanager_audit_zeitraeume",
-    "2026-05-29_v0435_audit_cockpit_zustaendigkeit_verknuepfung"
+    "2026-05-29_v0435_audit_cockpit_zustaendigkeit_verknuepfung",
+    "2026-06-05_enbw_strom_tanken_upload",
+    "2026-06-05_afi_uploads_supplier_invoice_module",
+    "2026-06-09_v0436_team_release_scaling_menu_cleanup"
   ]
 }

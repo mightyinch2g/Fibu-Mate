@@ -21,7 +21,9 @@
     },
     "1920x1080": {
       "tool:deadline_maintenance": 1.05,
-      "users": 1.15
+      "users": 1.15,
+      "tool:supplier_invoice_afi_upload": 1.0,
+      "tool:tax_reporting": 1.0
     }
   }
 }

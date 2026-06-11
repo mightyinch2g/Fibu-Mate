@@ -25,31 +25,42 @@
           "id": "sub_01_154801393308",
           "title": "Belastungen Otto",
           "status": "Offen",
+          "attachments": [],
+          "comments": [],
+          "documentation": {},
           "task_uid": "Q001-u1"
         },
         {
           "id": "sub_02_154815977455",
           "title": "Belastungen Witt",
           "status": "Offen",
+          "attachments": [],
+          "comments": [],
+          "documentation": {},
           "task_uid": "Q001-u2"
         },
         {
           "id": "sub_03_154843070621",
           "title": "Belastungen Frankonia",
           "status": "Offen",
+          "attachments": [],
+          "comments": [],
+          "documentation": {},
           "task_uid": "Q001-u3"
         }
       ],
       "done_at": null,
       "done_by": null,
       "due_date": "2026-06-30",
+      "start_period": "2026-Q2",
+      "documentation": null,
       "task_uid": "Q001"
     },
     {
       "id": "treasury_01",
       "team": "Treasury",
       "title": "Aufgabenpool M. Bartenbach",
-      "owner": "bartenbachm",
+      "owner": "Bartenbachm",
       "owner_user_key": "bartenbachm",
       "due_mode": "closing_cutoff",
       "due_day": null,
@@ -113,6 +124,8 @@
       "done_at": null,
       "done_by": null,
       "due_date": "2026-07-01",
+      "start_period": "2026-Q2",
+      "documentation": null,
       "task_uid": "Q002"
     },
     {
@@ -137,6 +150,7 @@
       "done_at": null,
       "done_by": null,
       "due_date": "2026-07-09",
+      "documentation": {},
       "task_uid": "MQ001"
     },
     {
@@ -161,7 +175,8 @@
       "done_at": null,
       "done_by": null,
       "due_date": "2026-06-25",
-      "task_uid": "Q006"
+      "documentation": {},
+      "task_uid": "MQ002"
     },
     {
       "id": "hauptbuch_03",
@@ -185,13 +200,14 @@
       "done_at": null,
       "done_by": null,
       "due_date": "2026-07-14",
-      "task_uid": "MQ001"
+      "documentation": {},
+      "task_uid": "MQ003"
     },
     {
       "id": "hauptbuch_04",
       "team": "Hauptbuch",
       "title": "Aufgabenpool - Olga Wall",
-      "owner": "Olga Wall",
+      "owner": "Wall",
       "owner_user_key": "wall",
       "due_mode": "closing_cutoff",
       "due_day": null,
@@ -210,24 +226,26 @@
           "id": "sub_01_165710045214",
           "title": "WB Personalkosten IDG/IDE (Planzahlen Controlling)",
           "status": "Offen",
-          "task_uid": "Q006-u1",
           "attachments": [],
           "comments": [],
-          "documentation": {}
+          "documentation": {},
+          "task_uid": "Q006-u1"
         },
         {
           "id": "sub_02_165716510040",
           "title": "WB Club-Punkte IDG/IDE (Datenabruf Controlling nach Verbuchung Club-Punkte)",
           "status": "Offen",
-          "task_uid": "Q006-u2",
           "attachments": [],
           "comments": [],
-          "documentation": {}
+          "documentation": {},
+          "task_uid": "Q006-u2"
         }
       ],
       "done_at": null,
       "done_by": null,
       "due_date": "2026-07-01",
+      "start_period": "2026-Q2",
+      "documentation": null,
       "task_uid": "Q006"
     }
   ],
