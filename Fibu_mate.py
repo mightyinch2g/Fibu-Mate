@@ -1,4 +1,7 @@
-# FiBuMate_PATCH_MARKER: 20260528_114510 (FORCE_MODULE_LOAD_FROM_FILE)
+# FiBuMate_PATCH_MARKER: 20260609_MENUZEILEN_DEBITOREN_PROTOCOL
+# FiBuMate_PATCH_MARKER: 20260609_v0436_DIREKT_ABSCHLUSSKALENDER_EIN_MODUL
+# FiBuMate_PATCH_MARKER: 20260609_v0436_DREI_MODULE_STICHTAGSPFLEGE_OHNE_IDS
+# FiBuMate_PATCH_MARKER: 20260609_150049 (V0.436_TEAM_RELEASE_SCALING_MENU_CLEANUP_READABILITY_SAFE_TEXT)
 import os
 import sys
 import json
@@ -46,7 +49,8 @@ VERSION_PREFIX = "0.4"
 DEFAULT_BUILD = 0
 VERSION_STATE_FILE = "version_state.json"
 VERSION_HISTORY_FILE = "version_history.json"
-ZOOM_PROFILE_FILE = "zoom_profiles.json"
+# v0.436: Manuelle Zoomprofile entfernt; Darstellung skaliert automatisch anhand Fenster-/Monitorgröße.
+ZOOM_PROFILE_FILE = None
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 BIN_DIR = os.path.join(SCRIPT_DIR, "bin")
@@ -98,8 +102,8 @@ WHITE = "#FFFFFF"
 GREY_DISABLED = "#B9C3CF"
 GREY_TILE = "#D6DCE4"
 
-FONT_TITLE = ("Segoe UI", 36, "bold")
-FONT_MENU = ("Segoe UI", 27, "bold")
+FONT_TITLE = ("Segoe UI", 26, "bold")
+FONT_MENU = ("Segoe UI", 22, "bold")
 FONT_TILE = ("Segoe UI", 18, "bold")
 FONT_TILE_SMALL = ("Segoe UI", 15, "bold")
 FONT_SMALL = ("Segoe UI", 10)
@@ -109,7 +113,7 @@ BASE_FONT_TILE = FONT_TILE
 BASE_FONT_TILE_SMALL = FONT_TILE_SMALL
 BASE_FONT_SMALL = FONT_SMALL
 UI_SCALE = 1.0
-UI_TEXT_SCALE = 2.00  # v0.433 Korrektur Paket 1e: Schriftgröße um 100% erhöht; Icon-Skalierung bleibt unverändert.
+UI_TEXT_SCALE = 1.00  # v0.436: kein manueller Textzoom; automatische, begrenzte UI-Skalierung.
 UI_BODY_TEXT_SCALE = 1.00  # v0.433 Korrektur Paket 1g: 1920x1080 ist Body-Referenz; dynamische Lesbarkeit über body_font().
 GLOBAL_TEXT_ZOOM_MIN = 0.70
 GLOBAL_TEXT_ZOOM_MAX = 1.80
@@ -188,11 +192,13 @@ TOOL_REGISTRY = {
     "nike_pdf_to_excel": {"title": "Nike - PDF zu Excel", "module": "bin.tools.nike_pdf_to_excel", "favorite_label": "Nike PDF"},
     "nike_op_liste_pdf_check": {"title": "Nike - OP-Liste: Vollständigkeit PDF-Rechnungen prüfen", "module": "bin.tools.nike_op_liste_pdf_check", "favorite_label": "Nike OP PDF"},
     "invoice_pdf_collector": {"title": "Nike - Rechnungs-PDFs in Sammelordner", "module": "bin.tools.invoice_pdf_collector", "favorite_label": "Nike RE sammeln"},
-    "monthly_close": {"title": "Monatsabschluss", "module": "bin.tools.monthly_close", "favorite_label": "Monatsabschluss"},
-    "quarterly_close": {"title": "Quartalsabschluss", "module": "bin.tools.quarterly_close", "favorite_label": "Quartalsabschluss"},
-    "yearly_close": {"title": "Jahresabschluss", "module": "bin.tools.yearly_close", "favorite_label": "Jahresabschluss"},
-    "deadline_maintenance": {"title": "Stichtags- & Zuständigkeitspflege", "module": "bin.tools.deadline_maintenance", "favorite_label": "Stichtage"},
-"task_history": {"title": "Aufgabenmanager", "module": "bin.tools.task_history", "favorite_label": "Aufgabenmanager"},
+    "enbw_strom_tanken_upload": {"title": "EnBW - Strom-Tanken Upload-Erstellung", "module": "bin.tools.enbw_strom_tanken_upload", "favorite_label": "EnBW Strom"},
+    "supplier_invoice_afi_upload": {"title": "Lieferanten-Rechnung zu AFI-Upload", "module": "bin.tools.supplier_invoice_afi_upload", "favorite_label": "Lieferanten AFI"},
+    "debitoren_serienbrief": {"title": "Debitoren-Serienbrief", "module": "bin.tools.debitoren_serienbrief", "favorite_label": "Debitoren SB"},
+    "monthly_close": {"title": "Monatsabschluss", "module": "bin.tools.abschlusskalender", "favorite_label": "Monatsabschluss"},
+    "quarterly_close": {"title": "Quartalsabschluss", "module": "bin.tools.abschlusskalender", "favorite_label": "Quartalsabschluss"},
+    "yearly_close": {"title": "Jahresabschluss", "module": "bin.tools.abschlusskalender", "favorite_label": "Jahresabschluss"},
+    "deadline_maintenance": {"title": "Stichtagspflege", "module": "bin.tools.deadline_maintenance", "favorite_label": "Stichtage"},
     "x001_sap_test": {"title": "X001 SAP - Test", "module": "bin.tools.x001_sap_test", "favorite_label": "X001"},
     "tax_reporting": {"title": "Steuermeldungs-Cockpit", "module": "bin.tools.compliance_tax_reporting", "favorite_label": "Steuermeldungen"},
     "audit_cockpit": {"title": "Audit-Cockpit", "module": "bin.tools.compliance_audit_cockpit", "favorite_label": "Audit"},
@@ -209,9 +215,11 @@ MODULE_DESCRIPTIONS = {
     "documentation_center": "Zentrale Suche und Prüfung aller Nachweise, Anlagen, Dokumentationspfade und Berichte aus FiBu Mate inklusive fehlender oder ungültiger Dokumentationen.",
     "yearly_close": "Interaktives Jahresabschluss-Cockpit für Geschäftsjahre vom 01.10. bis 30.09.",
     "deadline_maintenance": "Pflege der Abschluss-Stichtage (Dekadenabschluss, 18-Uhr, 08-Uhr, Monatsabschluss) inkl. Feiertage BW und automatischer Übernahme in Monats-/Quartals-/Jahresabschluss.",
-"task_history": "Aufgabenmanager mit Aufgaben-ID-Suche, Zeitraumverlauf und PDF-Berichten.",
     "x001_sap_test": "SAP-Scripting-Test; Scripting in SAP deaktiviert.",
     "invoice_pdf_collector": "In Excel gefilterte Rechnungsnummern aus PDF-Verzeichnis wählen und in neuen Sammelordner kopieren.",
+    "enbw_strom_tanken_upload": "Erstellt aus EnBW E-Tankkosten-Abrechnungen eine SAP-AFI-uploadfähige CSV anhand der bestehenden Upload-Vorlage; Zuordnung nach Kennzeichen, Steuerlogik, Grundgebühren und Hinweis-Popup bei Abweichungen.",
+    "page:compliance_audit": "Entwicklungsbereich für Compliance- und Audit-Funktionen: Steuermeldungen, Audit-Cockpit und Dokumentationszentrale bleiben gebündelt, werden aber nicht im produktiven Hauptmenü angezeigt.",
+    "supplier_invoice_afi_upload": "Generisches CSV-Modul für Lieferantenrechnungen: erkennt relevante Spalten logisch, gleicht gegen eine wählbare AFI-/Kontierungsvorlage ab und exportiert eine uploadfähige AFI-CSV mit Spalten A-J.",
 }
 DESCRIPTION_FONT = ("Segoe UI", 11)
 DESCRIPTION_COLOR = TEXT2
@@ -309,8 +317,8 @@ class ArrowIndicator(tk.Canvas):
         self.bump_version_once(
             "2026-05-30_bu31_compliance_audit_deadlines_niketools_unsaved_fix",
             [
-                "BU31: Stichtags- & Zuständigkeitspflege vollständig nach Compliance & Audit verschoben und aus Abschlusskalender entfernt.",
-                "BU31: Datenaufbereitung erhält ein funktionsfähiges Untermenü Nike-Tools mit den drei Nike-Modulen im Standard-Modul-Menü-Layout.",
+                "BU31: Stichtagspflege vollständig nach Compliance & Audit verschoben und aus Abschlusskalender entfernt.",
+                "BU31: Tools - Hauptbuch erhält ein funktionsfähiges Untermenü Nike-Tools mit den drei Nike-Modulen im Standard-Modul-Menü-Layout.",
                 "BU31: Modul Rechnungen aus Ordner sammeln in Nike - Rechnungs-PDFs in Sammelordner umbenannt und Modulbeschreibung aktualisiert.",
                 "BU31: Dialog für ungespeicherte Änderungen nur bei echtem Dirty-State; nach Speichern + Übernehmen wird der Status bereinigt.",
                 "BU31: Audit-Cockpit zeigt Details als öffnen mit ausführlichem Popup inklusive Zeitstempel.",
@@ -322,7 +330,7 @@ class ArrowIndicator(tk.Canvas):
             "2026-05-30_bu32_icons_deadline_sync_version_429",
             [
                 "BU32: Nike-Tools-Kacheln zeigen wieder PDF- bzw. PDF/Excel-Icons im Untermenü Nike-Tools.",
-                "BU32: Stichtags- & Zuständigkeitspflege synchronisiert gepflegte Abschluss-Stichtage verbindlich in Monats-, Quartals- und Jahresabschluss.",
+                "BU32: Stichtagspflege synchronisiert gepflegte Abschluss-Stichtage verbindlich in Monats-, Quartals- und Jahresabschluss.",
                 "BU32: Steuermeldungs-Cockpit übernimmt bei Kalender-Sync die gepflegten Stichtage als Fälligkeit je Zeitraum.",
                 "BU32: Versionierung auf v0.429 fortgeschrieben und Versionsverlauf ergänzt.",
             ],
@@ -460,17 +468,21 @@ class Tile(tk.Canvas):
             return 0, 1
 
     def fitted_title_font(self, max_width, max_height, centered=False):
+        """Lesbarkeitsschutz v0.436: bevorzugt größere Schrift, bleibt aber im Sollbereich."""
         base_font = self.app.zoomed_content_font(FONT_TILE_SMALL if len(self.title) > 24 else self.title_font())
         try:
             actual = tkfont.Font(root=self, font=base_font).actual()
-            start_size = abs(int(actual.get('size') or 12))
+            base_size = abs(int(actual.get('size') or 12))
         except Exception:
-            start_size = 12
-        min_size = 10 if not centered else 9
+            base_size = 12
+        preferred_min = 13 if not centered else 12
+        start_size = max(base_size, ui_s(preferred_min))
+        hard_max = max(start_size, 18 if not centered else 17)
+        min_size = 9 if not centered else 8
         max_lines = 3 if not centered else 4
-        chosen = base_font
+        chosen = self._font_with_size(base_font, min_size)
         chosen_h = 0
-        for size in range(start_size, min_size - 1, -1):
+        for size in range(hard_max, min_size - 1, -1):
             candidate = self._font_with_size(base_font, size)
             text_h, text_lines = self._measure_wrapped_text_height(self.title, candidate, max_width)
             if text_h <= max_height and text_lines <= max_lines:
@@ -660,28 +672,38 @@ class Tile(tk.Canvas):
 
 class FiBuMateApp:
     def zoomed_content_font(self, font_tuple):
-        try:
-            family, size, *rest = font_tuple
-            return tuple([family, max(7, int(round(float(size) * float(self.current_scope_zoom))))] + rest)
-        except Exception:
-            return font_tuple
+        """v0.436: Kompatibilitätswrapper ohne manuellen Bereichs-/Textzoom."""
+        return font_tuple
 
-    def init_responsive_scaling(self):
-        """v0.433: Skaliert zentrale Schrift-/Kachelwerte für kleinere Monitore."""
-        global UI_SCALE, FONT_TITLE, FONT_MENU, FONT_TILE, FONT_TILE_SMALL, FONT_SMALL, MINI_WIDGET_W, MINI_WIDGET_H, MINI_WIDGET_GAP
+    def _calculate_ui_scale(self):
         try:
             sw = max(1, self.root.winfo_screenwidth())
             sh = max(1, self.root.winfo_screenheight())
-            UI_SCALE = max(0.68, min(1.08, min(sw / 1920.0, sh / 1080.0)))
+            ww = max(1, self.root.winfo_width() or sw)
+            wh = max(1, self.root.winfo_height() or sh)
+            scale = min(ww / 1920.0, wh / 1080.0)
+            if ww <= 1 or wh <= 1:
+                scale = min(sw / 1920.0, sh / 1080.0)
+            return max(0.72, min(1.18, scale))
+        except Exception:
+            return 1.0
+
+    def init_responsive_scaling(self):
+        """v0.436: zentrale automatische Skalierung ohne Benutzer-Zoomprofile."""
+        global UI_SCALE, FONT_TITLE, FONT_MENU, FONT_TILE, FONT_TILE_SMALL, FONT_SMALL, MINI_WIDGET_W, MINI_WIDGET_H, MINI_WIDGET_GAP
+        try:
+            UI_SCALE = self._calculate_ui_scale()
             self.ui_scale = UI_SCALE
             FONT_TITLE = scaled_font(BASE_FONT_TITLE)
             FONT_MENU = scaled_font(BASE_FONT_MENU)
             FONT_TILE = scaled_font(BASE_FONT_TILE)
             FONT_TILE_SMALL = scaled_font(BASE_FONT_TILE_SMALL)
             FONT_SMALL = scaled_font(BASE_FONT_SMALL)
-            MINI_WIDGET_W = ui_s(174); MINI_WIDGET_H = ui_s(30); MINI_WIDGET_GAP = ui_s(8)
+            MINI_WIDGET_W = ui_s(150)
+            MINI_WIDGET_H = ui_s(26)
+            MINI_WIDGET_GAP = ui_s(7)
             try:
-                self.root.tk.call('tk', 'scaling', max(0.80, min(1.10, UI_SCALE)))
+                self.root.tk.call('tk', 'scaling', max(0.80, min(1.12, UI_SCALE)))
             except Exception:
                 pass
         except Exception:
@@ -703,11 +725,9 @@ class FiBuMateApp:
         self.focus_index = -1
         self._suppress_next_global_return = False
         self._closing_in_progress = False
-        self.global_text_zoom = GLOBAL_TEXT_ZOOM
-        self.zoom_profiles = self.load_zoom_profiles()
+        self.global_text_zoom = 1.0
+        self.zoom_profiles = {}
         self.current_scope_zoom = 1.0
-        self._zoom_base_fonts = {}
-        self._zoom_base_canvas_fonts = {}
         self.favorites = set()
         self.current_user_key = None
         self.current_user_display = ""
@@ -843,7 +863,7 @@ class FiBuMateApp:
         self.bump_version_once(
             "2026-05-15_close_complete_ids_linking_pdf_no_reportlab",
             [
-                "Abschlusskalender erweitert: Jahresabschluss und Aufgaben-Historie nach ID wurden eingebunden.",
+                "Abschlusskalender erweitert: Jahresabschluss und Aufgaben-Historie wurden eingebunden.",
                 "Monats-, Quartals- und Jahresabschluss erweitert: Aufgaben-IDs sind im Bearbeitungsdialog sichtbar und für Administrator/System-Administrator editierbar; bestehende fachliche Aufgaben erhalten initial QM001 bis QM016.",
                 "Monats-, Quartals- und Jahresabschluss erweitert: Aufgaben werden über identische Aufgaben-ID verknüpft; bei ID-Änderung wird die alte ID mit Deaktivierungsdatum archiviert.",
                 "Monats-, Quartals- und Jahresabschluss erweitert: Delegierungen können einmalig oder permanent auf Folgezeiträume übertragen werden.",
@@ -853,7 +873,7 @@ class FiBuMateApp:
         self.bump_version_once(
             "2026-05-15_close_task_linking_mail_delegation",
             [
-                "Aufgaben-Historie nach ID erweitert: Dezenter Reiter „Aufgaben verknüpfen“ ergänzt, inklusive Vorschlägen für gleichnamige Aufgaben in Monats-, Quartals- und Jahresabschluss.",
+                "Aufgaben-Historie erweitert: Dezenter Reiter „Aufgaben verknüpfen“ ergänzt, inklusive Vorschlägen für gleichnamige Aufgaben in Monats-, Quartals- und Jahresabschluss.",
                 "Abschlusskalender erweitert: Aufgaben-Verknüpfung setzt gemeinsame IDs automatisch nach Priorität M > Q > J und archiviert alte Aufgaben-IDs mit Deaktivierungsdatum.",
                 "Monats-, Quartals- und Jahresabschluss erweitert: Bei Delegierung wird eine E-Mail an die neu zuständige Person vorbereitet; bei permanenter Delegierung mit Hinweis „bis auf Weiteres“.",
             ],
@@ -909,12 +929,42 @@ class FiBuMateApp:
         self.ensure_version_434_once()
         self.ensure_version_435_once()
         self.normalize_version_after_zoom_patch()
+
+        self.bump_version_once(
+            "2026-06-05_afi_uploads_supplier_invoice_module",
+            [
+                "Tools - Hauptbuch erweitert: Neues Untermenü AFI-Uploads hinzugefügt.",
+                "EnBW - Strom-Tanken Upload-Erstellung in das Untermenü AFI-Uploads verschoben.",
+                "Neues generisches Modul Lieferanten-Rechnung zu AFI-Upload für robuste CSV-Rechnungsanalyse und AFI-CSV-Export ergänzt.",
+            ],
+        )
+
+        self.bump_version_once(
+            "2026-06-05_enbw_strom_tanken_upload",
+            [
+                "Tools - Hauptbuch erweitert: Neues Modul EnBW - Strom-Tanken Upload-Erstellung hinzugefügt.",
+                "EnBW-Modul erstellt SAP-AFI-uploadfähige CSV mit unveränderter Spaltenlogik A-J, Zuordnung nach normalisiertem Kennzeichen und Hinweis-Popup bei Namensabweichungen bzw. fehlender Vorlage.",
+                "EnBW-Modul berücksichtigt gerundete Netto-/MwSt-Beträge, Steuerkennzeichen VD/V2/V0 und 19%-Grundgebühren aus der EnBW-Rechnung.",
+            ],
+        )
+
+        self.bump_version_once(
+            "2026-06-09_v0436_team_release_scaling_menu_cleanup",
+            [
+                "Version 0.436: Compliance & Audit als eigene Kachel in den Bereich In Entwicklung verschoben.",
+                "Abschlusskalender angepasst: Stichtagspflege zwischen Jahresabschluss und Aufgaben-Historie einsortiert und bleibt federführend für Stichtage/Zuständigkeiten.",
+                "Globale Zoomfunktion inklusive sichtbarer Zoomleiste, Zoomprofile und Strg+Mausrad-Zoom deaktiviert; FiBu Mate skaliert automatisch mit Fenster- und Monitorgröße auf Referenz 1920x1080.",
+                "Kopfzeile nach Finance-Mate-Vorbild optisch bereinigt: kleinere Überschrift, getrennte Breadcrumb-/Favoriten-/Mini-Widget-Zonen und optimierte Positionen für Zurück, Änderung vorschlagen und Hilfe.",
+                "Fußleiste um 15% reduziert; Inhalte skalieren mit der automatischen UI-Skalierung.",
+                "Lesbarkeitsschutz ergänzt: zu kleine Texte werden innerhalb ihres Sollbereichs bevorzugt größer dargestellt, ohne Strukturen zu berühren oder unschön umzubrechen.",
+            ],
+        )
         self.create_footer()
         self.canvas = tk.Canvas(self.root, highlightthickness=0, bg=BG, cursor="arrow")
         self.canvas.pack(side="top", fill="both", expand=True)
         self.canvas.bind("<Configure>", self.on_resize)
         self.active_scroll_canvas = None
-        self.install_zoom_mouse_bindings()
+        # v0.436: keine globalen Zoom-Bindings mehr; automatische Skalierung übernimmt die Darstellung.
         for key, handler in [("<Escape>", self.handle_escape), ("<Return>", self.handle_enter), ("<Tab>", self.handle_tab), ("<Shift-Tab>", self.handle_shift_tab), ("<ISO_Left_Tab>", self.handle_shift_tab)]:
             self.root.bind_all(key, handler)
         self.show_page("launch", add_to_history=False)
@@ -1242,9 +1292,9 @@ class FiBuMateApp:
         update_id = "2026-05-30_bu33b_closing_deadline_sync_version_430"
         bullets = [
             "BU33b: Abschlusskalender-Synchronisation versioniert.",
-            "BU33b: Monatsabschluss übernimmt gepflegte Stichtage aus der Stichtags- & Zuständigkeitspflege und aktualisiert Aufgaben mit Abschluss-Stichtag.",
-            "BU33b: Quartalsabschluss übernimmt gepflegte Stichtage aus der Stichtags- & Zuständigkeitspflege und aktualisiert Aufgaben mit Abschluss-Stichtag.",
-            "BU33b: Jahresabschluss übernimmt gepflegte Stichtage aus der Stichtags- & Zuständigkeitspflege und aktualisiert Aufgaben mit Abschluss-Stichtag.",
+            "BU33b: Monatsabschluss übernimmt gepflegte Stichtage aus der Stichtagspflege und aktualisiert Aufgaben mit Abschluss-Stichtag.",
+            "BU33b: Quartalsabschluss übernimmt gepflegte Stichtage aus der Stichtagspflege und aktualisiert Aufgaben mit Abschluss-Stichtag.",
+            "BU33b: Jahresabschluss übernimmt gepflegte Stichtage aus der Stichtagspflege und aktualisiert Aufgaben mit Abschluss-Stichtag.",
             "BU33b: Bestehende Periodendateien aktualisieren closing_cutoff_date und die Fälligkeiten betroffener Aufgaben.",
         ]
         try:
@@ -1278,7 +1328,7 @@ class FiBuMateApp:
         """
         update_id = "2026-05-30_v0_431_calendar_cutoff_readonly_deadline_source"
         bullets = [
-            "v0.431: Abschluss-Stichtag in Monats-, Quartals- und Jahresabschluss wird in den Zeitraumsübersichten nur noch aus der Stichtags- & Zuständigkeitspflege angezeigt.",
+            "v0.431: Abschluss-Stichtag in Monats-, Quartals- und Jahresabschluss wird in den Zeitraumsübersichten nur noch aus der Stichtagspflege angezeigt.",
             "v0.431: Die manuelle Änderung des Abschluss-Stichtags in den Kalender-Zeitraumsübersichten wurde entfernt.",
             "v0.431: Aufgaben mit Fälligkeitsart Abschluss-Stichtag verwenden den zentral gepflegten Stichtag aus der Stichtagspflege als Basis.",
             "v0.431: Bestehende Periodendaten werden beim Öffnen der Kalender erneut gegen die Stichtagspflege normalisiert.",
@@ -1520,14 +1570,14 @@ class FiBuMateApp:
         return None
 
     def create_footer(self):
-        self.footer = tk.Frame(self.root, bg="black", height=ui_s(58)); self.footer._zoom_exclude = True
+        self.footer = tk.Frame(self.root, bg="black", height=ui_s(49)); self.footer._zoom_exclude = True
         self.footer.pack(side="bottom", fill="x")
         self.footer.pack_propagate(False)
-        self.user_label = tk.Label(self.footer, bg="black", fg="white", font=body_font(10))
+        self.user_label = tk.Label(self.footer, bg="black", fg="white", font=body_font(9))
         self.user_label.place(relx=0, rely=0.5, anchor="w", x=12)
-        self.version_label = tk.Label(self.footer, text=self.version_label_text(), bg="black", fg="white", font=body_font(10))
+        self.version_label = tk.Label(self.footer, text=self.version_label_text(), bg="black", fg="white", font=body_font(9))
         self.version_label.place(relx=0.5, rely=0.5, anchor="center")
-        self.clock_label = tk.Label(self.footer, bg="black", fg="white", font=body_font(10))
+        self.clock_label = tk.Label(self.footer, bg="black", fg="white", font=body_font(9))
         self.clock_label.place(relx=1, rely=0.5, anchor="e", x=-12)
         self.update_clock()
 
@@ -1942,15 +1992,11 @@ class FiBuMateApp:
         self.image_refs.clear()
 
     def render_page(self):
-        self.prepare_scope_zoom()
+        self.init_responsive_scaling()
         self.clear_content()
         self.draw_background()
         if self.current_page == "launch":
             self.render_launch()
-            try:
-                self.root.after_idle(self.apply_global_text_zoom)
-            except Exception:
-                pass
             return
         self.draw_header(self.current_title)
         self.draw_controls()
@@ -1958,7 +2004,9 @@ class FiBuMateApp:
         self.draw_favorites_bar()
         if self.current_page == "main": self.render_main_menu()
         elif self.current_page == "data_prep": self.render_data_prep_menu()
+        elif self.current_page == "debitoren_tools": self.render_debitoren_tools_menu()
         elif self.current_page == "nike_tools": self.render_nike_tools_menu()
+        elif self.current_page == "afi_uploads": self.render_afi_uploads_menu()
         elif self.current_page == "closing_calendar": self.render_closing_calendar_menu()
         elif self.current_page == "compliance_audit": self.render_compliance_audit_menu()
         elif self.current_page == "in_dev": self.render_in_dev_menu()
@@ -1973,10 +2021,6 @@ class FiBuMateApp:
         if self.focusable_tiles:
             self.focus_index = 0
             self.focusable_tiles[0].focus_set()
-        try:
-            self.root.after_idle(self.apply_global_text_zoom)
-        except Exception:
-            pass
 
     def on_resize(self, *_):
         self.root.after(30, self.render_page)
@@ -1995,18 +2039,15 @@ class FiBuMateApp:
         self.canvas.create_polygon(w * 0.02, h * 0.90, w * 0.32, h * 0.72, w * 0.60, h * 1.04, fill=blend(BG, WHITE, 0.20), outline="")
         self.canvas.create_polygon(w * 0.62, h * 0.20, w * 0.96, h * 0.36, w * 1.06, h * 0.12, fill=blend(BG, BLUE, 0.040), outline="")
         self.canvas.create_polygon(w * 0.08, h * 0.18, w * 0.22, h * 0.26, w * 0.04, h * 0.34, fill=blend(BG, WHITE, 0.15), outline="")
-        self.canvas.create_rectangle(0, 0, w, 128, fill=HEADER, outline="")
-        self.canvas.create_rectangle(0, 128, w, 131, fill=LINE, outline="")
+        self.canvas.create_rectangle(0, 0, w, 109, fill=HEADER, outline="")
+        self.canvas.create_rectangle(0, 109, w, 112, fill=LINE, outline="")
 
     def draw_header(self, title):
         w, h = self.canvas.winfo_width(), self.canvas.winfo_height()
-        if self.banner_small and PIL_AVAILABLE:
-            ph = ImageTk.PhotoImage(resize_keep_ratio(self.banner_small, 520, 86))
-            self.image_refs.append(ph)
-            self.canvas.create_image(w / 2, h * 0.073, image=ph)
-        else:
-            self.canvas.create_text(w / 2, h * 0.083, text="FiBu Mate", font=FONT_TITLE, fill=TEXT)
-        self.canvas.create_text(w / 2, h * 0.155, text=title, font=FONT_MENU, fill=TEXT2)
+        header_h = ui_s(92)
+        self.canvas.create_rectangle(0, 0, w, header_h, fill=HEADER, outline="")
+        self.canvas.create_line(0, header_h, w, header_h, fill=LINE, width=1)
+        self.canvas.create_text(w / 2, ui_s(70), text=title, font=FONT_MENU, fill=TEXT2, anchor="center")
 
     def draw_gradient_line(self, x1, x2, y):
         width = max(1, int(x2 - x1)); steps = max(20, min(180, width // 5))
@@ -2016,51 +2057,53 @@ class FiBuMateApp:
             self.canvas.create_line(x1 + width * i / steps, y, x1 + width * (i + 1) / steps, y, fill=color, width=2)
 
     def draw_path_bar(self):
-        w = self.canvas.winfo_width(); x1, x2 = 6, min(650, w * 0.38)
-        self.draw_gradient_line(x1, x2, 42); self.draw_gradient_line(x1, x2, 68)
-        x = x1 + 112
+        w = self.canvas.winfo_width(); x1 = ui_s(12); x2 = min(w * 0.42, ui_s(760)); y_mid = ui_s(38)
+        self.draw_gradient_line(x1, x2, y_mid - ui_s(10)); self.draw_gradient_line(x1, x2, y_mid + ui_s(10))
+        x = x1 + ui_s(96)
         for idx, (page, title) in enumerate(self.breadcrumb):
             current = idx == len(self.breadcrumb) - 1
-            tid = self.canvas.create_text(x, 55, text=title, font=body_font(10, "bold") if current else body_font(10), fill=TEXT if current else BLUE, anchor="w")
-            bbox = self.canvas.bbox(tid); tw = bbox[2] - bbox[0] if bbox else 70
+            tid = self.canvas.create_text(x, y_mid, text=title, font=body_font(9, "bold") if current else body_font(9), fill=TEXT if current else BLUE, anchor="w")
+            bbox = self.canvas.bbox(tid); tw = bbox[2] - bbox[0] if bbox else ui_s(70)
             if not current:
                 self.canvas.tag_bind(tid, "<Button-1>", lambda e, i=idx: self.jump_to_breadcrumb(i))
                 self.canvas.tag_bind(tid, "<Enter>", lambda e: self.canvas.config(cursor="hand2"))
                 self.canvas.tag_bind(tid, "<Leave>", lambda e: self.canvas.config(cursor="arrow"))
-            x += tw + 18
+            x += tw + ui_s(14)
             if idx < len(self.breadcrumb) - 1:
-                self.canvas.create_polygon(x, 48, x, 62, x + 7, 55, fill=RED, outline=RED); x += 24
+                self.canvas.create_polygon(x, y_mid - ui_s(6), x, y_mid + ui_s(6), x + ui_s(7), y_mid, fill=RED, outline=RED); x += ui_s(20)
 
     def draw_favorites_bar(self):
-        w = self.canvas.winfo_width(); x1, x2 = max(w * 0.68, w - 620), w - 8
-        self.draw_gradient_line(x1, x2, 42); self.draw_gradient_line(x1, x2, 68)
-        self.canvas.create_text(x1 + 18, 55, text="★", font=("Segoe UI", 16, "bold"), fill=GOLD, anchor="w")
-        self.canvas.create_text(x1 + 48, 55, text="Favoriten", font=body_font(10, "bold"), fill=TEXT, anchor="w")
-        x = x1 + 135; chip_color = self.current_tile_color() or BLUE
+        w = self.canvas.winfo_width(); x1, x2 = max(w * 0.58, w - ui_s(720)), w - ui_s(360)
+        if x2 <= x1 + ui_s(120): return
+        y_mid = ui_s(38)
+        self.draw_gradient_line(x1, x2, y_mid - ui_s(10)); self.draw_gradient_line(x1, x2, y_mid + ui_s(10))
+        self.canvas.create_text(x1 + ui_s(16), y_mid, text="★", font=("Segoe UI", max(10, ui_s(13)), "bold"), fill=GOLD, anchor="w")
+        self.canvas.create_text(x1 + ui_s(40), y_mid, text="Favoriten", font=body_font(9, "bold"), fill=TEXT, anchor="w")
+        x = x1 + ui_s(118); chip_color = self.current_tile_color() or BLUE; max_x = x2 - ui_s(8)
         for fav in sorted(f for f in self.favorites if f in TOOL_REGISTRY):
+            if x + ui_s(96) > max_x: break
             label = TOOL_REGISTRY.get(fav, {}).get("favorite_label", fav)
-            chip = tk.Label(self.root, text=label, bg=chip_color, fg="white", font=body_font(10), padx=8, pady=2, cursor="hand2"); chip._zoom_exclude = True
+            chip = tk.Label(self.root, text=label, bg=chip_color, fg="white", font=body_font(8), padx=ui_s(6), pady=ui_s(1), cursor="hand2"); chip._zoom_exclude = True
             chip.bind("<Button-1>", lambda e, fid=fav: self.execute_favorite(fid))
-            self.widget_items.append(chip); self.canvas.create_window(x, 55, window=chip, anchor="w"); x += 120
+            self.widget_items.append(chip); self.canvas.create_window(x, y_mid + ui_s(8), window=chip, anchor="w"); x += ui_s(108)
 
     def draw_controls(self):
         self.draw_logout_control() if self.current_page == "main" else self.draw_back_control()
-        self.draw_zoom_control()
         self.draw_suggestion_control()
         self.draw_help_control()
         self.draw_close_control()
 
     def draw_back_control(self):
         frame = tk.Frame(self.root, bg=HEADER, cursor="hand2")
-        arrow = tk.Label(frame, text="←", fg=RED, bg=HEADER, font=body_font(14, "bold"), cursor="hand2")
-        txt = tk.Label(frame, text="zurück", fg=BLUE, bg=HEADER, font=body_font(10, underline=True), cursor="hand2")
-        arrow.pack(side="left"); txt.pack(side="left", padx=5)
+        arrow = tk.Label(frame, text="←", fg=RED, bg=HEADER, font=body_font(12, "bold"), cursor="hand2")
+        txt = tk.Label(frame, text="zurück", fg=BLUE, bg=HEADER, font=body_font(9, underline=True), cursor="hand2")
+        arrow.pack(side="left"); txt.pack(side="left", padx=ui_s(4))
         arrow.bind("<Button-1>", lambda e: self.go_back()); txt.bind("<Button-1>", lambda e: self.go_back())
-        self.widget_items.append(frame); self.canvas.create_window(14, 7, window=frame, anchor="nw")
+        self.widget_items.append(frame); self.canvas.create_window(ui_s(14), ui_s(8), window=frame, anchor="nw")
 
     def draw_logout_control(self):
         btn = tk.Button(self.root, text="Abmelden", command=self.logout, bg=self.current_tile_color() or BLUE, fg="white", font=body_font(10, "bold", scale=0.75), bd=0, cursor="hand2", padx=ui_s(9), pady=ui_s(4))
-        self.widget_items.append(btn); self.canvas.create_window(14, 7, window=btn, anchor="nw")
+        self.widget_items.append(btn); self.canvas.create_window(ui_s(14), ui_s(8), window=btn, anchor="nw")
 
     def draw_mini_bulb_icon(self, canvas, x, y):
         if self.draw_canvas_icon(canvas, "idea", x, y, 18, 18):
@@ -2078,8 +2121,6 @@ class FiBuMateApp:
         """v0.434 technische Korrektur: Zoomleiste nur in Modulen und Einstellungen-Untermenüs anzeigen."""
         try:
             page = str(getattr(self, "current_page", "") or "")
-            if page == "tool:task_history":
-                return False
             if page.startswith("tool:"):
                 return True
             return page in {"tile_colors", "users", "permissions", "information", "versions"}
@@ -2163,20 +2204,20 @@ class FiBuMateApp:
             return
         # v0.434 Paket 1D: Mini-Widget bleibt zoom-excluded; Text wird bewusst mit fixer Mini-Schrift gezeichnet.
         # Dadurch kann „Änderung vorschlagen“ nicht mehr durch UI_TEXT_SCALE aus dem Button laufen.
-        suggestion_w = max(MINI_WIDGET_W, ui_s(286))
+        suggestion_w = max(MINI_WIDGET_W, ui_s(202))
         btn = tk.Canvas(self.root, width=suggestion_w, height=MINI_WIDGET_H, bg=HEADER, highlightthickness=0, bd=0, cursor="hand2"); btn._zoom_exclude = True
         btn.create_rectangle(1, 1, suggestion_w - 1, MINI_WIDGET_H - 1, fill=HEADER, outline=BLUE, width=1)
-        icon_x = ui_s(18)
-        text_x = ui_s(44)
+        icon_x = ui_s(16)
+        text_x = ui_s(36)
         self.draw_mini_bulb_icon(btn, icon_x, MINI_WIDGET_H / 2)
-        btn.create_text(text_x, MINI_WIDGET_H / 2, text="Änderung vorschlagen", fill=TEXT, font=("Segoe UI", 9, "bold"), anchor="w")
+        btn.create_text(text_x, MINI_WIDGET_H / 2, text="Änderung vorschlagen", fill=TEXT, font=("Segoe UI", max(8, ui_s(9)), "bold"), anchor="w")
         btn.bind("<Button-1>", lambda _e: self.open_suggestion_mail())
         btn.bind("<Enter>", lambda _e: self.show_small_tooltip(btn, "Änderung vorschlagen"))
         btn.bind("<Leave>", lambda _e: self.hide_small_tooltip())
         self.widget_items.append(btn)
         # rechter Rand: links vom Hilfe-Mini-Widget; anchor=ne erwartet die rechte Kante, daher nicht nochmals um die eigene Breite verschieben.
-        x = self.canvas.winfo_width() - 52 - MINI_WIDGET_GAP
-        self.canvas.create_window(x, 7, window=btn, anchor="ne")
+        x = self.canvas.winfo_width() - ui_s(176) - MINI_WIDGET_GAP
+        self.canvas.create_window(x, ui_s(8), window=btn, anchor="ne")
 
     def show_small_tooltip(self, widget, text):
         self.hide_small_tooltip()
@@ -2226,14 +2267,14 @@ class FiBuMateApp:
         btn = tk.Canvas(self.root, width=MINI_WIDGET_W, height=MINI_WIDGET_H, bg=HEADER, highlightthickness=0, bd=0, cursor="hand2"); btn._zoom_exclude = True
         btn.create_rectangle(1, 1, MINI_WIDGET_W - 1, MINI_WIDGET_H - 1, fill=HEADER, outline=BLUE, width=1)
         self.draw_mini_help_icon(btn, 25, MINI_WIDGET_H / 2)
-        btn.create_text(MINI_WIDGET_W / 2, MINI_WIDGET_H / 2, text="Hilfe", fill=TEXT, font=("Segoe UI", max(16, ui_s(16)), "bold"), anchor="center")
+        btn.create_text(MINI_WIDGET_W / 2 + ui_s(6), MINI_WIDGET_H / 2, text="Hilfe", fill=TEXT, font=("Segoe UI", max(8, ui_s(9)), "bold"), anchor="center")
         def open_help(_event=None):
             self.show_help_popup()
         btn.bind("<Button-1>", open_help)
         btn.bind("<Enter>", lambda _e: self.show_small_tooltip(btn, "Hilfe"))
         btn.bind("<Leave>", lambda _e: self.hide_small_tooltip())
         self.widget_items.append(btn)
-        self.canvas.create_window(self.canvas.winfo_width() - 22, 7, window=btn, anchor="ne")
+        self.canvas.create_window(self.canvas.winfo_width() - ui_s(22), ui_s(8), window=btn, anchor="ne")
 
     def draw_close_control(self):
         """v0.433 Korrektur Paket 1c/1e: Separater X-Button in den Mini-Widgets deaktiviert.
@@ -2307,15 +2348,19 @@ class FiBuMateApp:
         entry.focus_set(); entry.bind("<Return>", lambda e: self.login_user_from_entry(username_var.get()))
         self.draw_bottom_logo(); self.draw_close_control()
 
+
     def render_main_menu(self):
+        # Menüzeile 1: Abschlusskalender
         top_tiles = [
             {"title": "Abschlusskalender", "cmd": lambda: self.show_page("closing_calendar", "Abschlusskalender", True), "fixed": None, "lock": False, "icon": "calendar", "fold": False},
-            {"title": "Compliance & Audit", "cmd": lambda: self.show_page("compliance_audit", "Compliance & Audit", True), "fixed": None, "lock": False, "icon": "compliance", "fold": False},
         ]
+        # Menüzeile 2: Tools-Menüs
         middle_tiles = [
-            {"title": "Datenaufbereitung", "cmd": lambda: self.show_page("data_prep", "Datenaufbereitung", True), "fixed": None, "lock": False, "icon": "pdf_xls", "fold": False},
+            {"title": "Tools - Hauptbuch", "cmd": lambda: self.show_page("data_prep", "Tools - Hauptbuch", True), "fixed": None, "lock": False, "icon": "pdf_xls", "fold": False},
+            {"title": "Tools - Debitoren", "cmd": lambda: self.show_page("debitoren_tools", "Tools - Debitoren", True), "fixed": None, "lock": False, "icon": "modules", "fold": False},
         ]
-        footer_tiles = [
+        # Mini-Menüzeile: kleinere Kacheln; Eselsohr rechts oben außer bei "In Entwicklung".
+        mini_tiles = [
             {"title": "In Entwicklung", "cmd": self.try_open_in_dev, "fixed": GREY_TILE, "lock": True, "icon": "lock", "fold": False},
             {"title": "Informationen", "cmd": lambda: self.show_page("information", "Informationen", True), "fixed": None, "lock": False, "icon": "info", "fold": True},
             {"title": "Einstellungen", "cmd": lambda: self.show_page("settings", "Einstellungen", True), "fixed": None, "lock": False, "icon": "gear", "fold": True},
@@ -2338,14 +2383,18 @@ class FiBuMateApp:
                 self.widget_items.append(tile)
                 self.focusable_tiles.append(tile)
                 self.canvas.create_window(xs[i], y, window=tile, anchor="center")
-        create_tile_group(top_tiles, y_pct(h, 63), "main_top")
-        create_tile_group(middle_tiles, y_pct(h, 43), "main_middle")
-        footer_tw = int(tw * 0.85)
-        footer_th = int(th * 0.85)
-        footer_center_y = y_pct(h, 17.5) + th / 2 - footer_th / 2
-        footer_top = footer_center_y - footer_th / 2
-        create_tile_group(footer_tiles, footer_center_y, "main_footer", tile_w=footer_tw, tile_h=footer_th)
-        self.draw_continuous_relief_line(self.canvas, footer_top - 13, x_pct(w, 9.5), x_pct(w, 92))
+        top_y = y_pct(h, 64)
+        tools_y = y_pct(h, 43)
+        create_tile_group(top_tiles, top_y, "main_menuzeile_1")
+        create_tile_group(middle_tiles, tools_y, "main_menuzeile_2")
+        # Trennlinie zwischen Tools-Menüs und Abschlusskalender – identisch zur Mini-Menüzeilen-Trennlinie.
+        self.draw_continuous_relief_line(self.canvas, (top_y + tools_y) / 2, x_pct(w, 9.5), x_pct(w, 92))
+        mini_tw = int(tw * 0.72)
+        mini_th = int(th * 0.72)
+        mini_center_y = y_pct(h, 16.5) + th / 2 - mini_th / 2
+        mini_top = mini_center_y - mini_th / 2
+        create_tile_group(mini_tiles, mini_center_y, "main_mini_menuezeile", tile_w=mini_tw, tile_h=mini_th)
+        self.draw_continuous_relief_line(self.canvas, mini_top - 13, x_pct(w, 9.5), x_pct(w, 92))
         self.draw_bottom_logo()
 
     def try_open_in_dev(self):
@@ -2353,8 +2402,25 @@ class FiBuMateApp:
         self.show_page("in_dev", "In Entwicklung", True)
 
     def render_data_prep_menu(self):
-        modules = [("Nike-Tools", "page:nike_tools")]
+        modules = [
+            ("Nike-Tools", "page:nike_tools"),
+            ("AFI-Uploads", "page:afi_uploads"),
+        ]
         self.render_module_menu(modules, show_descriptions=False)
+        self.draw_bottom_logo()
+
+
+    def render_debitoren_tools_menu(self):
+        modules = [("Debitoren-Serienbrief", "debitoren_serienbrief")]
+        self.render_module_menu(modules, show_descriptions=True)
+        self.draw_bottom_logo()
+
+    def render_afi_uploads_menu(self):
+        modules = [
+            ("EnBW - Strom-Tanken Upload-Erstellung", "enbw_strom_tanken_upload"),
+            ("Lieferanten-Rechnung zu AFI-Upload", "supplier_invoice_afi_upload"),
+        ]
+        self.render_module_menu(modules, show_descriptions=True)
         self.draw_bottom_logo()
 
     def render_nike_tools_menu(self):
@@ -2367,7 +2433,7 @@ class FiBuMateApp:
         self.draw_bottom_logo()
 
     def render_closing_calendar_menu(self):
-        modules = [("Monatsabschluss", "monthly_close"), ("Quartalsabschluss", "quarterly_close"), ("Jahresabschluss", "yearly_close"), ("Aufgaben-Historie nach ID", "task_history")]
+        modules = [("Monatsabschluss", "monthly_close"), ("Quartalsabschluss", "quarterly_close"), ("Jahresabschluss", "yearly_close"), ("Stichtagspflege", "deadline_maintenance")]
         self.render_module_menu(modules, show_descriptions=True)
         if self.my_role() == ROLE_E4:
             text = "Auto-Mail: Ein" if self.auto_close_mail_enabled() else "Auto-Mail: Aus"
@@ -2381,13 +2447,13 @@ class FiBuMateApp:
             ("Steuermeldungs-Cockpit", "tax_reporting"),
             ("Audit-Cockpit", "audit_cockpit"),
             ("Dokumentationszentrale", "documentation_center"),
-            ("Stichtags- & Zuständigkeitspflege", "deadline_maintenance"),
         ]
         self.render_module_menu(modules, show_descriptions=True)
         self.draw_bottom_logo()
 
     def render_in_dev_menu(self):
-        self.render_module_menu([("X001 SAP - Test", "x001_sap_test")], show_descriptions=True); self.draw_bottom_logo()
+        modules = [("Compliance & Audit", "page:compliance_audit"), ("X001 SAP - Test", "x001_sap_test")]
+        self.render_module_menu(modules, show_descriptions=True); self.draw_bottom_logo()
 
 
     def render_settings_menu(self):
@@ -2639,21 +2705,52 @@ class FiBuMateApp:
             canvas.create_line(sx, y, ex, y, fill=blend(BG, "#1F2933", 0.30 * fade), width=2); canvas.create_line(sx, y + 2, ex, y + 2, fill=blend(BG, WHITE, 0.65 * fade), width=1)
 
     def draw_module_description(self, canvas, module_id, x1, y_top, width):
+        """v0.436 Lesbarkeitsschutz: Beschreibung so groß wie möglich, aber im Sollbereich."""
         txt = MODULE_DESCRIPTIONS.get(module_id, "")
-        if txt: canvas.create_text(x1 + DESCRIPTION_X_OFFSET, y_top + DESCRIPTION_Y_OFFSET, text=txt, anchor="nw", fill=DESCRIPTION_COLOR, font=body_font(11), width=max(120, int(width) - 2 * DESCRIPTION_X_OFFSET), justify="left")
+        if not txt:
+            return
+        max_w = max(120, int(width) - 2 * DESCRIPTION_X_OFFSET)
+        max_h = max(ui_s(52), int(getattr(self, "_module_desc_tile_h", ui_s(130))) - 2 * DESCRIPTION_Y_OFFSET)
+        chosen = body_font(10)
+        try:
+            for size in range(max(11, ui_s(12)), 8, -1):
+                candidate = ("Segoe UI", size)
+                f = tkfont.Font(root=self.root, font=candidate)
+                words = str(txt).split() or [""]
+                line_count = 1; cur = ""
+                for word in words:
+                    cand = word if not cur else cur + " " + word
+                    if f.measure(cand) <= max_w:
+                        cur = cand
+                    else:
+                        line_count += 1; cur = word
+                if line_count * max(1, int(f.metrics("linespace"))) <= max_h:
+                    chosen = candidate
+                    break
+        except Exception:
+            chosen = body_font(10)
+        canvas.create_text(x1 + DESCRIPTION_X_OFFSET, y_top + DESCRIPTION_Y_OFFSET, text=txt, anchor="nw", fill=DESCRIPTION_COLOR, font=chosen, width=max_w, justify="left")
 
     def module_icon_type(self, module_id):
         if module_id == "tax_reporting":
             return "tax_reporting"
+        if module_id == "page:compliance_audit":
+            return "compliance"
         if module_id == "audit_cockpit":
             return "audit"
         if module_id == "documentation_center":
             return "documentation"
-        if self.current_page in ("data_prep", "nike_tools"):
+        if self.current_page in ("data_prep", "nike_tools", "afi_uploads", "debitoren_tools"):
+            if module_id == "enbw_strom_tanken_upload":
+                return "xls"
+            if module_id == "supplier_invoice_afi_upload":
+                return "xls"
             if module_id in ("nike_pdf_to_excel", "nike_op_liste_pdf_check"):
                 return "pdf_xls"
             if module_id == "invoice_pdf_collector":
                 return "pdf_xls"
+            if module_id == "debitoren_serienbrief":
+                return "modules"
             if str(module_id).startswith("page:"):
                 return "pdf_xls"
             return "pdf_xls"
@@ -2661,7 +2758,7 @@ class FiBuMateApp:
             return "compliance"
         if self.current_page == "closing_calendar":
             return "calendar"
-        if module_id in ("monthly_close", "quarterly_close", "yearly_close", "deadline_maintenance", "task_history"):
+        if module_id in ("monthly_close", "quarterly_close", "yearly_close", "deadline_maintenance"):
             if module_id == "deadline_maintenance" and self.role_rank() < 3:
                 messagebox.showwarning("Keine Berechtigung", "Dieses Modul ist erst ab E3 verfügbar.")
                 return
@@ -2671,10 +2768,10 @@ class FiBuMateApp:
         return "modules"
 
     def render_module_menu(self, modules, show_descriptions=True):
-        w, h = self.canvas.winfo_width(), self.canvas.winfo_height(); tile_w = max(290, min(390, int(w * 0.22))); tile_h = max(120, min(160, int(h * 0.15))); gap = max(18, int(h * 0.025)); area_top = 132; area_bottom = max(area_top + 260, h - 92); view_h = int(area_bottom - area_top); first_center_x = x_pct(w, 25); first_center_y = y_pct(h, 70); left_x = max(0, first_center_x - tile_w / 2 - 8); top = max(0, first_center_y - tile_h / 2 - area_top - 8)
+        w, h = self.canvas.winfo_width(), self.canvas.winfo_height(); tile_w = max(290, min(390, int(w * 0.22))); tile_h = max(120, min(160, int(h * 0.15))); self._module_desc_tile_h = tile_h; gap = max(18, int(h * 0.025)); area_top = 132; area_bottom = max(area_top + 260, h - 92); view_h = int(area_bottom - area_top); first_center_x = x_pct(w, 25); first_center_y = y_pct(h, 70); left_x = max(0, first_center_x - tile_w / 2 - 8); top = max(0, first_center_y - tile_h / 2 - area_top - 8)
         container = tk.Frame(self.root, bg=BG); self.widget_items.append(container); self.canvas.create_window(0, area_top, window=container, anchor="nw", width=w, height=view_h); canvas_w = w - left_x - 10; scroll_canvas = tk.Canvas(container, bg=BG, highlightthickness=0, bd=0); scroll_canvas.place(x=left_x, y=0, width=canvas_w, height=view_h); content_h = top + len(modules) * (tile_h + gap) + 20; scroll_canvas.configure(scrollregion=(0, 0, canvas_w, content_h)); self.register_scroll_canvas(scroll_canvas); desc_x1 = tile_w + 90; desc_x2 = canvas_w - 20
         for idx, (title, module_id) in enumerate(modules):
-            y = top + idx * (tile_h + gap); cmd = (lambda mid=module_id: self.open_tool(mid)) if (module_id in TOOL_REGISTRY or str(module_id).startswith("page:")) else self.show_placeholder
+            y = top + idx * (tile_h + gap); cmd = (lambda mid=module_id, ttl=title: self.show_page(str(mid).replace("page:", "", 1), ttl, True)) if str(module_id).startswith("page:") else ((lambda mid=module_id: self.open_tool(mid)) if module_id in TOOL_REGISTRY else self.show_placeholder)
             tile = Tile(scroll_canvas, self, module_id, title, cmd, favorite_enabled=module_id in TOOL_REGISTRY, icon_type=self.module_icon_type(module_id)); tile.resize_tile(tile_w, tile_h); self.focusable_tiles.append(tile); scroll_canvas.create_window(0, y, window=tile, anchor="nw")
             if show_descriptions: self.draw_module_description(scroll_canvas, module_id, desc_x1, y, desc_x2 - desc_x1)
             if idx < len(modules) - 1: self.draw_relief_line(scroll_canvas, y + tile_h + gap / 2, desc_x1, desc_x2)
@@ -2688,6 +2785,10 @@ class FiBuMateApp:
             except Exception:
                 pass
             if not hasattr(module, "render"): raise RuntimeError("Modul hat keine render(app)-Funktion")
+            # v0.436: Tool-Kontext setzen, damit das zusammengefasste Abschlusskalender-Modul
+            # korrekt zwischen Monats-, Quartals- und Jahresabschluss routet.
+            self.current_tool_id = tool_id
+            self.current_tool_title = TOOL_REGISTRY.get(tool_id, {}).get("title", tool_id)
             module.render(self)
         except Exception as e:
             messagebox.showerror("FiBu Mate", f"Fehler beim Laden des Moduls:\n\n{TOOL_REGISTRY.get(tool_id, {}).get('title', tool_id)}\n\n{e}"); self.draw_bottom_logo()
@@ -2695,7 +2796,7 @@ class FiBuMateApp:
     def open_tool(self, tool_id):
         if str(tool_id).startswith("page:"):
             page = str(tool_id).split(":", 1)[1]
-            titles = {"nike_tools": "Nike-Tools"}
+            titles = {"nike_tools": "Nike-Tools", "afi_uploads": "AFI-Uploads", "debitoren_tools": "Tools - Debitoren"}
             self.show_page(page, titles.get(page, page), True)
             return
         if tool_id in TOOL_REGISTRY:
