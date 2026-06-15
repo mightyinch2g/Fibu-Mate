@@ -1,5 +1,5 @@
 #define MyAppName "FiBu Mate"
-#define MyAppVersion "0.4.39"
+#define MyAppVersion "0.4.40"
 #define MyAppPublisher "Wagnerm"
 #define MyAppExeName "FiBuMate.exe"
 
@@ -14,8 +14,7 @@ AppVersion={#MyAppVersion}
 AppPublisher={#MyAppPublisher}
 AppVerName={#MyAppName} {#MyAppVersion}
 
-; Installationsziel ist bewusst wählbar.
-; Der Pfad ist nur ein Vorschlag.
+; Installationsziel bleibt durch Nutzer wählbar.
 DefaultDirName={localappdata}\FibuMate
 UsePreviousAppDir=yes
 DisableDirPage=no
@@ -23,7 +22,7 @@ DisableDirPage=no
 DefaultGroupName=FiBu Mate
 DisableProgramGroupPage=no
 
-; Installer liegt direkt im Basisordner.
+; Installer wird direkt in G:\BUC\FM Anwendung ausgegeben.
 OutputDir={#InstallerOutputDir}
 OutputBaseFilename=FiBu_Mate_Installer
 
@@ -41,14 +40,14 @@ WizardStyle=modern
 PrivilegesRequired=lowest
 ArchitecturesInstallIn64BitMode=x64compatible
 
+CloseApplications=yes
+RestartIfNeededByRun=no
+
 VersionInfoVersion={#MyAppVersion}
 VersionInfoCompany={#MyAppPublisher}
 VersionInfoDescription=FiBu Mate Installer
 VersionInfoProductName={#MyAppName}
 VersionInfoProductVersion={#MyAppVersion}
-
-CloseApplications=yes
-RestartIfNeededByRun=no
 
 [Languages]
 Name: "german"; MessagesFile: "compiler:Languages\German.isl"
@@ -63,10 +62,11 @@ Name: "{app}\logs"
 Name: "{app}\cache"
 Name: "{app}\Backup"
 
-; Zentrale Struktur auf G: sicherstellen
+; Zentrale FiBu-Mate-Struktur auf G:
 Name: "G:\BUC\FM Anwendung\Dateiausgabe"
 Name: "G:\BUC\FM Anwendung\Datenbasen"
 Name: "G:\BUC\FM Anwendung\Datenbasen\KST_Zuordnungen_AFI"
+
 Name: "G:\BUC\FM Anwendung\Fibu_Mate_Doc"
 Name: "G:\BUC\FM Anwendung\Fibu_Mate_Doc\Config"
 Name: "G:\BUC\FM Anwendung\Fibu_Mate_Doc\Database"
@@ -77,7 +77,7 @@ Name: "G:\BUC\FM Anwendung\Fibu_Mate_Doc\Logs\UpdateLogs"
 Name: "G:\BUC\FM Anwendung\Fibu_Mate_Doc\Releases"
 
 [Files]
-; Anwendung wird in das vom Nutzer gewählte Installationsziel installiert.
+; Anwendung wird in das vom Nutzer gewählte Ziel installiert.
 Source: "{#SourceDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
@@ -88,6 +88,13 @@ Name: "{autodesktop}\FiBu Mate"; Filename: "{app}\{#MyAppExeName}"; WorkingDir: 
 Filename: "{app}\{#MyAppExeName}"; Description: "FiBu Mate jetzt starten"; Flags: nowait postinstall skipifsilent
 
 [Code]
+function JsonEscape(Value: string): string;
+begin
+  Result := Value;
+  StringChangeEx(Result, '\', '\\', True);
+  StringChangeEx(Result, '"', '\"', True);
+end;
+
 procedure CreateLocalConfig();
 var
   ConfigPath: string;
@@ -99,11 +106,12 @@ begin
     '{' + #13#10 +
     '  "app_name": "FiBu Mate",' + #13#10 +
     '  "app_version": "{#MyAppVersion}",' + #13#10 +
-    '  "install_dir": "' + ExpandConstant('{app}') + '",' + #13#10 +
+    '  "install_dir": "' + JsonEscape(ExpandConstant('{app}')) + '",' + #13#10 +
     '  "deployment_mode": "user_selected_install",' + #13#10 +
     '  "network_root": "G:\\BUC\\FM Anwendung",' + #13#10 +
     '  "output_dir": "G:\\BUC\\FM Anwendung\\Dateiausgabe",' + #13#10 +
     '  "assignment_base_dir": "G:\\BUC\\FM Anwendung\\Datenbasen\\KST_Zuordnungen_AFI",' + #13#10 +
+    '  "user_data_path": "G:\\BUC\\FM Anwendung\\Fibu_Mate_Doc\\Config\\fibu_mate_users.json",' + #13#10 +
     '  "database_dir": "G:\\BUC\\FM Anwendung\\Fibu_Mate_Doc\\Database",' + #13#10 +
     '  "database_config_path": "G:\\BUC\\FM Anwendung\\Fibu_Mate_Doc\\Config\\database_config.json",' + #13#10 +
     '  "database_path": "G:\\BUC\\FM Anwendung\\Fibu_Mate_Doc\\Database\\fibu_mate.db",' + #13#10 +

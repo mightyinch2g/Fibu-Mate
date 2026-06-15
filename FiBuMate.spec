@@ -49,7 +49,7 @@ datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
 
 
 a = Analysis(
-    ['C:\\python\\fibu_mate.py'],
+    ['C:\\python\\Fibu_mate.py'],
     pathex=['C:\\python\\bin', 'C:\\python\\bin\\tools'],
     binaries=binaries,
     datas=datas,

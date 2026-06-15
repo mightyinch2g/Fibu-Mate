@@ -57,7 +57,36 @@ BIN_DIR = os.path.join(SCRIPT_DIR, "bin")
 IMG_DIR = os.path.join(BIN_DIR, "Imgs")
 ICON_DIR = os.path.join(IMG_DIR, "Icons")
 USER_DIR = os.path.join(BIN_DIR, "User")
-USER_DATA_PATH = os.path.join(USER_DIR, "fibu_mate_users.json")
+LEGACY_USER_DATA_PATH = os.path.join(USER_DIR, "fibu_mate_users.json")
+NETWORK_ROOT = r"G:\BUC\FM Anwendung"
+CENTRAL_CONFIG_DIR = os.path.join(NETWORK_ROOT, "Fibu_Mate_Doc", "Config")
+CENTRAL_USER_DATA_PATH = os.path.join(CENTRAL_CONFIG_DIR, "fibu_mate_users.json")
+HIDDEN_TOOL_IDS = {"enbw_strom_tanken_upload"}  # nicht löschen: nur aus Oberfläche/Favoriten ausblenden
+
+
+def _safe_json_load(path):
+    try:
+        if path and os.path.exists(path):
+            with open(path, "r", encoding="utf-8") as f:
+                return json.load(f)
+    except Exception:
+        return {}
+    return {}
+
+
+def resolve_user_data_path():
+    env_path = os.environ.get("FIBUMATE_USER_DATA_PATH", "").strip()
+    if env_path:
+        return env_path
+    for cfg in (os.path.join(SCRIPT_DIR, "config", "local_config.json"), os.path.join(CENTRAL_CONFIG_DIR, "local_config.json")):
+        data = _safe_json_load(cfg)
+        p = str(data.get("user_data_path", "")).strip()
+        if p:
+            return p
+    return CENTRAL_USER_DATA_PATH
+
+
+USER_DATA_PATH = resolve_user_data_path()
 
 if SCRIPT_DIR not in sys.path:
     sys.path.insert(0, SCRIPT_DIR)
@@ -732,6 +761,9 @@ class FiBuMateApp:
         self.current_user_key = None
         self.current_user_display = ""
         self.user_data = self.load_user_data()
+        self._user_data_mtime = self._get_user_data_mtime()
+        self._live_permissions_started = False
+        self._live_permissions_popup_open = False
         self.ensure_permissions_defaults()
         self.version_state = self.load_version_state()
         self.bump_version_once(
@@ -1465,15 +1497,34 @@ class FiBuMateApp:
         except Exception:
             pass
 
+    def get_user_data_path(self):
+        global USER_DATA_PATH
+        USER_DATA_PATH = resolve_user_data_path()
+        return USER_DATA_PATH
+
+    def _get_user_data_mtime(self):
+        try:
+            path = self.get_user_data_path()
+            return os.path.getmtime(path) if os.path.exists(path) else 0
+        except Exception:
+            return 0
+
     def load_user_data(self):
         default = {"last_username_prefill": "", "users": {}, "settings": {"auto_close_mail_enabled": True}}
         try:
-            os.makedirs(USER_DIR, exist_ok=True)
-            if not os.path.exists(USER_DATA_PATH):
-                with open(USER_DATA_PATH, "w", encoding="utf-8") as f:
-                    json.dump(default, f, ensure_ascii=False, indent=2)
-                return default
-            with open(USER_DATA_PATH, "r", encoding="utf-8") as f:
+            path = self.get_user_data_path()
+            os.makedirs(os.path.dirname(path), exist_ok=True)
+            if not os.path.exists(path):
+                if os.path.exists(LEGACY_USER_DATA_PATH) and os.path.abspath(LEGACY_USER_DATA_PATH) != os.path.abspath(path):
+                    with open(LEGACY_USER_DATA_PATH, "r", encoding="utf-8") as f:
+                        data = json.load(f)
+                    with open(path, "w", encoding="utf-8") as f:
+                        json.dump(data, f, ensure_ascii=False, indent=2)
+                else:
+                    with open(path, "w", encoding="utf-8") as f:
+                        json.dump(default, f, ensure_ascii=False, indent=2)
+                    return default
+            with open(path, "r", encoding="utf-8") as f:
                 data = json.load(f)
             data.setdefault("last_username_prefill", "")
             data.setdefault("users", {})
@@ -1485,11 +1536,13 @@ class FiBuMateApp:
 
     def save_user_data(self):
         try:
-            os.makedirs(USER_DIR, exist_ok=True)
-            with open(USER_DATA_PATH, "w", encoding="utf-8") as f:
+            path = self.get_user_data_path()
+            os.makedirs(os.path.dirname(path), exist_ok=True)
+            with open(path, "w", encoding="utf-8") as f:
                 json.dump(self.user_data, f, ensure_ascii=False, indent=2)
+            self._user_data_mtime = self._get_user_data_mtime()
         except Exception as e:
-            messagebox.showerror("FiBu Mate", f"Benutzerdaten konnten nicht gespeichert werden:\n\n{e}")
+            messagebox.showerror("FiBu Mate", "Benutzerdaten konnten nicht gespeichert werden:\n\n" + str(e))
 
     def ensure_permissions_defaults(self):
         users = self.user_data.setdefault("users", {})
@@ -1498,7 +1551,7 @@ class FiBuMateApp:
             u.setdefault("favorites", [])
             u.setdefault("email", "")
             u.setdefault("auth", {"password_hash": None, "enabled": False})
-            u["favorites"] = [fav for fav in u.get("favorites", []) if fav in TOOL_REGISTRY]
+            u["favorites"] = [fav for fav in u.get("favorites", []) if fav in TOOL_REGISTRY and fav not in HIDDEN_TOOL_IDS]
             u.setdefault("first_name", "")
             u.setdefault("full_name", " ".join(x for x in [u.get("first_name", "").strip(), u.get("display_name", key).strip()] if x).strip() or u.get("display_name", key))
             current_permission = ROLE_MIGRATION.get(u.get("permission"), u.get("permission", ROLE_E1))
@@ -2080,7 +2133,7 @@ class FiBuMateApp:
         self.canvas.create_text(x1 + ui_s(16), y_mid, text="★", font=("Segoe UI", max(10, ui_s(13)), "bold"), fill=GOLD, anchor="w")
         self.canvas.create_text(x1 + ui_s(40), y_mid, text="Favoriten", font=body_font(9, "bold"), fill=TEXT, anchor="w")
         x = x1 + ui_s(118); chip_color = self.current_tile_color() or BLUE; max_x = x2 - ui_s(8)
-        for fav in sorted(f for f in self.favorites if f in TOOL_REGISTRY):
+        for fav in sorted(f for f in self.favorites if f in TOOL_REGISTRY and f not in HIDDEN_TOOL_IDS):
             if x + ui_s(96) > max_x: break
             label = TOOL_REGISTRY.get(fav, {}).get("favorite_label", fav)
             chip = tk.Label(self.root, text=label, bg=chip_color, fg="white", font=body_font(8), padx=ui_s(6), pady=ui_s(1), cursor="hand2"); chip._zoom_exclude = True
@@ -2417,7 +2470,8 @@ class FiBuMateApp:
 
     def render_afi_uploads_menu(self):
         modules = [
-            ("EnBW - Strom-Tanken Upload-Erstellung", "enbw_strom_tanken_upload"),
+            # EnBW ist fachlich in "Lieferanten-Rechnung zu AFI-Upload" integriert.
+            # Der alte Toolcode bleibt im TOOL_REGISTRY erhalten, wird aber nicht mehr angezeigt.
             ("Lieferanten-Rechnung zu AFI-Upload", "supplier_invoice_afi_upload"),
         ]
         self.render_module_menu(modules, show_descriptions=True)
@@ -2768,6 +2822,7 @@ class FiBuMateApp:
         return "modules"
 
     def render_module_menu(self, modules, show_descriptions=True):
+        modules = [(title, module_id) for title, module_id in modules if module_id not in HIDDEN_TOOL_IDS]
         w, h = self.canvas.winfo_width(), self.canvas.winfo_height(); tile_w = max(290, min(390, int(w * 0.22))); tile_h = max(120, min(160, int(h * 0.15))); self._module_desc_tile_h = tile_h; gap = max(18, int(h * 0.025)); area_top = 132; area_bottom = max(area_top + 260, h - 92); view_h = int(area_bottom - area_top); first_center_x = x_pct(w, 25); first_center_y = y_pct(h, 70); left_x = max(0, first_center_x - tile_w / 2 - 8); top = max(0, first_center_y - tile_h / 2 - area_top - 8)
         container = tk.Frame(self.root, bg=BG); self.widget_items.append(container); self.canvas.create_window(0, area_top, window=container, anchor="nw", width=w, height=view_h); canvas_w = w - left_x - 10; scroll_canvas = tk.Canvas(container, bg=BG, highlightthickness=0, bd=0); scroll_canvas.place(x=left_x, y=0, width=canvas_w, height=view_h); content_h = top + len(modules) * (tile_h + gap) + 20; scroll_canvas.configure(scrollregion=(0, 0, canvas_w, content_h)); self.register_scroll_canvas(scroll_canvas); desc_x1 = tile_w + 90; desc_x2 = canvas_w - 20
         for idx, (title, module_id) in enumerate(modules):
@@ -2777,6 +2832,9 @@ class FiBuMateApp:
             if idx < len(modules) - 1: self.draw_relief_line(scroll_canvas, y + tile_h + gap / 2, desc_x1, desc_x2)
 
     def render_external_tool(self, tool_id):
+        if tool_id in HIDDEN_TOOL_IDS:
+            messagebox.showinfo("FiBu Mate", "Dieses Tool ist in 'Lieferanten-Rechnung zu AFI-Upload' integriert und wird nicht mehr separat gestartet.")
+            return
         try:
             module_path = TOOL_REGISTRY[tool_id]["module"]
             module = _load_tool_module_from_file(module_path) or importlib.import_module(module_path)
@@ -2831,12 +2889,73 @@ class FiBuMateApp:
         self.ensure_permissions_defaults()
         self.current_user_key = key
         self.current_user_display = users[key].get("display_name", username)
-        self.favorites = set(fav for fav in users[key].get("favorites", []) if fav in TOOL_REGISTRY)
+        self.favorites = set(fav for fav in users[key].get("favorites", []) if fav in TOOL_REGISTRY and fav not in HIDDEN_TOOL_IDS)
         users[key]["favorites"] = sorted(self.favorites)
         self.save_user_data()
+        self.start_live_permissions_refresh()
         self.page_history = []
         self.breadcrumb = []
         self.show_page("main", "Hauptmenü", add_to_history=False)
+
+    def start_live_permissions_refresh(self):
+        if self._live_permissions_started:
+            return
+        self._live_permissions_started = True
+        self.root.after(3000, self.check_live_user_data_updates)
+
+    def _show_single_live_popup(self, title, text):
+        if self._live_permissions_popup_open:
+            return
+        self._live_permissions_popup_open = True
+        try:
+            messagebox.showinfo(title, text)
+        finally:
+            self._live_permissions_popup_open = False
+
+    def check_live_user_data_updates(self):
+        try:
+            if not self.current_user_key:
+                self.root.after(3000, self.check_live_user_data_updates)
+                return
+            mtime = self._get_user_data_mtime()
+            if mtime and mtime != getattr(self, "_user_data_mtime", 0):
+                old_role = self.my_role()
+                old_display = self.current_user_display
+                old_favorites = set(self.favorites)
+                self.user_data = self.load_user_data()
+                self.ensure_permissions_defaults()
+                users = self.user_data.get("users", {})
+                key = self.current_user_key
+                if key not in users:
+                    self.current_user_key = None
+                    self.current_user_display = ""
+                    self.favorites = set()
+                    self.page_history = []
+                    self.show_page("launch", add_to_history=False)
+                    self._show_single_live_popup("FiBu Mate", "Ihr Benutzer wurde entfernt oder ist nicht mehr verfügbar. Sie wurden abgemeldet.")
+                    self._user_data_mtime = mtime
+                    return
+                user = users[key]
+                self.current_user_display = user.get("display_name", old_display)
+                self.favorites = set(fav for fav in user.get("favorites", []) if fav in TOOL_REGISTRY and fav not in HIDDEN_TOOL_IDS)
+                new_role = self.my_role()
+                self._user_data_mtime = mtime
+                if new_role != old_role or self.current_user_display != old_display or self.favorites != old_favorites:
+                    try:
+                        self.update_header()
+                    except Exception:
+                        pass
+                    try:
+                        self.render_page()
+                    except Exception:
+                        pass
+                    self._show_single_live_popup("FiBu Mate", "Ihre Benutzer-/Berechtigungsdaten wurden live aktualisiert.")
+        except Exception:
+            pass
+        try:
+            self.root.after(3000, self.check_live_user_data_updates)
+        except Exception:
+            pass
 
     def logout(self):
         self.current_user_key = None; self.current_user_display = ""; self.favorites = set(); self.page_history = []; self.show_page("launch", add_to_history=False)
