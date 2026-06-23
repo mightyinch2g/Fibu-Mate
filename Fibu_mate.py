@@ -9633,5 +9633,754 @@ try:
 except Exception:
     pass
 
+
+
+# ------------------------------------------------------------------
+# FiBu Mate - Wissenszentrale Aktualisiert + Aktuell-Kennzeichnung FINAL 2026-06-23
+# Version 0.467
+# Zweck:
+# - Wissenszentrale: "Geändert" wird fachlich zu "Aktualisiert".
+# - Trefferliste zeigt den Benutzer/Vollnamen zusätzlich an.
+# - Detailansicht und Übersicht erhalten den Button "Eintrag als aktuell kennzeichnen".
+# - Der Button setzt nach Ja/Nein-Abfrage updated_at auf das aktuelle Datum/die aktuelle Zeit.
+# - Kategorie-Filter zeigen ausgewählte Kategorien mit voller Farbe statt entsättigter Farbe.
+# - Untermenü-Kacheln außerhalb des Hauptmenüs nutzen das Entrance-/Login-Pfeil-Icon.
+# ------------------------------------------------------------------
+
+_FM467_PATCH_VERSION = "0.467"
+_FM467_SUBMENU_ICON_FILE = "arrow_entrance_in_internet_log_login_security_icon_127060.ico"
+
+try:
+    ICON_FILES["submenu_enter"] = _FM467_SUBMENU_ICON_FILE
+except Exception:
+    pass
+
+
+def _fm467_text(value):
+    try:
+        if value is None:
+            return ""
+        if isinstance(value, str):
+            return value
+        if isinstance(value, (list, tuple, set)):
+            return " ".join(_fm467_text(x) for x in value if x is not None)
+        if isinstance(value, dict):
+            return " ".join(_fm467_text(v) for v in value.values() if v is not None)
+        return str(value)
+    except Exception:
+        return ""
+
+
+def _fm467_user_fullname(self, raw_user):
+    """Bestmoegliche Vollnamenanzeige fuer Benutzerfelder in der Wissenszentrale."""
+    raw = _fm467_text(raw_user).strip()
+    if not raw:
+        return ""
+    # Wenn bereits ein sprechender Anzeigename gespeichert ist, direkt verwenden.
+    if " " in raw or "," in raw:
+        return raw
+    wanted = raw.casefold()
+    candidates = []
+    try:
+        data = getattr(self, "user_data", None)
+        if isinstance(data, dict):
+            candidates.extend(data.values())
+            candidates.append(data)
+        elif isinstance(data, list):
+            candidates.extend(data)
+    except Exception:
+        pass
+    seen = set()
+    stack = list(candidates)
+    while stack:
+        item = stack.pop(0)
+        marker = id(item)
+        if marker in seen:
+            continue
+        seen.add(marker)
+        if isinstance(item, dict):
+            keys = ["username", "user", "key", "login", "kuerzel", "kürzel", "id", "name"]
+            vals = [_fm467_text(item.get(k)).strip() for k in keys]
+            if any(v and v.casefold() == wanted for v in vals):
+                for dk in ("display_name", "display", "fullname", "full_name", "vollname", "name"):
+                    val = _fm467_text(item.get(dk)).strip()
+                    if val:
+                        return val
+            for v in item.values():
+                if isinstance(v, (dict, list, tuple)):
+                    stack.append(v)
+        elif isinstance(item, (list, tuple)):
+            stack.extend(item)
+    return raw
+
+
+def _fm467_now(self):
+    try:
+        return self.kb_now()
+    except Exception:
+        try:
+            return datetime.now().isoformat(timespec="seconds")
+        except Exception:
+            return str(datetime.now())
+
+
+def _fm467_set_entry_current(self, entry_id=None):
+    entry_id = entry_id or getattr(self, "kb_selected_entry_id", None)
+    if not entry_id:
+        try:
+            messagebox.showwarning("Wissenszentrale", "Bitte zuerst einen Eintrag auswählen.")
+        except Exception:
+            pass
+        return False
+    try:
+        ok = messagebox.askyesno("Wissenszentrale", "Den Inhalt dieses Eintrags als aktuell kennzeichnen?")
+    except Exception:
+        ok = False
+    if not ok:
+        return False
+    entries = self.kb_load_entries()
+    now = _fm467_now(self)
+    changed = False
+    for entry in entries:
+        try:
+            if entry.get("id") == entry_id:
+                entry["updated_at"] = now
+                changed = True
+                break
+        except Exception:
+            continue
+    if not changed:
+        try:
+            messagebox.showwarning("Wissenszentrale", "Der ausgewählte Eintrag wurde nicht gefunden.")
+        except Exception:
+            pass
+        return False
+    if self.kb_save_entries(entries):
+        self.kb_selected_entry_id = entry_id
+        try:
+            self.knowledge_unsaved = False
+        except Exception:
+            pass
+        try:
+            self.render_page()
+        except Exception:
+            pass
+        return True
+    return False
+
+
+def _fm467_cat_color(app, value):
+    try:
+        return app.kb_get_category_color(value)
+    except Exception:
+        try:
+            return _wz442_cat_color(app, value)
+        except Exception:
+            return _wz_cat_default_color(value)
+
+
+def _fm467_filter_dropdown(parent, app, var, values, width=17, command=None):
+    """Kategorie-Filter mit voller Farbe fuer die aktuell ausgewaehlte Kategorie."""
+    box = tk.Frame(parent, bg=BG)
+    value_lbl = tk.Label(box, text=(var.get() or '(alle)'), bg=WHITE, fg=TEXT,
+                         font=body_font(10), anchor='w', relief='flat', padx=8)
+    value_lbl.pack(side='left', fill='x', expand=True, ipady=5)
+    arrow = tk.Menubutton(
+        box, text='▼', bg=_FM451_BTN_BG if '_FM451_BTN_BG' in globals() else WHITE,
+        fg=TEXT, activebackground=_FM451_BTN_ACTIVE if '_FM451_BTN_ACTIVE' in globals() else '#DDEAF7',
+        relief='flat', bd=0, font=body_font(8), cursor='hand2', highlightthickness=1,
+        highlightbackground=_FM451_BTN_BORDER if '_FM451_BTN_BORDER' in globals() else LINE, width=2)
+    menu = tk.Menu(arrow, tearoff=False)
+    arrow.configure(menu=menu)
+    arrow.pack(side='left', padx=(3, 0), ipady=3)
+
+    def repaint():
+        try:
+            val = (var.get() or '').strip()
+            if val:
+                color = _fm467_cat_color(app, val)
+                value_lbl.configure(text=val, bg=color, fg=_wz_cat_fg(color))
+            else:
+                value_lbl.configure(text='(alle)', bg=WHITE, fg=TEXT)
+        except Exception:
+            pass
+
+    def _deferred_command():
+        if not command:
+            return
+        try:
+            if hasattr(app, 'root') and app.root:
+                app.root.after_idle(command)
+                return
+        except Exception:
+            pass
+        try:
+            command()
+        except TypeError:
+            command(None)
+
+    def select(value):
+        var.set(value)
+        repaint()
+        _deferred_command()
+
+    try:
+        menu.add_command(label='(alle)', command=lambda: select(''), background=WHITE, foreground=TEXT)
+    except Exception:
+        menu.add_command(label='(alle)', command=lambda: select(''))
+    seen = set()
+    for value in values or []:
+        if not value:
+            continue
+        key = str(value).casefold()
+        if key in seen:
+            continue
+        seen.add(key)
+        color = _fm467_cat_color(app, value)
+        try:
+            menu.add_command(label='  ' + str(value), command=lambda v=value: select(v),
+                             background=color, foreground=_wz_cat_fg(color),
+                             activebackground=color, activeforeground=_wz_cat_fg(color))
+        except Exception:
+            menu.add_command(label='  ' + str(value), command=lambda v=value: select(v))
+    repaint()
+    return box
+
+
+def _fm467_render_hits_pane(self, x, y, w, h):
+    frame = tk.Frame(self.root, bg=WHITE, highlightbackground=LINE, highlightthickness=2)
+    self.widget_items.append(frame)
+    tk.Label(frame, text="Treffer", bg=WHITE, fg=BLUE, font=body_font(15, weight="bold")).pack(anchor="w", padx=18, pady=(16, 8))
+    entries = self.kb_filtered_entries()
+    listbox = tk.Listbox(frame, bg=WHITE, fg=TEXT, font=body_font(10), relief="flat", activestyle="none", exportselection=False)
+    listbox.pack(fill="both", expand=True, padx=16, pady=(0, 14))
+    id_map = []
+    if entries:
+        for idx, entry in enumerate(entries):
+            cats = entry.get("categories", []) or []
+            cats_txt = ", ".join(_fm467_text(c) for c in cats if _fm467_text(c).strip())
+            user_txt = _fm467_user_fullname(self, entry.get("user", ""))
+            line = f"{self.kb_display_date(entry.get('updated_at'))}  |  {entry.get('title','')}"
+            if user_txt:
+                line += f"  |  {user_txt}"
+            if cats_txt:
+                line += f"  [{cats_txt}]"
+            listbox.insert("end", line)
+            id_map.append(entry.get("id"))
+            if cats:
+                c = _fm467_cat_color(self, cats[0])
+                try:
+                    listbox.itemconfig(idx, bg=_wz442_light_color(c), fg=TEXT, selectbackground=c, selectforeground=_wz_cat_fg(c))
+                except Exception:
+                    pass
+    else:
+        listbox.insert("end", "Noch keine Treffer vorhanden.")
+        listbox.insert("end", "Filter und Suche wirken auf die Wissensdatenbank.")
+    def _select(event=None):
+        sel = listbox.curselection()
+        if not sel or not id_map or sel[0] >= len(id_map):
+            return
+        if not self.kb_confirm_unsaved_before_switch():
+            return
+        self.kb_selected_entry_id = id_map[sel[0]]
+        self.knowledge_view = "detail"
+        self.knowledge_start_overlay = False
+        self.render_page()
+    listbox.bind("<<ListboxSelect>>", _select)
+    self.canvas.create_window(ui_s(x), ui_s(y), window=frame, anchor="nw", width=ui_s(w), height=ui_s(h))
+
+
+def _fm467_render_kb_list_area(self, x, y, w, h, title='Gesamtliste aller Einträge', status_filter=None):
+    frame = tk.Frame(self.root, bg=WHITE, highlightbackground=LINE, highlightthickness=2)
+    self.widget_items.append(frame)
+    header = tk.Frame(frame, bg=WHITE)
+    header.pack(fill='x', padx=16, pady=(12, 6))
+    tk.Label(header, text=title, bg=WHITE, fg=BLUE, font=body_font(14, weight='bold')).pack(side='left')
+    action_btn = tk.Button(header, text='Eintrag als aktuell kennzeichnen', command=lambda: _current_from_tree(),
+                           bg='#CFEAD6', fg=TEXT, font=body_font(9, weight='bold'), relief='solid', bd=1)
+    action_btn.pack(side='right', padx=(8, 0), ipadx=8, ipady=3)
+    sort_state = getattr(self, 'kb_overview_sort_state', {'column':'date','descending':True}) or {}
+    direction = 'absteigend' if sort_state.get('descending', True) else 'aufsteigend'
+    tk.Label(header, text=f"Sortierung: {sort_state.get('column','date')} ({direction})", bg=WHITE, fg=TEXT2, font=body_font(9)).pack(side='right')
+    columns = ('date','title','categories','user','status')
+    labels = {'date':'Aktualisiert','title':'Titel','categories':'Kategorien','user':'Benutzer','status':'Status'}
+    tree = ttk.Treeview(frame, columns=columns, show='headings', height=14)
+    try:
+        style = ttk.Style()
+        style.configure('Treeview', rowheight=28, font=body_font(10))
+        style.configure('Treeview.Heading', font=body_font(10, weight='bold'))
+    except Exception:
+        pass
+    for col in columns:
+        marker = ''
+        if sort_state.get('column') == col:
+            marker = ' ↓' if sort_state.get('descending', True) else ' ↑'
+        tree.heading(col, text=labels[col]+marker, command=lambda c=col: (setattr(self, 'kb_overview_sort_state', {'column': c, 'descending': not (getattr(self, 'kb_overview_sort_state', {}) or {}).get('descending', True) if (getattr(self, 'kb_overview_sort_state', {}) or {}).get('column') == c else (True if c == 'date' else False)}), self.render_page()))
+    tree.column('date', width=125, stretch=False)
+    tree.column('title', width=max(250, int(w*0.34)), stretch=True)
+    tree.column('categories', width=max(170, int(w*0.20)), stretch=True)
+    tree.column('user', width=190, stretch=False)
+    tree.column('status', width=100, stretch=False)
+    yscroll = ttk.Scrollbar(frame, orient='vertical', command=tree.yview)
+    tree.configure(yscrollcommand=yscroll.set)
+    tree.pack(side='left', fill='both', expand=True, padx=(16,0), pady=(0,16))
+    yscroll.pack(side='right', fill='y', padx=(0,16), pady=(0,16))
+    entries = self.kb_filtered_entries()
+    if status_filter:
+        entries = [e for e in entries if str(e.get('status','')).lower() == status_filter.lower()]
+    state = getattr(self, 'kb_overview_sort_state', None)
+    if not state:
+        self.kb_overview_sort_state = {'column':'date','descending':True}
+    entries = sorted(entries, key=lambda e: (
+        str(e.get('updated_at') or e.get('created_at') or '') if self.kb_overview_sort_state.get('column')=='date' else
+        str(e.get('title','')).casefold() if self.kb_overview_sort_state.get('column')=='title' else
+        ', '.join(e.get('categories',[]) or []).casefold() if self.kb_overview_sort_state.get('column')=='categories' else
+        _fm467_user_fullname(self, e.get('user','')).casefold() if self.kb_overview_sort_state.get('column')=='user' else
+        str(e.get('status','')).casefold()
+    ), reverse=bool(self.kb_overview_sort_state.get('descending', True)))
+    id_map = {}
+    for entry in entries:
+        iid = entry.get('id') or self.kb_make_entry_id()
+        base_iid = iid; n = 1
+        while iid in id_map:
+            n += 1; iid = f'{base_iid}_{n}'
+        id_map[iid] = entry.get('id')
+        tree.insert('', 'end', iid=iid, values=(
+            self.kb_display_date(entry.get('updated_at')),
+            entry.get('title',''),
+            ', '.join(entry.get('categories',[]) or []),
+            _fm467_user_fullname(self, entry.get('user','')),
+            entry.get('status','')
+        ))
+    if not entries:
+        tree.insert('', 'end', values=('', 'Noch keine Einträge vorhanden', '', '', ''))
+    def _open(event=None):
+        sel = tree.selection()
+        if sel and sel[0] in id_map:
+            self.kb_select_entry(id_map[sel[0]])
+    def _current_from_tree():
+        sel = tree.selection()
+        if not sel or sel[0] not in id_map:
+            try:
+                messagebox.showwarning('Wissenszentrale', 'Bitte zuerst einen Eintrag in der Übersicht auswählen.')
+            except Exception:
+                pass
+            return
+        _fm467_set_entry_current(self, id_map[sel[0]])
+    tree.bind('<Double-Button-1>', _open)
+    tree.bind('<Return>', _open)
+    self.canvas.create_window(ui_s(x), ui_s(y), window=frame, anchor='nw', width=ui_s(w), height=ui_s(h))
+
+
+def _fm467_render_kb_detail_area(self, x, y, w, h):
+    entry = self.kb_get_entry(getattr(self, "kb_selected_entry_id", None))
+    if not entry:
+        self.render_kb_list_area(x, y, w, h, title="Übersicht")
+        return
+    frame = tk.Frame(self.root, bg=WHITE, highlightbackground=LINE, highlightthickness=2)
+    self.widget_items.append(frame)
+    top = tk.Frame(frame, bg=WHITE)
+    top.pack(fill='x', padx=18, pady=(14, 5))
+    tk.Label(top, text=entry.get("title", ""), bg=WHITE, fg=BLUE, font=body_font(16, weight="bold")).pack(side='left', anchor='w')
+    tk.Button(top, text='Eintrag als aktuell kennzeichnen', command=lambda: _fm467_set_entry_current(self, entry.get('id')),
+              bg='#CFEAD6', fg=TEXT, font=body_font(9, weight='bold'), relief='solid', bd=1).pack(side='right', padx=(8, 0), ipadx=8, ipady=3)
+    tk.Label(frame, text=f"Aktualisiert: {self.kb_display_date(entry.get('updated_at'))}    Benutzer: {_fm467_user_fullname(self, entry.get('user',''))}    Status: {entry.get('status','')}", bg=WHITE, fg=TEXT2, font=body_font(10)).pack(anchor="w", padx=18)
+    try:
+        _wz439_badges(frame, self, entry.get("categories", []) or [])
+    except Exception:
+        tk.Label(frame, text="Kategorien: " + (", ".join(entry.get("categories", []) or []) or "Keine Kategorien"), bg=WHITE, fg=TEXT, font=body_font(10, weight="bold")).pack(anchor="w", padx=18, pady=(8,4))
+    try:
+        _wz439_render_image_view(frame, self, entry.get("inline_images", []) or [])
+    except Exception:
+        pass
+    text_frame = tk.Frame(frame, bg=WHITE)
+    text_frame.pack(fill="both", expand=True, padx=18, pady=(6, 8))
+    txt = tk.Text(text_frame, bg="#F8FAFC", fg=TEXT, font=body_font(10), relief="solid", bd=1, wrap="word", height=8)
+    yscroll = tk.Scrollbar(text_frame, orient="vertical", command=txt.yview)
+    txt.configure(yscrollcommand=yscroll.set)
+    txt.pack(side="left", fill="both", expand=True)
+    yscroll.pack(side="right", fill="y")
+    txt.insert("1.0", entry.get("text", ""))
+    try:
+        _wz439_apply_formatting(txt, entry.get("text_formatting", []) or [])
+    except Exception:
+        pass
+    txt.configure(state="disabled")
+    try:
+        txt.bind("<MouseWheel>", lambda ev: _wz439_text_mousewheel(txt, ev))
+    except Exception:
+        pass
+    lower = tk.Frame(frame, bg=WHITE)
+    lower.pack(fill="x", padx=18, pady=(0, 8))
+    left = tk.Frame(lower, bg=WHITE)
+    left.pack(side="left", fill="both", expand=True)
+    right = tk.Frame(lower, bg=WHITE)
+    right.pack(side="right", fill="both", expand=True, padx=(12, 0))
+    tk.Label(left, text="Anhänge", bg=WHITE, fg=BLUE, font=body_font(10, weight="bold")).pack(anchor="w")
+    attachments = entry.get("attachments", []) or []
+    if attachments:
+        for a in attachments:
+            tk.Label(left, text="• " + a.get("name", ""), bg=WHITE, fg=TEXT, font=body_font(9)).pack(anchor="w")
+    else:
+        tk.Label(left, text="Keine Anhänge", bg=WHITE, fg=TEXT2, font=body_font(9)).pack(anchor="w")
+    tk.Label(right, text="Kommentare", bg=WHITE, fg=BLUE, font=body_font(10, weight="bold")).pack(anchor="w")
+    for c in (entry.get("comments", []) or [])[-3:]:
+        tk.Label(right, text=f"{self.kb_display_date(c.get('created_at'))}: {c.get('text','')[:80]}", bg=WHITE, fg=TEXT, font=body_font(9), wraplength=380, justify="left").pack(anchor="w")
+    comment = tk.Text(right, height=2, bg="#F8FAFC", fg=TEXT, font=body_font(9), relief="solid", bd=1, wrap="word")
+    comment.pack(fill="x", pady=(4, 0))
+    buttons = tk.Frame(frame, bg=WHITE)
+    buttons.pack(fill="x", padx=18, pady=(0, 14))
+    if self.kb_can_create_or_edit():
+        tk.Button(buttons, text="Bearbeiten", command=self.kb_edit_selected_entry, bg=WHITE, fg=TEXT, font=body_font(10, weight="bold"), relief="solid", bd=1).pack(side="left", padx=(0, 8), ipadx=16, ipady=4)
+    tk.Button(buttons, text="Kommentar speichern", command=lambda: self.kb_add_comment_to_selected(comment), bg=WHITE, fg=TEXT, font=body_font(10), relief="solid", bd=1).pack(side="left", padx=(0, 8), ipadx=16, ipady=4)
+    tk.Button(buttons, text="Word-Export", command=self.kb_export_selected_to_word, bg=WHITE, fg=TEXT, font=body_font(10), relief="solid", bd=1).pack(side="left", padx=(0, 8), ipadx=16, ipady=4)
+    tk.Button(buttons, text="Zur Übersicht", command=lambda: self.kb_switch_view_from_start("all"), bg=WHITE, fg=TEXT, font=body_font(10), relief="solid", bd=1).pack(side="left", ipadx=16, ipady=4)
+    self.canvas.create_window(ui_s(x), ui_s(y), window=frame, anchor="nw", width=ui_s(w), height=ui_s(h))
+
+
+def _fm467_export_word(self):
+    entry = self.kb_get_entry(getattr(self, "kb_selected_entry_id", None))
+    if not entry:
+        try: messagebox.showwarning("Wissenszentrale", "Kein Eintrag für den Word-Export ausgewählt.")
+        except Exception: pass
+        return
+    try:
+        from docx import Document
+        import re as _re
+        doc = Document()
+        doc.add_heading(entry.get("title", "Wissenseintrag") or "Wissenseintrag", level=1)
+        meta = [
+            ("Aktualisiert", self.kb_display_date(entry.get("updated_at"))),
+            ("Benutzer", _fm467_user_fullname(self, entry.get("user", ""))),
+            ("Status", entry.get("status", "")),
+            ("Kategorien", ", ".join(entry.get("categories", []) or [])),
+            ("To-Do-Rhythmus", entry.get("rhythm", "")),
+        ]
+        for label, val in meta:
+            if val:
+                p = doc.add_paragraph(); p.add_run(f"{label}: ").bold = True; p.add_run(str(val))
+        doc.add_heading("Inhalt", level=2)
+        text_value = entry.get("text", "") or ""
+        if text_value:
+            for line in str(text_value).splitlines() or [""]:
+                doc.add_paragraph(line)
+        else:
+            doc.add_paragraph("-")
+        doc.add_heading("Anhänge", level=2)
+        attachments = entry.get("attachments", []) or []
+        if attachments:
+            for a in attachments:
+                doc.add_paragraph(f"- {a.get('name','')} ({a.get('path','')})")
+        else:
+            doc.add_paragraph("Keine Anhänge")
+        doc.add_heading("Kommentare", level=2)
+        comments = entry.get("comments", []) or []
+        if comments:
+            for c in comments:
+                doc.add_paragraph(f"{self.kb_display_date(c.get('created_at'))} - {c.get('user','')}: {c.get('text','')}")
+        else:
+            doc.add_paragraph("Keine Kommentare")
+        safe = _re.sub(r"[^A-Za-z0-9_äöüÄÖÜß.-]+", "_", entry.get("title", "Wissenseintrag"))[:80].strip("._") or "Wissenseintrag"
+        out = os.path.join(self.kb_export_dir(), f"{safe}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.docx")
+        doc.save(out)
+        messagebox.showinfo("Wissenszentrale", "Word-Export erstellt:\n" + out)
+    except Exception as exc:
+        try: messagebox.showerror("Wissenszentrale", "Word-Export fehlgeschlagen:\n" + str(exc))
+        except Exception: pass
+
+
+# Icon-Render-Sicherheit: submenu_enter muss auch tatsaechlich gezeichnet werden koennen.
+try:
+    _fm467_old_draw_tile_icon_image = FiBuMateApp.draw_tile_icon_image
+except Exception:
+    _fm467_old_draw_tile_icon_image = None
+
+
+def _fm467_draw_tile_icon_image(self, tile, icon_type, cx, cy):
+    if icon_type == "submenu_enter":
+        photo = self.get_icon_photo("submenu_enter", 48, 48)
+        if photo:
+            tile.create_image(cx, cy, image=photo)
+            return True
+        return False
+    if _fm467_old_draw_tile_icon_image:
+        return _fm467_old_draw_tile_icon_image(self, tile, icon_type, cx, cy)
+    return False
+
+
+def _fm467_module_icon_type(self, module_id):
+    try:
+        if str(module_id or "").startswith("page:"):
+            return "submenu_enter"
+    except Exception:
+        pass
+    try:
+        return _fm465_module_icon_type(self, module_id)
+    except Exception:
+        return "modules"
+
+
+# Finale Zuweisungen direkt vor Programmstart.
+try:
+    _fm451_filter_dropdown = _fm467_filter_dropdown
+    _fm466_filter_dropdown = _fm467_filter_dropdown
+except Exception:
+    pass
+try:
+    FiBuMateApp.kb_mark_entry_current = _fm467_set_entry_current
+    FiBuMateApp.render_kb_hits_pane = _fm467_render_hits_pane
+    FiBuMateApp.render_kb_list_area = _fm467_render_kb_list_area
+    FiBuMateApp.render_kb_detail_area = _fm467_render_kb_detail_area
+    FiBuMateApp.kb_export_selected_to_word = _fm467_export_word
+    FiBuMateApp.draw_tile_icon_image = _fm467_draw_tile_icon_image
+    FiBuMateApp.module_icon_type = _fm467_module_icon_type
+except Exception:
+    pass
+
+
+
+# ------------------------------------------------------------------
+# FiBu Mate - Wissenszentrale Übersicht Kategorie-Chips FINAL 2026-06-23
+# Version 0.468
+# Zweck:
+# - Übersichtstabelle der Wissenszentrale zeigt Kategorien als farbige, nicht-interaktive Chips.
+# - Ersetzt die reine Kategorien-Textspalte in der Übersicht durch visuelle Farbbadges je Kategorie.
+# - Erhält Sortierung, Auswahl, Doppelklick-Öffnen und Button "Eintrag als aktuell kennzeichnen".
+# ------------------------------------------------------------------
+
+_FM468_PATCH_VERSION = "0.468"
+
+
+def _fm468_cat_color(app, value):
+    try:
+        return _fm467_cat_color(app, value)
+    except Exception:
+        try:
+            return app.kb_get_category_color(value)
+        except Exception:
+            return _wz_cat_default_color(value)
+
+
+def _fm468_text(value):
+    try:
+        return _fm467_text(value)
+    except Exception:
+        return "" if value is None else str(value)
+
+
+def _fm468_user_fullname(app, value):
+    try:
+        return _fm467_user_fullname(app, value)
+    except Exception:
+        return _fm468_text(value).strip()
+
+
+def _fm468_sort_entries_for_overview(self, entries):
+    state = getattr(self, 'kb_overview_sort_state', None)
+    if not state:
+        self.kb_overview_sort_state = {'column': 'date', 'descending': True}
+        state = self.kb_overview_sort_state
+    col = state.get('column', 'date')
+    def key(e):
+        try:
+            if col == 'date':
+                return str(e.get('updated_at') or e.get('created_at') or '')
+            if col == 'title':
+                return str(e.get('title','')).casefold()
+            if col == 'categories':
+                return ', '.join(e.get('categories',[]) or []).casefold()
+            if col == 'user':
+                return _fm468_user_fullname(self, e.get('user','')).casefold()
+            return str(e.get('status','')).casefold()
+        except Exception:
+            return ''
+    return sorted(entries or [], key=key, reverse=bool(state.get('descending', True)))
+
+
+def _fm468_render_category_chips(parent, app, categories, max_width=330):
+    chip_frame = tk.Frame(parent, bg=WHITE)
+    used = 0
+    if not categories:
+        tk.Label(chip_frame, text='—', bg=WHITE, fg=TEXT2, font=body_font(9)).pack(side='left')
+        return chip_frame
+    for cat in categories:
+        cat = _fm468_text(cat).strip()
+        if not cat:
+            continue
+        # einfache Breitenbegrenzung; weitere Kategorien werden als +n zusammengefasst
+        est = 18 + len(cat) * 7
+        remaining = len([c for c in categories if _fm468_text(c).strip()])
+        if used and used + est > max_width:
+            tk.Label(chip_frame, text='  +' + str(max(1, remaining)) + '  ', bg='#E5E7EB', fg=TEXT, font=body_font(8, weight='bold'), relief='solid', bd=1).pack(side='left', padx=(0, 5), ipady=1)
+            break
+        color = _fm468_cat_color(app, cat)
+        fg = _wz_cat_fg(color)
+        tk.Label(chip_frame, text='  ' + cat + '  ', bg=color, fg=fg, font=body_font(8, weight='bold'), relief='solid', bd=1).pack(side='left', padx=(0, 5), ipady=1)
+        used += est
+    return chip_frame
+
+
+def _fm468_render_kb_list_area(self, x, y, w, h, title='Gesamtliste aller Einträge', status_filter=None):
+    frame = tk.Frame(self.root, bg=WHITE, highlightbackground=LINE, highlightthickness=2)
+    self.widget_items.append(frame)
+
+    header = tk.Frame(frame, bg=WHITE)
+    header.pack(fill='x', padx=16, pady=(12, 6))
+    tk.Label(header, text=title, bg=WHITE, fg=BLUE, font=body_font(14, weight='bold')).pack(side='left')
+    tk.Button(header, text='Eintrag als aktuell kennzeichnen', command=lambda: _current_from_selected(),
+              bg='#CFEAD6', fg=TEXT, font=body_font(9, weight='bold'), relief='solid', bd=1).pack(side='right', padx=(8, 0), ipadx=8, ipady=3)
+    sort_state = getattr(self, 'kb_overview_sort_state', {'column':'date','descending':True}) or {}
+    direction = 'absteigend' if sort_state.get('descending', True) else 'aufsteigend'
+    tk.Label(header, text=f"Sortierung: {sort_state.get('column','date')} ({direction})", bg=WHITE, fg=TEXT2, font=body_font(9)).pack(side='right')
+
+    table = tk.Frame(frame, bg=WHITE)
+    table.pack(fill='both', expand=True, padx=16, pady=(0, 16))
+    table.grid_columnconfigure(0, weight=1)
+    table.grid_rowconfigure(1, weight=1)
+
+    # Spaltenlayout wird als proportionaler Grid-Aufbau gerendert; Kategorie-Spalte nutzt echte Tk-Chips.
+    columns = [
+        ('date', 'Aktualisiert', 0, 16),
+        ('title', 'Titel', 1, 32),
+        ('categories', 'Kategorien', 2, 30),
+        ('user', 'Benutzer', 3, 16),
+        ('status', 'Status', 4, 10),
+    ]
+    head = tk.Frame(table, bg='#F1F5F9')
+    head.grid(row=0, column=0, sticky='ew')
+    for _, _, col_index, weight in columns:
+        head.grid_columnconfigure(col_index, weight=weight)
+    for key, label, col_index, _weight in columns:
+        marker = ''
+        if sort_state.get('column') == key:
+            marker = ' ↓' if sort_state.get('descending', True) else ' ↑'
+        def sort_cmd(c=key):
+            current = getattr(self, 'kb_overview_sort_state', {}) or {}
+            descending = not current.get('descending', True) if current.get('column') == c else (True if c == 'date' else False)
+            self.kb_overview_sort_state = {'column': c, 'descending': descending}
+            self.render_page()
+        tk.Button(head, text=label + marker, command=sort_cmd, bg='#F1F5F9', fg=TEXT, activebackground='#E2E8F0',
+                  font=body_font(9, weight='bold'), relief='flat', anchor='w').grid(row=0, column=col_index, sticky='ew', padx=(4, 4), pady=3)
+
+    canvas = tk.Canvas(table, bg=WHITE, highlightthickness=0)
+    scroll = ttk.Scrollbar(table, orient='vertical', command=canvas.yview)
+    canvas.configure(yscrollcommand=scroll.set)
+    canvas.grid(row=1, column=0, sticky='nsew')
+    scroll.grid(row=1, column=1, sticky='ns')
+    body = tk.Frame(canvas, bg=WHITE)
+    win = canvas.create_window((0,0), window=body, anchor='nw')
+    def _on_body_config(event=None):
+        try:
+            canvas.configure(scrollregion=canvas.bbox('all'))
+        except Exception:
+            pass
+    def _on_canvas_config(event=None):
+        try:
+            canvas.itemconfigure(win, width=canvas.winfo_width())
+        except Exception:
+            pass
+    body.bind('<Configure>', _on_body_config)
+    canvas.bind('<Configure>', _on_canvas_config)
+    try:
+        canvas.bind('<MouseWheel>', lambda e: (canvas.yview_scroll(int(-1*(e.delta/120)), 'units'), 'break'))
+        body.bind('<MouseWheel>', lambda e: (canvas.yview_scroll(int(-1*(e.delta/120)), 'units'), 'break'))
+    except Exception:
+        pass
+
+    entries = self.kb_filtered_entries()
+    if status_filter:
+        entries = [e for e in entries if str(e.get('status','')).lower() == status_filter.lower()]
+    entries = _fm468_sort_entries_for_overview(self, entries)
+    selected = {'id': getattr(self, 'kb_selected_entry_id', None)}
+    row_frames = {}
+
+    def _paint_selection():
+        for eid, row in row_frames.items():
+            try:
+                row.configure(bg=('#EAF2FB' if eid == selected.get('id') else WHITE))
+                for child in row.winfo_children():
+                    if not getattr(child, '_fm468_chip_container', False):
+                        try: child.configure(bg=row.cget('bg'))
+                        except Exception: pass
+            except Exception:
+                pass
+
+    def _select_entry(eid):
+        selected['id'] = eid
+        self.kb_selected_entry_id = eid
+        _paint_selection()
+
+    def _open_entry(eid):
+        if not eid:
+            return
+        if not self.kb_confirm_unsaved_before_switch():
+            return
+        self.kb_selected_entry_id = eid
+        self.knowledge_view = 'detail'
+        self.knowledge_start_overlay = False
+        self.render_page()
+
+    if not entries:
+        empty = tk.Label(body, text='Noch keine Einträge vorhanden', bg=WHITE, fg=TEXT2, font=body_font(10), anchor='w')
+        empty.pack(fill='x', padx=8, pady=10)
+    else:
+        for row_no, entry in enumerate(entries):
+            eid = entry.get('id') or self.kb_make_entry_id()
+            row = tk.Frame(body, bg=WHITE if row_no % 2 == 0 else '#FAFAFA', highlightbackground='#E5E7EB', highlightthickness=1)
+            row.pack(fill='x', expand=True)
+            for _, _, col_index, weight in columns:
+                row.grid_columnconfigure(col_index, weight=weight)
+            row_frames[eid] = row
+            vals = {
+                'date': self.kb_display_date(entry.get('updated_at')),
+                'title': entry.get('title',''),
+                'user': _fm468_user_fullname(self, entry.get('user','')),
+                'status': entry.get('status',''),
+            }
+            tk.Label(row, text=vals['date'], bg=row.cget('bg'), fg=TEXT, font=body_font(9), anchor='w').grid(row=0, column=0, sticky='ew', padx=(6,4), pady=6)
+            tk.Label(row, text=vals['title'], bg=row.cget('bg'), fg=TEXT, font=body_font(9, weight='bold'), anchor='w').grid(row=0, column=1, sticky='ew', padx=4, pady=6)
+            chips = _fm468_render_category_chips(row, self, entry.get('categories', []) or [], max_width=max(220, int(w*0.24)))
+            chips._fm468_chip_container = True
+            chips.configure(bg=row.cget('bg'))
+            chips.grid(row=0, column=2, sticky='w', padx=4, pady=5)
+            tk.Label(row, text=vals['user'], bg=row.cget('bg'), fg=TEXT, font=body_font(9), anchor='w').grid(row=0, column=3, sticky='ew', padx=4, pady=6)
+            tk.Label(row, text=vals['status'], bg=row.cget('bg'), fg=TEXT, font=body_font(9), anchor='w').grid(row=0, column=4, sticky='ew', padx=4, pady=6)
+            for child in row.winfo_children():
+                try:
+                    child.bind('<Button-1>', lambda e, id=eid: _select_entry(id))
+                    child.bind('<Double-Button-1>', lambda e, id=eid: _open_entry(id))
+                    child.bind('<MouseWheel>', lambda e: (canvas.yview_scroll(int(-1*(e.delta/120)), 'units'), 'break'))
+                except Exception:
+                    pass
+            row.bind('<Button-1>', lambda e, id=eid: _select_entry(id))
+            row.bind('<Double-Button-1>', lambda e, id=eid: _open_entry(id))
+            row.bind('<MouseWheel>', lambda e: (canvas.yview_scroll(int(-1*(e.delta/120)), 'units'), 'break'))
+    _paint_selection()
+
+    def _current_from_selected():
+        eid = selected.get('id') or getattr(self, 'kb_selected_entry_id', None)
+        if not eid:
+            try:
+                messagebox.showwarning('Wissenszentrale', 'Bitte zuerst einen Eintrag in der Übersicht auswählen.')
+            except Exception:
+                pass
+            return
+        try:
+            _fm467_set_entry_current(self, eid)
+        except Exception:
+            try:
+                self.kb_mark_entry_current(eid)
+            except Exception:
+                pass
+
+    self.canvas.create_window(ui_s(x), ui_s(y), window=frame, anchor='nw', width=ui_s(w), height=ui_s(h))
+
+
+# Finale Zuweisung direkt vor Programmstart: Übersicht nutzt ab v0.468 echte Kategorie-Chips.
+try:
+    FiBuMateApp.render_kb_list_area = _fm468_render_kb_list_area
+except Exception:
+    pass
+
 if __name__ == "__main__":
     FiBuMateApp().run()
