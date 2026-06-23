@@ -9193,5 +9193,445 @@ def _fm456_toolbar(parent, widget, mark_unsaved):
 _wz446_toolbar = _fm456_toolbar
 _wz439_toolbar = _fm456_toolbar
 
+
+# ------------------------------------------------------------------
+# FiBu Mate - Wissenszentrale Kategorie-Filter + Untermenue-Icon FINAL 2026-06-18
+# Version 0.465
+# Zweck:
+# - Kategorie-Filter der Wissenszentrale darf bei gemischten/alten Kategorie-Datenformaten nicht mehr abstuerzen.
+# - Filterausfuehrung aus Combobox-Events wird entkoppelt, damit Tk-Widgets nicht waehrend des Auswahl-Callbacks zerstoert werden.
+# - Menuekacheln, die in ein Untermenue fuehren, nutzen das neue Entrance-/Login-Pfeil-Icon.
+# - Hauptmenuekacheln bleiben bewusst unveraendert.
+# ------------------------------------------------------------------
+
+_FM465_SUBMENU_ICON_FILE = "arrow_entrance_in_internet_log_login_security_icon_127060.ico"
+try:
+    ICON_FILES["submenu_enter"] = _FM465_SUBMENU_ICON_FILE
+except Exception:
+    pass
+
+
+def _fm465_text(value):
+    """Robuste Textnormalisierung fuer Suche/Filter ohne TypeError bei Listen, Dicts oder None."""
+    try:
+        if value is None:
+            return ""
+        if isinstance(value, str):
+            return value
+        if isinstance(value, dict):
+            parts = []
+            for key in ("name", "title", "label", "value", "text", "user", "status", "rhythm"):
+                if key in value:
+                    parts.append(_fm465_text(value.get(key)))
+            if parts:
+                return " ".join(p for p in parts if p)
+            return " ".join(_fm465_text(v) for v in value.values())
+        if isinstance(value, (list, tuple, set)):
+            return " ".join(_fm465_text(v) for v in value)
+        return str(value)
+    except Exception:
+        try:
+            return str(value)
+        except Exception:
+            return ""
+
+
+def _fm465_norm_category_value(value):
+    """Liefert einen sauberen Kategorienamen fuer String/Dict/sonstige Altformate."""
+    try:
+        if value is None:
+            return ""
+        if isinstance(value, dict):
+            for key in ("name", "title", "label", "value", "category"):
+                candidate = _fm465_norm_category_value(value.get(key))
+                if candidate:
+                    return candidate
+            return ""
+        value = str(value).strip()
+        if not value:
+            return ""
+        return " ".join(value.split())
+    except Exception:
+        return ""
+
+
+def _fm465_categories(raw):
+    """Normalisiert Kategorien auf Liste[str] - tolerant gegen Liste, Text, Dict und Altimporte."""
+    result = []
+    try:
+        if raw is None:
+            values = []
+        elif isinstance(raw, dict):
+            values = [raw]
+        elif isinstance(raw, (list, tuple, set)):
+            values = list(raw)
+        else:
+            values = [raw]
+        seen = set()
+        for item in values:
+            if isinstance(item, str) and re.search(r"[;,|]", item):
+                sub_values = re.split(r"[;,|]", item)
+            else:
+                sub_values = [item]
+            for sub_item in sub_values:
+                name = _fm465_norm_category_value(sub_item)
+                if not name:
+                    continue
+                marker = name.casefold()
+                if marker not in seen:
+                    seen.add(marker)
+                    result.append(name)
+    except Exception:
+        pass
+    return result
+
+
+def _fm465_filter_values(self):
+    values = []
+    try:
+        self.kb_ensure_state_vars()
+        for var in getattr(self, "kb_filter_vars", []) or []:
+            try:
+                name = _fm465_norm_category_value(var.get())
+            except Exception:
+                name = ""
+            if name:
+                marker = name.casefold()
+                if marker not in values:
+                    values.append(marker)
+    except Exception:
+        pass
+    return values
+
+
+def _fm465_kb_filtered_entries(self):
+    """Absturzsichere Filterlogik fuer Suche, Kategorie-Filter und To-Do-Rhythmus."""
+    try:
+        self.kb_ensure_state_vars()
+    except Exception:
+        pass
+    try:
+        entries = self.kb_load_entries()
+    except Exception as exc:
+        try:
+            messagebox.showerror("Wissenszentrale", "Wissenseinträge konnten nicht geladen werden:\n" + str(exc))
+        except Exception:
+            pass
+        entries = []
+    if not isinstance(entries, list):
+        entries = []
+
+    try:
+        search = _fm465_text(getattr(self, "kb_search_var", tk.StringVar(value="")).get()).strip().casefold()
+    except Exception:
+        search = ""
+    filters = _fm465_filter_values(self)
+    try:
+        rhythm = _fm465_text(getattr(self, "kb_todo_rhythm_var", tk.StringVar(value="")).get()).strip().casefold()
+    except Exception:
+        rhythm = ""
+    view = str(getattr(self, "knowledge_view", "all") or "all")
+
+    result = []
+    for entry in entries:
+        try:
+            if not isinstance(entry, dict):
+                continue
+            categories = _fm465_categories(entry.get("categories", []))
+            cats_cf = [c.casefold() for c in categories]
+            if view == "todos" and "to-do" not in cats_cf:
+                continue
+            if view == "todos" and rhythm and _fm465_text(entry.get("rhythm", "")).strip().casefold() != rhythm:
+                continue
+            if filters and not all(f in cats_cf for f in filters):
+                continue
+            if search:
+                hay = " ".join([
+                    _fm465_text(entry.get("title", "")),
+                    _fm465_text(entry.get("text", "")),
+                    _fm465_text(entry.get("user", "")),
+                    _fm465_text(entry.get("status", "")),
+                    _fm465_text(entry.get("rhythm", "")),
+                    " ".join(categories),
+                ]).casefold()
+                if search not in hay:
+                    continue
+            result.append(entry)
+        except Exception:
+            continue
+
+    def _sort_key(entry):
+        try:
+            return _fm465_text(entry.get("updated_at") or entry.get("created_at") or "")
+        except Exception:
+            return ""
+    return sorted(result, key=_sort_key, reverse=True)
+
+
+def _fm465_kb_apply_filters(self, event=None):
+    """Filter anwenden, aber Combobox-Callbacks sicher nach Tk-idle verschieben."""
+    def _run():
+        try:
+            self._fm465_filter_render_pending = False
+        except Exception:
+            pass
+        try:
+            self.kb_selected_entry_id = None
+            current_view = getattr(self, "knowledge_view", "all")
+            if current_view not in ("new", "categories", "outdated"):
+                self.knowledge_view = "todos" if current_view == "todos" else "all"
+            self.render_page()
+        except Exception as exc:
+            try:
+                messagebox.showerror("Wissenszentrale", "Filter konnte nicht angewendet werden:\n" + str(exc))
+            except Exception:
+                pass
+    try:
+        if event is not None and hasattr(self, "root") and self.root:
+            if getattr(self, "_fm465_filter_render_pending", False):
+                return "break"
+            self._fm465_filter_render_pending = True
+            self.root.after_idle(_run)
+            return "break"
+    except Exception:
+        pass
+    _run()
+    return "break"
+
+
+def _fm465_kb_on_search_return(self, event=None):
+    return _fm465_kb_apply_filters(self, event)
+
+
+try:
+    FiBuMateApp.kb_filtered_entries = _fm465_kb_filtered_entries
+    FiBuMateApp.kb_apply_filters = _fm465_kb_apply_filters
+    FiBuMateApp.kb_on_search_return = _fm465_kb_on_search_return
+except Exception:
+    pass
+
+
+try:
+    _fm465_old_module_icon_type = FiBuMateApp.module_icon_type
+except Exception:
+    _fm465_old_module_icon_type = None
+
+
+def _fm465_module_icon_type(self, module_id):
+    """Untermenue-Kacheln im Modulmenue erhalten das neue Eingangspfeil-Icon."""
+    try:
+        if str(module_id or "").startswith("page:"):
+            return "submenu_enter"
+    except Exception:
+        pass
+    if _fm465_old_module_icon_type:
+        return _fm465_old_module_icon_type(self, module_id)
+    return "modules"
+
+
+try:
+    FiBuMateApp.module_icon_type = _fm465_module_icon_type
+except Exception:
+    pass
+
+
+def _fm465_render_center_menu(self, items, title=""):
+    """Zentrale Untermenue-/Funktionsauswahl mit neuem Untermenue-Icon.
+
+    Wird nicht fuer Hauptmenuekacheln verwendet; das Hauptmenue bleibt dadurch optisch unveraendert.
+    """
+    w, h = self.canvas.winfo_width(), self.canvas.winfo_height()
+    tile_w = int(max(260, min(360, w * 0.2)))
+    tile_h = int(max(110, min(160, h * 0.14)))
+    gap = int(max(18, h * 0.03))
+    start_y = y_pct(h, 55)
+    start_x = x_pct(w, 50)
+    for i, (label, page) in enumerate(items or []):
+        y = start_y + i * (tile_h + gap)
+        cmd = (lambda p=page, l=label: self.show_page(p, l, True))
+        tile = Tile(self.root, self, f"center_{page}", label, cmd, favorite_enabled=False, center_text=True, icon_type="submenu_enter")
+        tile.resize_tile(tile_w, tile_h)
+        self.widget_items.append(tile)
+        self.focusable_tiles.append(tile)
+        self.canvas.create_window(start_x, y, window=tile, anchor="center")
+
+
+try:
+    FiBuMateApp.render_center_menu = _fm465_render_center_menu
+except Exception:
+    pass
+
+
+
+# ------------------------------------------------------------------
+# FiBu Mate - Wissenszentrale Kategorie-Filter Auswahlabsturz FIX 2026-06-23
+# Version 0.466
+# Zweck:
+# - Behebt den Absturz beim Auswaehlen einer Filterkategorie in der Wissenszentrale.
+# - Ursache: Der aktive Dropdown-/Menue-Callback konnte sofort ein render_page() ausloesen,
+#   wodurch Tk-Widgets waehrend der laufenden Menueauswahl zerstoert wurden.
+# - Loesung: Filter-Renderings werden konsequent per after_idle entkoppelt und re-entrant geschuetzt.
+# - Die farbige Kategorieauswahl bleibt erhalten; Suche, To-Dos und Veraltete Eintraege bleiben kompatibel.
+# ------------------------------------------------------------------
+
+_FM466_FILTER_PATCH_VERSION = "0.466"
+
+
+def _fm466_safe_call_filter_command(app, command):
+    """Fuehrt Filterkommandos erst nach Abschluss des aktuellen Tk-Menuecallbacks aus."""
+    if not command:
+        return
+    def _run():
+        try:
+            command()
+        except TypeError:
+            try:
+                command(None)
+            except Exception as exc:
+                try:
+                    messagebox.showerror("Wissenszentrale", "Filter konnte nicht angewendet werden:\n" + str(exc))
+                except Exception:
+                    pass
+        except Exception as exc:
+            try:
+                messagebox.showerror("Wissenszentrale", "Filter konnte nicht angewendet werden:\n" + str(exc))
+            except Exception:
+                pass
+    try:
+        root = getattr(app, "root", None)
+        if root:
+            root.after_idle(_run)
+            return
+    except Exception:
+        pass
+    _run()
+
+
+def _fm466_filter_dropdown(parent, app, var, values, width=17, command=None):
+    """Stabiles farbiges Kategorie-Dropdown ohne Sofort-Render im Menuecallback."""
+    box = tk.Frame(parent, bg=BG)
+    value_lbl = tk.Label(box, text=(var.get() or '(alle)'), bg=WHITE, fg=TEXT,
+                         font=body_font(10), anchor='w', relief='flat', padx=8)
+    value_lbl.pack(side='left', fill='x', expand=True, ipady=5)
+    arrow = tk.Menubutton(
+        box, text='▼', bg=_FM451_BTN_BG if '_FM451_BTN_BG' in globals() else WHITE,
+        fg=TEXT, activebackground=_FM451_BTN_ACTIVE if '_FM451_BTN_ACTIVE' in globals() else '#DDEAF7',
+        relief='flat', bd=0, font=body_font(8), cursor='hand2', highlightthickness=1,
+        highlightbackground=_FM451_BTN_BORDER if '_FM451_BTN_BORDER' in globals() else LINE, width=2)
+    menu = tk.Menu(arrow, tearoff=False)
+    arrow.configure(menu=menu)
+    arrow.pack(side='left', padx=(3, 0), ipady=3)
+
+    def _cat_color(value):
+        try:
+            return _fm451_cat_color(app, value)
+        except Exception:
+            try:
+                return app.kb_get_category_color(value)
+            except Exception:
+                return _wz_cat_default_color(value)
+
+    def _soften(color, factor=0.78):
+        try:
+            return _fm451_soften(color, factor)
+        except Exception:
+            try:
+                return _wz442_light_color(color, factor)
+            except Exception:
+                return WHITE
+
+    def repaint():
+        try:
+            val = (var.get() or '').strip()
+            if val:
+                color = _cat_color(val)
+                value_lbl.configure(text=val, bg=_soften(color, 0.78), fg=_wz_cat_fg(color))
+            else:
+                value_lbl.configure(text='(alle)', bg=WHITE, fg=TEXT)
+        except Exception:
+            pass
+
+    def select(value):
+        try:
+            var.set(value)
+            repaint()
+        finally:
+            _fm466_safe_call_filter_command(app, command)
+
+    try:
+        menu.add_command(label='(alle)', command=lambda: select(''), background=WHITE, foreground=TEXT)
+    except Exception:
+        menu.add_command(label='(alle)', command=lambda: select(''))
+    seen = set()
+    for value in values or []:
+        if not value:
+            continue
+        marker = str(value).casefold()
+        if marker in seen:
+            continue
+        seen.add(marker)
+        color = _cat_color(value)
+        try:
+            menu.add_command(label='  ' + str(value), command=lambda v=value: select(v),
+                             background=_soften(color, 0.40), foreground=_wz_cat_fg(color),
+                             activebackground=color, activeforeground=_wz_cat_fg(color))
+        except Exception:
+            menu.add_command(label='  ' + str(value), command=lambda v=value: select(v))
+    repaint()
+    return box
+
+
+def _fm466_kb_apply_filters(self, event=None):
+    """Absturzsicheres Filter-Rendering: nie direkt aus Auswahl-/Menuecallbacks rendern."""
+    def _run():
+        try:
+            self._fm466_filter_render_pending = False
+            self._fm466_filter_render_running = True
+            self.kb_selected_entry_id = None
+            current_view = getattr(self, "knowledge_view", "all")
+            if current_view not in ("new", "categories", "outdated"):
+                self.knowledge_view = "todos" if current_view == "todos" else "all"
+            self.render_page()
+        except Exception as exc:
+            try:
+                messagebox.showerror("Wissenszentrale", "Filter konnte nicht angewendet werden:\n" + str(exc))
+            except Exception:
+                pass
+        finally:
+            try:
+                self._fm466_filter_render_running = False
+            except Exception:
+                pass
+    try:
+        if getattr(self, "_fm466_filter_render_running", False):
+            return "break"
+        root = getattr(self, "root", None)
+        if root:
+            if getattr(self, "_fm466_filter_render_pending", False):
+                return "break"
+            self._fm466_filter_render_pending = True
+            root.after_idle(_run)
+            return "break"
+    except Exception:
+        pass
+    _run()
+    return "break"
+
+
+def _fm466_kb_on_search_return(self, event=None):
+    return _fm466_kb_apply_filters(self, event)
+
+
+# Finale Zuweisungen direkt vor Programmstart: ueberschreibt v0.451/v0.465 Filter-Callbacks.
+try:
+    _fm451_filter_dropdown = _fm466_filter_dropdown
+except Exception:
+    pass
+try:
+    FiBuMateApp.kb_apply_filters = _fm466_kb_apply_filters
+    FiBuMateApp.kb_on_search_return = _fm466_kb_on_search_return
+except Exception:
+    pass
+
 if __name__ == "__main__":
     FiBuMateApp().run()
