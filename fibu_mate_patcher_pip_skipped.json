@@ -1,0 +1,17 @@
+{
+  "written_at": "2026-06-22T13:20:54",
+  "skipped": [
+    {
+      "package": "bin",
+      "reason": "ERROR: Could not find a version that satisfies the requirement bin (from versions: none)\nERROR: No matching distribution found for bin"
+    },
+    {
+      "package": "compliance_common",
+      "reason": "ERROR: Could not find a version that satisfies the requirement compliance_common (from versions: none)\nERROR: No matching distribution found for compliance_common"
+    },
+    {
+      "package": "nike_pdf_to_excel",
+      "reason": "ERROR: Could not find a version that satisfies the requirement nike_pdf_to_excel (from versions: none)\nERROR: No matching distribution found for nike_pdf_to_excel"
+    }
+  ]
+}

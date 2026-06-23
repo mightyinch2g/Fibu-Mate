@@ -1,5 +1,5 @@
 #define MyAppName "FiBu Mate"
-#define MyAppVersion "0.4.40"
+#define MyAppVersion "0.461"
 #define MyAppPublisher "Wagnerm"
 #define MyAppExeName "FiBuMate.exe"
 
@@ -13,36 +13,25 @@ AppName={#MyAppName}
 AppVersion={#MyAppVersion}
 AppPublisher={#MyAppPublisher}
 AppVerName={#MyAppName} {#MyAppVersion}
-
-; Installationsziel bleibt durch Nutzer wählbar.
 DefaultDirName={localappdata}\FibuMate
 UsePreviousAppDir=yes
 DisableDirPage=no
-
 DefaultGroupName=FiBu Mate
 DisableProgramGroupPage=no
-
-; Installer wird direkt in G:\BUC\FM Anwendung ausgegeben.
 OutputDir={#InstallerOutputDir}
 OutputBaseFilename=FiBu_Mate_Installer
-
 SetupIconFile={#AssetDir}\FMLogo_App.ico
 WizardImageFile={#AssetDir}\FMLogo_Installer_Large.bmp
 WizardSmallImageFile={#AssetDir}\FMLogo_Installer_Small.bmp
-
 UninstallDisplayIcon={app}\{#MyAppExeName}
 UninstallDisplayName={#MyAppName}
-
 Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern
-
 PrivilegesRequired=lowest
 ArchitecturesInstallIn64BitMode=x64compatible
-
 CloseApplications=yes
 RestartIfNeededByRun=no
-
 VersionInfoVersion={#MyAppVersion}
 VersionInfoCompany={#MyAppPublisher}
 VersionInfoDescription=FiBu Mate Installer
@@ -53,20 +42,16 @@ VersionInfoProductVersion={#MyAppVersion}
 Name: "german"; MessagesFile: "compiler:Languages\German.isl"
 
 [Tasks]
-Name: "desktopicon"; Description: "Desktop-Verknüpfung erstellen"; GroupDescription: "Verknüpfungen:"; Flags: unchecked
+Name: "desktopicon"; Description: "Desktop-VerknÃ¼pfung erstellen"; GroupDescription: "VerknÃ¼pfungen:"; Flags: unchecked
 
 [Dirs]
-; Lokale/gewählte Installationsstruktur
 Name: "{app}\config"
 Name: "{app}\logs"
 Name: "{app}\cache"
 Name: "{app}\Backup"
-
-; Zentrale FiBu-Mate-Struktur auf G:
 Name: "G:\BUC\FM Anwendung\Dateiausgabe"
 Name: "G:\BUC\FM Anwendung\Datenbasen"
 Name: "G:\BUC\FM Anwendung\Datenbasen\KST_Zuordnungen_AFI"
-
 Name: "G:\BUC\FM Anwendung\Fibu_Mate_Doc"
 Name: "G:\BUC\FM Anwendung\Fibu_Mate_Doc\Config"
 Name: "G:\BUC\FM Anwendung\Fibu_Mate_Doc\Database"
@@ -77,7 +62,6 @@ Name: "G:\BUC\FM Anwendung\Fibu_Mate_Doc\Logs\UpdateLogs"
 Name: "G:\BUC\FM Anwendung\Fibu_Mate_Doc\Releases"
 
 [Files]
-; Anwendung wird in das vom Nutzer gewählte Ziel installiert.
 Source: "{#SourceDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
@@ -92,7 +76,30 @@ function JsonEscape(Value: string): string;
 begin
   Result := Value;
   StringChangeEx(Result, '\', '\\', True);
-  StringChangeEx(Result, '"', '\"', True);
+  StringChangeEx(Result, '"', '"', True);
+end;
+
+procedure CreateLocalAppVersion();
+var
+  ConfigPath: string;
+  RootPath: string;
+  JsonText: string;
+begin
+  ConfigPath := ExpandConstant('{app}\config\app_version.json');
+  RootPath := ExpandConstant('{app}\app_version.json');
+
+  JsonText :=
+    '{' + #13#10 +
+    '  "app_name": "FiBu Mate",' + #13#10 +
+    '  "version": "{#MyAppVersion}",' + #13#10 +
+    '  "app_version": "{#MyAppVersion}",' + #13#10 +
+    '  "install_dir": "' + JsonEscape(ExpandConstant('{app}')) + '",' + #13#10 +
+    '  "installed_at": "' + GetDateTimeString('yyyy-mm-dd"T"hh:nn:ss', '-', ':') + '",' + #13#10 +
+    '  "source": "Inno Setup Installer"' + #13#10 +
+    '}';
+
+  SaveStringToFile(ConfigPath, JsonText, False);
+  SaveStringToFile(RootPath, JsonText, False);
 end;
 
 procedure CreateLocalConfig();
@@ -101,7 +108,6 @@ var
   JsonText: string;
 begin
   ConfigPath := ExpandConstant('{app}\config\local_config.json');
-
   JsonText :=
     '{' + #13#10 +
     '  "app_name": "FiBu Mate",' + #13#10 +
@@ -126,7 +132,6 @@ begin
     '  "patching_enabled": false,' + #13#10 +
     '  "sqlite_enabled": true' + #13#10 +
     '}';
-
   SaveStringToFile(ConfigPath, JsonText, False);
 end;
 
@@ -136,7 +141,6 @@ var
   JsonText: string;
 begin
   ConfigPath := 'G:\BUC\FM Anwendung\Fibu_Mate_Doc\Config\database_config.json';
-
   JsonText :=
     '{' + #13#10 +
     '  "database_type": "sqlite",' + #13#10 +
@@ -146,7 +150,6 @@ begin
     '  "sql_server_prepared": true,' + #13#10 +
     '  "fallback_to_local_database": false' + #13#10 +
     '}';
-
   SaveStringToFile(ConfigPath, JsonText, False);
 end;
 
@@ -154,6 +157,7 @@ procedure CurStepChanged(CurStep: TSetupStep);
 begin
   if CurStep = ssPostInstall then
   begin
+    CreateLocalAppVersion();
     CreateLocalConfig();
     CreateCentralDatabaseConfig();
   end;

@@ -366,13 +366,21 @@ class DeadlineMaintenanceUI:
             pass
 
     def can_open(self):
-        return cc.can_admin(self.app)
+        # Sichtbarkeit: Stichtagspflege ist für alle Berechtigungsstufen sichtbar.
+        return True
+
+    def can_edit(self):
+        # Änderung/Speichern bleibt weiterhin auf B3/B4 bzw. administrative Rollen beschränkt.
+        try:
+            return cc.can_admin(self.app)
+        except Exception:
+            return False
 
     def render(self):
         for w in self.frame.winfo_children():
             w.destroy()
         if not self.can_open():
-            tk.Label(self.frame, text="Keine Berechtigung: Dieses Modul ist nur für E3/E4 freigeschaltet.", bg=cc.BG, fg=cc.TEXT, font=zfont(self.app, 14, "bold")).pack(anchor="w", padx=24, pady=24)
+            tk.Label(self.frame, text="Keine Berechtigung für dieses Modul.", bg=cc.BG, fg=cc.TEXT, font=zfont(self.app, 14, "bold")).pack(anchor="w", padx=24, pady=24)
             return
         top = tk.Frame(self.frame, bg=cc.BG); top.pack(fill="x", padx=24, pady=(14, 8))
         tk.Label(top, text=MODULE_TITLE, bg=cc.BG, fg=cc.TEXT, font=zfont(self.app, 20, "bold")).pack(side="left")
@@ -382,7 +390,11 @@ class DeadlineMaintenanceUI:
             self.year = year_labels.get(year_box.get(), self.year); self.data = load_year(self.year); self.render()
         year_box.bind("<<ComboboxSelected>>", switch_year)
         tk.Button(top, text="Export Excel", command=self.export_excel, bg=cc.WHITE, fg=cc.BLUE, bd=1, padx=14, pady=8, font=zfont(self.app, 12, "bold")).pack(side="right")
-        tk.Button(top, text="Speichern + Übernehmen", command=self.save_all, bg=cc.BLUE, fg="white", bd=0, padx=14, pady=8, font=zfont(self.app, 12, "bold")).pack(side="right", padx=8)
+        if self.can_edit():
+            tk.Button(top, text="Speichern + Übernehmen", command=self.save_all, bg=cc.BLUE, fg="white", bd=0, padx=14, pady=8, font=zfont(self.app, 12, "bold")).pack(side="right", padx=8)
+        else:
+            tk.Button(top, text="Speichern + Übernehmen", command=self.save_all, bg="#D1D5DB", fg="#6B7280", bd=0, padx=14, pady=8, font=zfont(self.app, 12, "bold"), state="disabled").pack(side="right", padx=8)
+            tk.Label(top, text="Nur Ansicht – Änderungen nur durch B3/B4", bg=cc.BG, fg=cc.TEXT2, font=zfont(self.app, 11, "bold")).pack(side="right", padx=(0, 8))
         ensure_large_ui_styles(self.app)
         main_nb = ttk.Notebook(self.frame, style="DeadlineMaintenance.TNotebook"); main_nb.pack(fill="both", expand=True, padx=24, pady=(0, 12))
         tab_deadlines = tk.Frame(main_nb, bg=cc.BG)
@@ -417,6 +429,7 @@ class DeadlineMaintenanceUI:
 
         self._row_vars = getattr(self, '_row_vars', {})
         self._row_vars[kind] = {}
+        entry_state = "normal" if self.can_edit() else "readonly"
 
         for r, period in enumerate(sorted(data.keys()), 1):
             rec = data[period]
@@ -427,10 +440,10 @@ class DeadlineMaintenanceUI:
             self._row_vars[kind][period] = (v_dek, v_r18, v_r08, v_cm)
 
             tk.Label(inner, text=(cc.format_period_display(period, kind) if hasattr(cc, "format_period_display") else period), bg=cc.WHITE, fg=cc.TEXT, font=zfont(self.app, 12), padx=10, pady=8, anchor="w").grid(row=r, column=0, sticky="nsew", padx=1, pady=1)
-            tk.Entry(inner, textvariable=v_dek, bg=cc.WHITE, width=20, font=zfont(self.app, 12)).grid(row=r, column=1, sticky="nsew", padx=1, pady=1, ipady=4)
-            tk.Entry(inner, textvariable=v_r18, bg=cc.WHITE, width=20, font=zfont(self.app, 12)).grid(row=r, column=2, sticky="nsew", padx=1, pady=1, ipady=4)
-            tk.Entry(inner, textvariable=v_r08, bg=cc.WHITE, width=28, font=zfont(self.app, 12)).grid(row=r, column=3, sticky="nsew", padx=1, pady=1, ipady=4)
-            tk.Entry(inner, textvariable=v_cm, bg=cc.WHITE, width=24, font=zfont(self.app, 12)).grid(row=r, column=4, sticky="nsew", padx=1, pady=1, ipady=4)
+            tk.Entry(inner, textvariable=v_dek, bg=cc.WHITE, readonlybackground=cc.WHITE, state=entry_state, width=20, font=zfont(self.app, 12)).grid(row=r, column=1, sticky="nsew", padx=1, pady=1, ipady=4)
+            tk.Entry(inner, textvariable=v_r18, bg=cc.WHITE, readonlybackground=cc.WHITE, state=entry_state, width=20, font=zfont(self.app, 12)).grid(row=r, column=2, sticky="nsew", padx=1, pady=1, ipady=4)
+            tk.Entry(inner, textvariable=v_r08, bg=cc.WHITE, readonlybackground=cc.WHITE, state=entry_state, width=28, font=zfont(self.app, 12)).grid(row=r, column=3, sticky="nsew", padx=1, pady=1, ipady=4)
+            tk.Entry(inner, textvariable=v_cm, bg=cc.WHITE, readonlybackground=cc.WHITE, state=entry_state, width=24, font=zfont(self.app, 12)).grid(row=r, column=4, sticky="nsew", padx=1, pady=1, ipady=4)
 
     def _build_stichtagspflege_tab(self, parent):
         nb = ttk.Notebook(parent, style="DeadlineMaintenance.TNotebook"); nb.pack(fill="both", expand=True, padx=0, pady=0)
@@ -761,6 +774,8 @@ class DeadlineMaintenanceUI:
         return json.dumps(data_copy, sort_keys=True, ensure_ascii=False)
 
     def has_unsaved_changes(self):
+        if not self.can_edit():
+            return False
         try:
             return self._current_snapshot() != getattr(self, '_saved_snapshot', '')
         except Exception:

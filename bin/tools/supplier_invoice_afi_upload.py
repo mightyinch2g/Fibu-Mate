@@ -2454,3 +2454,426 @@ def create_supplier_upload_csv(assignment_path, invoice_path, export_path, confi
             pass
     return result
 
+
+
+# ------------------------------------------------------------------
+# DKV_TANKEN_TOTAL_DRIVER_FIX_V1
+# Version 0.456 - DKV-Tanken Korrekturlogik
+# ------------------------------------------------------------------
+_DKV_TANKEN_TOTAL_DRIVER_FIX_ACTIVE = True
+_DKV_LAST_PARSED_POSITIONS = []
+_DKV_LAST_DRIVER_TEXT_UPDATES = []
+_DKV_TOTAL_NUMBER_RE = re.compile(r"-?\d{1,3}(?:\.\d{3})*,\d{2,3}|-?\d+,\d{1,3}")
+_DKV_VEHICLE_RE = re.compile(r"VEHICLE:\s*(?P<vehicle>.*?)\s+CARD NO\.:\s*(?P<card>\S+).*?Kunden ID:\s*(?P<kunden_id>\d+)\s+Kartenzusatz:\s*(?P<zusatz>.*?)(?=\s+\d{2}\.\d{2}\.\d{4}|\s+»\s*TOTAL:|\s+VEHICLE:|$)", re.I | re.S)
+_DKV_TAX_RATE_RE = re.compile(r"(?:USt|IVA|TVA)\s*\(%\)\s*:?\s*(\d{1,2},\d{2}|\d{1,2})", re.I)
+_DKV_PLATE_RE = re.compile(r"\b[A-ZÄÖÜ]{1,3}\s*-\s*[A-ZÄÖÜ]{1,3}\s*\d{1,5}[A-ZÄÖÜ]?\b", re.I)
+
+def _dkv_clean_plate(value):
+    value = _clean(value).upper()
+    value = re.sub(r"\s*-\s*", "-", value)
+    value = re.sub(r"\s+", " ", value)
+    return value
+
+def _dkv_is_dkv_tanken_pdf_text(text):
+    n = _norm(text)
+    return "DKV" in n and "VEHICLE" in n and "CARDNO" in n and "TOTAL" in n
+
+def _dkv_total_amounts_from_after_total(after_total_text):
+    nums = _DKV_TOTAL_NUMBER_RE.findall(after_total_text or "")[:6]
+    vals = [_dec(x) for x in nums]
+    # Mit Nachlass ist die 3. Zahl negativ; ohne Nachlass folgen oft direkt %-Werte der Summenbeschreibung.
+    if len(vals) >= 6 and vals[2] < 0:
+        return vals[3], vals[5], nums
+    if len(vals) >= 5:
+        return vals[2], vals[4], nums[:5]
+    if len(vals) >= 3:
+        return vals[-3], vals[-1], nums
+    return Decimal("0.00"), Decimal("0.00"), nums
+
+def _parse_dkv_tanken_pdf_positions_v1(path, global_prefix):
+    text = _extract_pdf_text(path)
+    if not _dkv_is_dkv_tanken_pdf_text(text):
+        raise RuntimeError("Keine DKV-Tanken-PDF erkannt.")
+    compact = " ".join(text.replace("\n", " ").split())
+    matches = list(_DKV_VEHICLE_RE.finditer(compact))
+    positions = []
+    for idx, m in enumerate(matches):
+        vehicle = _dkv_clean_plate(m.group("vehicle"))
+        start = m.end()
+        end = matches[idx + 1].start() if idx + 1 < len(matches) else len(compact)
+        body = compact[start:end]
+        total_m = re.search(r"»?\s*TOTAL:\s*", body, re.I)
+        if not total_m:
+            continue
+        previous_rates = list(_DKV_TAX_RATE_RE.finditer(compact[:m.start()]))
+        rate = _dec(previous_rates[-1].group(1)) if previous_rates else Decimal("19")
+        net_amount, gross_amount, total_nums = _dkv_total_amounts_from_after_total(body[total_m.end():])
+        if net_amount == 0 and gross_amount == 0:
+            continue
+        amount, tax, foreign = _amount_and_tax_from_values(net_amount, gross_amount, rate)
+        if amount == 0:
+            continue
+        zusatz = _clean(m.group("zusatz"))
+        positions.append({
+            "key": vehicle,
+            "driver": zusatz or vehicle,
+            "amount": amount,
+            "tax": tax,
+            "foreign_gross": foreign,
+            "source_label": global_prefix,
+            "tax_rate": rate,
+            "dkv_total_numbers": total_nums,
+            "dkv_net_amount": net_amount,
+            "dkv_gross_amount": gross_amount,
+        })
+    if not positions:
+        raise RuntimeError("Aus der DKV-PDF konnten keine Fahrzeug-/TOTAL-Positionen erkannt werden.")
+    global _DKV_LAST_PARSED_POSITIONS
+    _DKV_LAST_PARSED_POSITIONS = positions
+    return positions
+
+_parse_pdf_invoice_positions_before_dkv_tanken_total_driver_fix_v1 = _parse_pdf_invoice_positions
+
+def _parse_pdf_invoice_positions(path, global_prefix):
+    try:
+        text_probe = _extract_pdf_text(path)
+        if _dkv_is_dkv_tanken_pdf_text(text_probe):
+            return _parse_dkv_tanken_pdf_positions_v1(path, global_prefix)
+    except Exception:
+        pass
+    return _parse_pdf_invoice_positions_before_dkv_tanken_total_driver_fix_v1(path, global_prefix)
+
+def _dkv_assignment_display_name(entry):
+    if not entry:
+        return ""
+    first = _clean(entry.get("first", ""))
+    last = _clean(entry.get("last", ""))
+    if first and last:
+        return _clean(f"{last}, {first}")
+    return _clean(entry.get("full_name", ""))
+
+def _dkv_assignment_map_by_identifier(entries):
+    out = {}
+    for e in entries or []:
+        ident = _dkv_clean_plate(e.get("identifier", ""))
+        if ident:
+            out[_norm(ident)] = e
+    return out
+
+def _apply_dkv_driver_names_to_export(export_path, assignment_path, invoice_path, config):
+    if not export_path or not os.path.isfile(export_path):
+        return []
+    supplier = _fm_supplier_from_invoice_name(invoice_path) if '_fm_supplier_from_invoice_name' in globals() else ""
+    cost = _norm((config or {}).get("global_prefix", ""))
+    if supplier != "DKV" and "TANKEN" not in cost:
+        return []
+    try:
+        entries = load_assignment_entries(assignment_path)
+    except Exception:
+        return []
+    by_identifier = _dkv_assignment_map_by_identifier(entries)
+    with open(export_path, "r", encoding="utf-8-sig", newline="") as f:
+        reader = csv.DictReader(f, delimiter=";")
+        fieldnames = reader.fieldnames or []
+        rows = list(reader)
+    if "TEXT" not in fieldnames:
+        return []
+    prefix = _clean((config or {}).get("global_prefix", "")) or "Tanken"
+    updates = []
+    for row in rows:
+        text_value = _clean(row.get("TEXT", ""))
+        plate_m = _DKV_PLATE_RE.search(text_value)
+        if not plate_m:
+            continue
+        plate = _dkv_clean_plate(plate_m.group(0))
+        entry = by_identifier.get(_norm(plate))
+        display = _dkv_assignment_display_name(entry)
+        if not display:
+            continue
+        new_text = _clean(f"{prefix} {plate} {display}")
+        if '_ascii_umlauts' in globals():
+            new_text = _ascii_umlauts(new_text)
+        if row.get("TEXT", "") != new_text:
+            updates.append({"Kennzeichen": plate, "Alt": row.get("TEXT", ""), "Neu": new_text})
+            row["TEXT"] = new_text
+    if updates:
+        with open(export_path, "w", encoding="utf-8-sig", newline="") as f:
+            writer = csv.DictWriter(f, fieldnames=fieldnames, delimiter=";", extrasaction="ignore")
+            writer.writeheader()
+            writer.writerows(rows)
+    global _DKV_LAST_DRIVER_TEXT_UPDATES
+    _DKV_LAST_DRIVER_TEXT_UPDATES = updates
+    return updates
+
+_create_supplier_upload_csv_before_dkv_tanken_total_driver_fix_v1 = create_supplier_upload_csv
+
+def create_supplier_upload_csv(assignment_path, invoice_path, export_path, config):
+    result = _create_supplier_upload_csv_before_dkv_tanken_total_driver_fix_v1(assignment_path, invoice_path, export_path, config)
+    try:
+        updates = _apply_dkv_driver_names_to_export(export_path, assignment_path, invoice_path, config)
+        if isinstance(result, dict):
+            result["dkv_driver_text_updates"] = updates
+            result["dkv_driver_text_updates_count"] = len(updates)
+            if _DKV_LAST_PARSED_POSITIONS:
+                result["dkv_vehicle_positions"] = len(_DKV_LAST_PARSED_POSITIONS)
+    except Exception:
+        pass
+    return result
+
+
+# ------------------------------------------------------------------
+# DKV_KST_FROM_STANDARD_ASSIGNMENT_FIX_V1
+# Version 0.456 - DKV-KST Nachschärfung
+# ------------------------------------------------------------------
+# Zweck:
+# Die DKV-Zuordnung aus der Standarddatei "Kontierungszuordnung_Gesamtübersicht.xlsx"
+# wird nach dem Export nochmals kennzeichenbasiert auf die AFI-CSV angewendet.
+# Damit werden GL_ACCOUNT, COSTCENTER und ORDERID aus den DKV-Spalten sicher geschrieben,
+# unabhängig davon, ob vorherige Wrapper/Reihenfolgen die globale Zuordnungsgruppe verändert haben.
+_DKV_KST_FROM_STANDARD_ASSIGNMENT_FIX_ACTIVE = True
+_DKV_KST_LAST_UPDATES = []
+_DKV_KST_PLATE_RE = re.compile(r"\b[A-ZÄÖÜ]{1,3}\s*-\s*[A-ZÄÖÜ]{1,3}\s*\d{1,5}[A-ZÄÖÜ]?\b", re.I)
+
+def _dkv_kst_fix_clean_plate(value):
+    value = _clean(value).upper()
+    value = re.sub(r"\s*-\s*", "-", value)
+    value = re.sub(r"\s+", " ", value)
+    return value
+
+def _dkv_kst_fix_is_dkv_export(invoice_path, config):
+    supplier = ""
+    try:
+        supplier = _fm_supplier_from_invoice_name(invoice_path) if '_fm_supplier_from_invoice_name' in globals() else ""
+    except Exception:
+        supplier = ""
+    cost = _norm((config or {}).get("global_prefix", ""))
+    name = _norm(os.path.basename(invoice_path or ""))
+    return supplier == "DKV" or "DKV" in name or "DKV" in cost
+
+def _dkv_kst_fix_values_from_entry(entry):
+    groups = entry.get("groups") or {}
+    values = groups.get("DKV") or {}
+    gl = _fm_strip_excel_code(values.get("GL_ACCOUNT", "")) if '_fm_strip_excel_code' in globals() else _clean(values.get("GL_ACCOUNT", ""))
+    cc = _fm_strip_excel_code(values.get("COSTCENTER", "")) if '_fm_strip_excel_code' in globals() else _clean(values.get("COSTCENTER", ""))
+    ia = _fm_strip_excel_code(values.get("ORDERID", "")) if '_fm_strip_excel_code' in globals() else _clean(values.get("ORDERID", ""))
+    return gl, cc, ia
+
+def _apply_dkv_kst_from_standard_assignment(export_path, assignment_path, invoice_path, config):
+    if not export_path or not os.path.isfile(export_path):
+        return []
+    if not _dkv_kst_fix_is_dkv_export(invoice_path, config):
+        return []
+    try:
+        entries = load_assignment_entries(assignment_path)
+    except Exception:
+        return []
+    by_plate = {}
+    for entry in entries or []:
+        ident = _dkv_kst_fix_clean_plate(entry.get("identifier", ""))
+        if ident:
+            by_plate[_norm(ident)] = entry
+    with open(export_path, "r", encoding="utf-8-sig", newline="") as f:
+        reader = csv.DictReader(f, delimiter=";")
+        fieldnames = reader.fieldnames or []
+        rows = list(reader)
+    required = {"TEXT", "GL_ACCOUNT", "COSTCENTER", "ORDERID"}
+    if not required.issubset(set(fieldnames)):
+        return []
+    updates = []
+    for row in rows:
+        text_value = _clean(row.get("TEXT", ""))
+        m = _DKV_KST_PLATE_RE.search(text_value)
+        if not m:
+            continue
+        plate = _dkv_kst_fix_clean_plate(m.group(0))
+        entry = by_plate.get(_norm(plate))
+        if not entry:
+            continue
+        gl, cc, ia = _dkv_kst_fix_values_from_entry(entry)
+        before = {"GL_ACCOUNT": row.get("GL_ACCOUNT", ""), "COSTCENTER": row.get("COSTCENTER", ""), "ORDERID": row.get("ORDERID", "")}
+        # DKV-Werte haben fachlich Vorrang, wenn sie im Standardblatt gepflegt sind.
+        if gl:
+            row["GL_ACCOUNT"] = gl
+        if cc:
+            row["COSTCENTER"] = cc
+        if ia:
+            row["ORDERID"] = ia
+        after = {"GL_ACCOUNT": row.get("GL_ACCOUNT", ""), "COSTCENTER": row.get("COSTCENTER", ""), "ORDERID": row.get("ORDERID", "")}
+        if after != before:
+            updates.append({"Kennzeichen": plate, "TEXT": text_value, "vorher": before, "nachher": after})
+    if updates:
+        with open(export_path, "w", encoding="utf-8-sig", newline="") as f:
+            writer = csv.DictWriter(f, fieldnames=fieldnames, delimiter=";", extrasaction="ignore")
+            writer.writeheader()
+            writer.writerows(rows)
+    global _DKV_KST_LAST_UPDATES
+    _DKV_KST_LAST_UPDATES = updates
+    return updates
+
+_create_supplier_upload_csv_before_dkv_kst_fix_v1 = create_supplier_upload_csv
+
+def create_supplier_upload_csv(assignment_path, invoice_path, export_path, config):
+    result = _create_supplier_upload_csv_before_dkv_kst_fix_v1(assignment_path, invoice_path, export_path, config)
+    try:
+        updates = _apply_dkv_kst_from_standard_assignment(export_path, assignment_path, invoice_path, config)
+        if isinstance(result, dict):
+            result["dkv_kst_updates"] = updates
+            result["dkv_kst_updates_count"] = len(updates)
+    except Exception:
+        pass
+    return result
+
+
+# ------------------------------------------------------------------
+# AFI_UPLOAD_UI_ANALYSE_NO_FREEZE_AND_DKV_IDG_FIX_V1
+# Version 0.460
+# Zweck:
+# - Auswahl der Kostenbeschreibung darf keine komplette Vorschau-/Exportberechnung mehr synchron starten.
+# - Rechnung analysieren darf bei PDF-Dateien keine Exportvorschau mehr im UI-Thread erzeugen.
+# - Standardpfad fuer KST-Zuordnungsdokument zeigt auf die Datei im Ordner KST_Zuordnungen_AFI.
+# - DKV-IDG-PDFs mit fehlender/nichtnumerischer Kunden-ID werden korrekt geparst.
+# ------------------------------------------------------------------
+AFI_UPLOAD_UI_ANALYSE_NO_FREEZE_AND_DKV_IDG_FIX_ACTIVE = True
+KST_ASSIGNMENT_DEFAULT_FILE = r"G:\BUC\FM Anwendung\Datenbasen\KST_Zuordnungen_AFI\Kontierungszuordnung_Gesamtübersicht.xlsx"
+KST_ASSIGNMENT_DEFAULT_DIR = KST_ASSIGNMENT_DEFAULT_FILE
+
+_DKV_IDG_VEHICLE_RE_V2 = re.compile(
+    r"VEHICLE:\s*(?P<vehicle>.*?)\s+CARD NO\.:\s*(?P<card>\S+).*?Kartenzusatz:\s*(?P<zusatz>.*?)(?=\s+\d{2}\.\d{2}\.\d{4}|\s+»\s*TOTAL:|\s+VEHICLE:|\s+Gesamtsummenaufstellung|\s+Umsatzsteuerstatistik|$)",
+    re.I | re.S,
+)
+_DKV_IDG_TAX_RATE_RE_V2 = re.compile(r"(?:USt|IVA|TVA)\s*\(%\)\s*:?\s*(\d{1,2},\d{2}|\d{1,2})", re.I)
+_DKV_IDG_TOTAL_NUMBER_RE_V2 = re.compile(r"-?\d{1,3}(?:\.\d{3})*,\d{2,3}|-?\d+,\d{1,3}")
+
+
+def _dkv_idg_total_amounts_after_total_v2(after_total_text):
+    nums = _DKV_IDG_TOTAL_NUMBER_RE_V2.findall(after_total_text or "")[:6]
+    vals = [_dec(x) for x in nums]
+    # Deutsche DKV-Zeilen mit Nachlass: Menge, Bezugswert, Nachlass, Gesamtwert netto, USt, Brutto
+    if len(vals) >= 6 and vals[2] < 0:
+        return vals[3], vals[5], nums
+    # Ohne Nachlass: Menge, Gesamtwert netto/Bezugswert, Gesamtwert netto, USt, Brutto
+    if len(vals) >= 5:
+        return vals[2], vals[4], nums[:5]
+    if len(vals) >= 3:
+        return vals[-3], vals[-1], nums
+    return Decimal("0.00"), Decimal("0.00"), nums
+
+
+def _parse_dkv_tanken_pdf_positions_v1(path, global_prefix):
+    """Robuster DKV-PDF-Parser fuer IDE/IDG-DKV-Rechnungen.
+
+    Wichtig: Die Kunden-ID ist in DKV-PDFs nicht immer numerisch bzw. teilweise gar nicht vorhanden.
+    Deshalb wird nur VEHICLE + CARD NO. + Kartenzusatz als Blockanker verwendet.
+    """
+    text = _extract_pdf_text(path)
+    if not _dkv_is_dkv_tanken_pdf_text(text):
+        raise RuntimeError("Keine DKV-Tanken-PDF erkannt.")
+    compact = " ".join(text.replace("\n", " ").split())
+    matches = list(_DKV_IDG_VEHICLE_RE_V2.finditer(compact))
+    positions = []
+    for idx, m in enumerate(matches):
+        vehicle = _dkv_clean_plate(m.group("vehicle")) if '_dkv_clean_plate' in globals() else _clean(m.group("vehicle"))
+        start = m.end()
+        end = matches[idx + 1].start() if idx + 1 < len(matches) else len(compact)
+        body = compact[start:end]
+        total_m = re.search(r"»?\s*TOTAL:\s*", body, re.I)
+        if not total_m:
+            continue
+        previous_rates = list(_DKV_IDG_TAX_RATE_RE_V2.finditer(compact[:m.start()]))
+        rate = _dec(previous_rates[-1].group(1)) if previous_rates else Decimal("19")
+        net_amount, gross_amount, total_nums = _dkv_idg_total_amounts_after_total_v2(body[total_m.end():])
+        if net_amount == 0 and gross_amount == 0:
+            continue
+        amount, tax, foreign = _amount_and_tax_from_values(net_amount, gross_amount, rate)
+        if amount == 0:
+            continue
+        zusatz = _clean(m.group("zusatz"))
+        positions.append({
+            "key": vehicle,
+            "driver": zusatz or vehicle,
+            "amount": amount,
+            "tax": tax,
+            "foreign_gross": foreign,
+            "source_label": global_prefix,
+            "tax_rate": rate,
+            "dkv_total_numbers": total_nums,
+            "dkv_net_amount": net_amount,
+            "dkv_gross_amount": gross_amount,
+        })
+    if not positions:
+        raise RuntimeError("Aus der DKV-PDF konnten keine Fahrzeug-/TOTAL-Positionen erkannt werden.")
+    global _DKV_LAST_PARSED_POSITIONS
+    try:
+        _DKV_LAST_PARSED_POSITIONS = positions
+    except Exception:
+        pass
+    return positions
+
+
+def _fm460_on_mapping_changed_no_preview(self):
+    """Nur leichte UI-Aktualisierung; keine synchrone Export-/PDF-Analyse."""
+    try:
+        _fm_update_export_path(self, True)
+    except Exception:
+        pass
+    try:
+        self.update_footer()
+    except Exception:
+        pass
+    try:
+        self.update_highlight()
+    except Exception:
+        pass
+
+
+def _fm460_analyze_invoice_no_freeze(self):
+    """Analysiert Rechnung ohne automatische Ausgabevorschau.
+
+    Die Ausgabevorschau hatte bei Kostenbeschreibung/Analyse eine komplette Exportberechnung im UI-Thread
+    gestartet und dadurch das Tool scheinbar aufgehängt. Die echte Exportdatei wird weiterhin erst beim
+    Klick auf 'AFI-Upload-Datei erstellen' erzeugt.
+    """
+    path = self.invoice_var.get().strip()
+    if not os.path.isfile(path):
+        messagebox.showwarning(MODULE_TITLE, "Bitte eine gueltige Rechnung auswaehlen.")
+        return
+    try:
+        self.clear_sources()
+        ext = os.path.splitext(path)[1].lower()
+        try:
+            self.load_preview(path)
+        except Exception:
+            pass
+        try:
+            _fm_update_export_path(self, True)
+        except Exception:
+            pass
+        if ext == ".pdf":
+            self.headers, self.rows = ["PDF"], []
+            self.suggestion_var.set("PDF erkannt: Berechnungsquellen sind nicht erforderlich. Die Positionen werden beim Export aus Fahrzeug-/TOTAL-Bloecken gelesen.")
+            self.status_var.set("PDF-Rechnung analysiert. Bitte Kostenbeschreibung und KST-Zuordnungsdokument pruefen. Die AFI-Ausgabe wird erst beim Export erzeugt.")
+            if hasattr(self, 'add_source_btn'):
+                self.add_source_btn.configure(state="disabled")
+            return
+        if hasattr(self, 'add_source_btn'):
+            self.add_source_btn.configure(state="normal")
+        self.headers, self.rows = _read_table_file(path)
+        suggestions = suggested_sources(self.headers)
+        self.add_source(suggestions[0])
+        if len(suggestions) > 1:
+            self.suggestion_var.set("Weitere moegliche Berechnungsquellen erkannt: " + ", ".join(s.get("label", "") for s in suggestions[1:]) + ". Bei Bedarf ueber '+ Berechnungsquelle' hinzufuegen.")
+        else:
+            self.suggestion_var.set("")
+        self.status_var.set("Rechnung analysiert. Bitte Berechnungsquelle pruefen/ergaenzen.")
+    except Exception as exc:
+        messagebox.showerror(MODULE_TITLE, str(exc))
+
+
+def _fm460_run_export_no_pre_preview(self):
+    """Startet den bestehenden threaded Export direkt, ohne synchrone Vorabvorschau."""
+    return _fm_run_export(self)
+
+
+SupplierUploadUI.on_mapping_changed = _fm460_on_mapping_changed_no_preview
+SupplierUploadUI.analyze_invoice = _fm460_analyze_invoice_no_freeze
+SupplierUploadUI.run_export = _fm460_run_export_no_pre_preview

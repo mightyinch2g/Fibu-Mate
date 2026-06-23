@@ -1,0 +1,63 @@
+{
+  "report_types": [
+    {
+      "id": "ZM",
+      "title": "ZM",
+      "active": true,
+      "evidence_required": true,
+      "approval_required": false,
+      "four_eye": false,
+      "owner_user_key": "",
+      "reviewer_user_key": "",
+      "sync_with_calendar": true
+    },
+    {
+      "id": "Z4",
+      "title": "Z4",
+      "active": true,
+      "evidence_required": true,
+      "approval_required": false,
+      "four_eye": false,
+      "owner_user_key": "",
+      "reviewer_user_key": "",
+      "sync_with_calendar": true
+    },
+    {
+      "id": "Z5a",
+      "title": "Z5a",
+      "active": true,
+      "evidence_required": true,
+      "approval_required": false,
+      "four_eye": false,
+      "owner_user_key": "",
+      "reviewer_user_key": "",
+      "sync_with_calendar": true
+    },
+    {
+      "id": "Intrastat",
+      "title": "Intrastat",
+      "active": true,
+      "evidence_required": true,
+      "approval_required": false,
+      "four_eye": false,
+      "owner_user_key": "",
+      "reviewer_user_key": "",
+      "sync_with_calendar": false
+    },
+    {
+      "id": "UStVA",
+      "title": "UStVA",
+      "active": true,
+      "evidence_required": true,
+      "approval_required": false,
+      "four_eye": false,
+      "owner_user_key": "",
+      "reviewer_user_key": "",
+      "sync_with_calendar": false
+    }
+  ],
+  "warning_days": {
+    "yellow": 10,
+    "orange": 5
+  }
+}

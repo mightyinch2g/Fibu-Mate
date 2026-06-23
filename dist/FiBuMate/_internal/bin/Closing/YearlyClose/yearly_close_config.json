@@ -1,0 +1,12 @@
+{
+  "teams": [
+    "Hauptbuch",
+    "Zentralregulierung",
+    "Debitoren",
+    "Treasury"
+  ],
+  "warning_days": {
+    "yellow": 10,
+    "orange": 5
+  }
+}
