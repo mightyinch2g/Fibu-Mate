@@ -6439,3 +6439,114 @@ def create_supplier_upload_csv(assignment_path, invoice_path, export_path, confi
         if isinstance(result, dict):
             result['dkv_invoice_leading_repair_error'] = str(exc)
     return result
+
+
+# ------------------------------------------------------------------
+# AFI_UPLOAD_DKV_DIRECT_EXPORT_FINAL_V0475
+# Datum: 2026-07-07
+# Zweck:
+# DKV-PDF-Exporte werden nicht mehr nachtraeglich repariert, sondern direkt aus der
+# Rechnung erzeugt. Damit koennen alte Zwischenlogiken keinen Betrag, Text, KST oder
+# Sachkonto mehr zurueck auf falsche Werte setzen.
+# ------------------------------------------------------------------
+AFI_UPLOAD_DKV_DIRECT_EXPORT_FINAL_VERSION = "0.475"
+
+_DKV475_LAST_DIRECT_EXPORT = {}
+
+
+def _dkv475_is_dkv_pdf_file(path):
+    try:
+        if os.path.splitext(path or '')[1].lower() != '.pdf':
+            return False
+        txt = _extract_pdf_text(path)
+        return _dkv_is_dkv_tanken_pdf_text(txt) if '_dkv_is_dkv_tanken_pdf_text' in globals() else ('DKV' in _norm(txt) and 'VEHICLE' in _norm(txt))
+    except Exception:
+        return False
+
+
+def _dkv475_invoice_paths(invoice_path):
+    paths = _afi471_split_invoice_paths(invoice_path) if '_afi471_split_invoice_paths' in globals() else ([invoice_path] if invoice_path else [])
+    return [p for p in paths if str(p).strip()]
+
+
+def _dkv475_should_direct_export(invoice_path, config):
+    paths = _dkv475_invoice_paths(invoice_path)
+    if not paths:
+        return False
+    if not all(os.path.isfile(p) and os.path.splitext(p)[1].lower().endswith('.pdf') for p in paths):
+        return False
+    if not all(_dkv475_is_dkv_pdf_file(p) for p in paths):
+        return False
+    return True
+
+
+def _dkv475_assignment_values(entries, plate, invoice_driver, assignment_path, text_label):
+    entry = None; how = ''
+    if '_dkv474_best_entry_for_invoice' in globals():
+        entry, how = _dkv474_best_entry_for_invoice(entries, plate, invoice_driver)
+    if not entry:
+        nplate = _norm(plate)
+        for e in entries or []:
+            if e.get('identifier_type') == 'PLATE' and e.get('identifier_norm') == nplate:
+                entry = e; how = 'plate'; break
+    if not entry and invoice_driver and '_afi471_best_name_match' in globals():
+        entry, how2, score = _afi471_best_name_match(entries, invoice_driver, threshold=0.84)
+        how = how2 if entry else how
+    fallback_gl = _dkv474_gl_fallback(assignment_path, text_label) if '_dkv474_gl_fallback' in globals() else '427000'
+    gl, cc, orderid = fallback_gl, '', ''
+    if entry:
+        egl, ecc, eia = _select_assignment_values(entry, 'TANKEN', text_label)
+        gl = egl or fallback_gl
+        cc = ecc or ''
+        orderid = eia or ''
+    return gl or fallback_gl or '427000', cc, orderid, how
+
+
+def _dkv475_create_direct_export(assignment_path, invoice_path, export_path, config):
+    paths = _dkv475_invoice_paths(invoice_path)
+    prefix = _clean((config or {}).get('global_prefix', '')) or 'Tanken'
+    try:
+        entries = load_assignment_entries(assignment_path)
+    except Exception:
+        entries = []
+    groups = OrderedDict()
+    parsed_count = 0
+    for pdf_path in paths:
+        for pos in _parse_pdf_invoice_positions(pdf_path, prefix):
+            parsed_count += 1
+            plate = _dkv_clean_plate(pos.get('key','')) if '_dkv_clean_plate' in globals() else _clean(pos.get('key',''))
+            invoice_driver = _clean(pos.get('driver',''))
+            if _norm(invoice_driver) == _norm(plate):
+                invoice_driver = ''
+            gl, cc, orderid, how = _dkv475_assignment_values(entries, plate, invoice_driver, assignment_path, prefix)
+            text = _clean(f'{prefix} {plate} {invoice_driver}') if invoice_driver else _clean(f'{prefix} {plate}')
+            if '_ascii_umlauts' in globals():
+                text = _ascii_umlauts(text)
+            tax = pos.get('tax') or 'VD'
+            key = (_norm(text), tax, gl, cc, orderid)
+            if key not in groups:
+                groups[key] = {'TEXT': text, 'amount': Decimal('0.00'), 'TAX_CODE': tax, 'GL_ACCOUNT': gl, 'COSTCENTER': cc, 'ORDERID': orderid, 'how': how, 'plate': plate, 'invoice_driver': invoice_driver}
+            groups[key]['amount'] += Decimal(pos.get('amount') or '0')
+    if not groups:
+        raise RuntimeError('Aus der DKV-PDF konnten keine Exportpositionen erzeugt werden.')
+    os.makedirs(os.path.dirname(os.path.abspath(export_path)) or '.', exist_ok=True)
+    ordered = list(groups.values())
+    ordered.sort(key=lambda r: (_norm(r.get('TEXT','')), TAX_ORDER.get(r.get('TAX_CODE','VD'), 9)))
+    with open(export_path, 'w', encoding='utf-8-sig', newline='') as f:
+        writer = csv.DictWriter(f, fieldnames=UPLOAD_COLUMNS, delimiter=';', extrasaction='ignore')
+        writer.writeheader()
+        for g in ordered:
+            amount = Decimal(g.get('amount','0')).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+            writer.writerow({'TEXT': g.get('TEXT',''), 'PRICE': _fmt(amount), 'PRICE_UNIT': '1', 'QUANTITY': '1', 'UNIT': 'ST', 'NET_VALUE': _fmt(amount), 'TAX_CODE': g.get('TAX_CODE',''), 'GL_ACCOUNT': g.get('GL_ACCOUNT',''), 'COSTCENTER': g.get('COSTCENTER',''), 'ORDERID': g.get('ORDERID','')})
+    total = sum(Decimal(g.get('amount','0')).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP) for g in ordered)
+    global _DKV475_LAST_DIRECT_EXPORT
+    _DKV475_LAST_DIRECT_EXPORT = {'paths': paths, 'parsed_positions': parsed_count, 'rows': len(ordered), 'export_path': export_path}
+    return {'rows': len(ordered), 'export_path': export_path, 'export_net_total': _fmt(total), 'invoice_net_raw_total': _fmt(total), 'net_rounding_difference': '0,00', 'dkv_direct_export': True, 'dkv_pdf_count': len(paths), 'dkv_parsed_positions': parsed_count, 'missing_template': [], 'unknown_tax': []}
+
+
+_create_supplier_upload_csv_before_v0475 = create_supplier_upload_csv
+
+def create_supplier_upload_csv(assignment_path, invoice_path, export_path, config):
+    if _dkv475_should_direct_export(invoice_path, config):
+        return _dkv475_create_direct_export(assignment_path, invoice_path, export_path, config)
+    return _create_supplier_upload_csv_before_v0475(assignment_path, invoice_path, export_path, config)
