@@ -2877,3 +2877,3565 @@ def _fm460_run_export_no_pre_preview(self):
 SupplierUploadUI.on_mapping_changed = _fm460_on_mapping_changed_no_preview
 SupplierUploadUI.analyze_invoice = _fm460_analyze_invoice_no_freeze
 SupplierUploadUI.run_export = _fm460_run_export_no_pre_preview
+
+
+# ------------------------------------------------------------------
+# AFI_UPLOAD_GENERALUEBERSICHT_LOADER_FIX_V0462
+# Datum: 2026-07-06
+# Zweck:
+# - Standardpfad von Gesamtuebersicht auf Generaluebersicht umstellen.
+# - Generaluebersicht mit Blaettern KFZ, Telefon, Sachkonten direkt laden.
+# - None-/Leerzellen robust behandeln; behebt "sequence item ... NoneType".
+# - Bike Leasing als Kostenbeschreibung und Sachkonto-Logik ergaenzen.
+# ------------------------------------------------------------------
+AFI_UPLOAD_GENERALUEBERSICHT_LOADER_FIX_VERSION = "0.462"
+KST_ASSIGNMENT_DEFAULT_FILE = r"G:\BUC\FM Anwendung\Datenbasen\KST_Zuordnungen_AFI\Kontierungszuordnung_Generalübersicht.xlsx"
+KST_ASSIGNMENT_DEFAULT_DIR = KST_ASSIGNMENT_DEFAULT_FILE
+try:
+    COST_TYPE_OPTIONS = ["Tanken Strom", "Tanken", "Versicherung", "Leasing", "Bike Leasing", "Mobilfunk/Festnetz", "Sonstige"]
+except Exception:
+    pass
+_GENERAL_OVERVIEW_CACHE = {"path":"", "mtime":None, "entries":[], "gl":{}}
+
+def _general_clean(value):
+    return _clean(value)
+
+def _general_to_str(value):
+    value = _clean(value)
+    if re.fullmatch(r"\d+\.0", value): value = value[:-2]
+    return value
+
+def _general_company_to_bukrs(company):
+    n=_norm(company)
+    if "DIGITAL" in n: return "IDG"
+    if "SABU" in n: return "SABU"
+    if "IMS" in n or "MARKETINGSERVICES" in n: return "IMS"
+    return "IDE"
+
+def _general_parse_sachkonten(ws):
+    cols={"IDE":(2,3), "IDG":(5,6), "SABU":(8,9), "IMS":(11,12)}
+    out={b:{} for b in cols}
+    for r in range(3, ws.max_row+1):
+        labels=[]
+        for b,(lcol,gcol) in cols.items():
+            lab=_general_to_str(ws.cell(r,lcol).value)
+            if lab: labels.append(lab)
+        inferred=labels[0] if labels else ""
+        for b,(lcol,gcol) in cols.items():
+            lab=_general_to_str(ws.cell(r,lcol).value) or inferred
+            gl=_general_to_str(ws.cell(r,gcol).value)
+            if not gl: continue
+            if lab: out[b][_norm(lab)] = gl
+            for extra in labels:
+                if extra: out[b][_norm(extra)] = gl
+            # in der aktuellen Datei ist Bike Leasing teilweise nur in einer Organisationsspalte beschriftet
+            if r >= 12 and gl == "416000": out[b][_norm("Bike Leasing")] = gl
+            if r >= 12 and gl == "154000": out[b][_norm("UST Bike Leasing")] = gl
+    return out
+
+def _general_entry(identifier, last, first, company, kst, ia, kind):
+    identifier=_general_to_str(identifier); last=_general_to_str(last); first=_general_to_str(first); company=_general_to_str(company)
+    kst=_general_to_str(kst); ia=_general_to_str(ia)
+    full=_clean(f"{first} {last}") or _clean(f"{last} {first}")
+    bukrs=_general_company_to_bukrs(company)
+    raw=" ".join(x for x in [identifier, full, company, kst, ia] if x)
+    base_gl=""
+    return {
+        "identifier": identifier, "identifier_norm": _norm(identifier), "identifier_digits": _digits_only(identifier), "identifier_type": kind,
+        "full_name": full, "first": first, "last": last, "name_norm": _norm(full), "alt_name_norm": _norm(_clean(f"{last} {first}")), "last_norm": _norm(last),
+        "firma": company, "bukrs": bukrs, "raw": raw,
+        "gl_default": base_gl, "gl_tanken_strom":"", "gl_tanken":"", "gl_versicherung":"", "gl_leasing":"", "gl_bike_leasing":"", "gl_mobilfunk":"",
+        "cc_default": kst, "cc_tanken_strom": kst, "cc_tanken": kst, "cc_versicherung": kst, "cc_leasing": kst, "cc_bike_leasing": kst, "cc_mobilfunk": kst,
+        "orderid": ia,
+    }
+
+def _load_general_overview(path, force=False):
+    import os as _os
+    try: mtime=_os.path.getmtime(path)
+    except Exception as exc: raise RuntimeError("Kontierungszuordnung nicht gefunden: " + str(path)) from exc
+    if not force and _GENERAL_OVERVIEW_CACHE.get('path')==path and _GENERAL_OVERVIEW_CACHE.get('mtime')==mtime and _GENERAL_OVERVIEW_CACHE.get('entries'):
+        return _GENERAL_OVERVIEW_CACHE
+    try:
+        from openpyxl import load_workbook
+        wb=load_workbook(path, data_only=True, read_only=True)
+    except Exception as exc:
+        raise RuntimeError("Kontierungszuordnung konnte nicht gelesen werden: " + str(exc))
+    entries=[]
+    if 'KFZ' in wb.sheetnames:
+        ws=wb['KFZ']
+        for r in range(3, ws.max_row+1):
+            ident=ws.cell(r,2).value
+            if _general_to_str(ident) and _norm(ident) != 'KENNZEICHEN':
+                entries.append(_general_entry(ident, ws.cell(r,3).value, ws.cell(r,4).value, ws.cell(r,5).value, ws.cell(r,6).value, ws.cell(r,7).value, 'PLATE'))
+    if 'Telefon' in wb.sheetnames:
+        ws=wb['Telefon']
+        for r in range(3, ws.max_row+1):
+            ident=ws.cell(r,2).value
+            if _general_to_str(ident) and _norm(ident) != 'RUFNUMMER':
+                entries.append(_general_entry(ident, ws.cell(r,3).value, ws.cell(r,4).value, ws.cell(r,5).value, ws.cell(r,6).value, ws.cell(r,7).value, 'PHONE'))
+    gl={}
+    if 'Sachkonten' in wb.sheetnames:
+        gl=_general_parse_sachkonten(wb['Sachkonten'])
+    if not entries: raise RuntimeError("Im Kontierungsdokument wurden keine Zuordnungen erkannt.")
+    # Sachkonten je Eintrag nach Buchungskreis eintragen, damit die bestehende Exportlogik unveraendert greift.
+    for e in entries:
+        b=e.get('bukrs') or 'IDE'; m=gl.get(b,{})
+        e['gl_tanken_strom']=m.get(_norm('Tanken Strom'), '')
+        e['gl_tanken']=m.get(_norm('DKV'), '') or m.get(_norm('Tanken'), '')
+        e['gl_versicherung']=m.get(_norm('DEAS'), '') or m.get(_norm('VW-Versicherungen'), '') or m.get(_norm('Versicherung'), '')
+        e['gl_leasing']=m.get(_norm('VW-Leasing'), '') or m.get(_norm('Leasing'), '')
+        e['gl_bike_leasing']=m.get(_norm('Bike Leasing'), '')
+        e['gl_mobilfunk']=m.get(_norm('Telekom'), '') or m.get(_norm('Vodafone'), '')
+        e['gl_default']=m.get(_norm('Sonstige'), '')
+    _GENERAL_OVERVIEW_CACHE.update({"path":path,"mtime":mtime,"entries":entries,"gl":gl})
+    return _GENERAL_OVERVIEW_CACHE
+
+def refresh_assignment_cache(path=None):
+    path=path or KST_ASSIGNMENT_DEFAULT_FILE
+    _GENERAL_OVERVIEW_CACHE.update({"path":"", "mtime":None, "entries":[], "gl":{}})
+    return _load_general_overview(path, force=True)
+
+def load_assignment_entries(assignment_path):
+    try:
+        data=_load_general_overview(assignment_path)
+        return data.get('entries', [])
+    except Exception:
+        # echte alte CSV-/Gesamtuebersicht-Fallbacks bleiben erhalten, wenn vorhanden
+        try: return _load_assignment_entries(assignment_path)
+        except Exception as exc: raise exc
+
+def _cost_type(label):
+    n=_norm(label)
+    if "BIKE" in n and "LEAS" in n: return "BIKE_LEASING"
+    if "TANKENSTROM" in n or ("TANKEN" in n and "STROM" in n): return "TANKEN_STROM"
+    if "TANKEN" in n: return "TANKEN"
+    if "VERSICHER" in n: return "VERSICHERUNG"
+    if "LEAS" in n: return "LEASING"
+    if "MOBIL" in n or "FESTNETZ" in n or "TELEFON" in n or "VODAFONE" in n: return "MOBILFUNK"
+    return "SONSTIGE"
+
+_select_assignment_values_before_general_fix = _select_assignment_values
+
+def _select_assignment_values(entry, cost_type, text_label=""):
+    if cost_type == "BIKE_LEASING":
+        gl = entry.get('gl_bike_leasing') or entry.get('gl_leasing') or entry.get('gl_default')
+        cc = entry.get('cc_bike_leasing') or entry.get('cc_leasing') or entry.get('cc_default')
+        return gl or "", cc or "", entry.get('orderid','') or ""
+    return _select_assignment_values_before_general_fix(entry, cost_type, text_label)
+
+# UI-Refresh klarer machen, ohne Erfolgspopup bei vorhandener Datei.
+def _general_refresh_assignment_ui(self):
+    path=self.template_var.get().strip() if hasattr(self,'template_var') else KST_ASSIGNMENT_DEFAULT_FILE
+    try:
+        data=refresh_assignment_cache(path)
+        if hasattr(self,'assignment_status_var'):
+            self.assignment_status_var.set(f"Zuordnungsdatei geladen: {len(data.get('entries', []))} Zuordnungen im Sitzungs-Cache.")
+        elif hasattr(self,'status_var'):
+            self.status_var.set(f"Zuordnungsdatei geladen: {len(data.get('entries', []))} Zuordnungen im Sitzungs-Cache.")
+    except Exception as exc:
+        if hasattr(self,'assignment_status_var'): self.assignment_status_var.set("Zuordnungsdatei nicht verfügbar: " + str(exc))
+        try: messagebox.showwarning(MODULE_TITLE, "Kontierungszuordnung nicht gefunden oder nicht lesbar:\n"+str(path)+"\n\n"+str(exc))
+        except Exception: pass
+try:
+    SupplierUploadUI.refresh_assignment = _general_refresh_assignment_ui
+except Exception:
+    pass
+
+
+# ------------------------------------------------------------------
+# AFI_UPLOAD_GENERALUEBERSICHT_FINAL_FIX_V0463
+# Datum: 2026-07-06
+# Zweck:
+# - Korrigiert den versehentlich auf altem Stand ausgelieferten Patch.
+# - Fuehrt die gewuenschten Umbauten erneut auf dem aktuell bereitgestellten Modul aus.
+# - Neuer fuehrender Standard: Kontierungszuordnung_Generaluebersicht.xlsx im KST_Zuordnungen_AFI-Ordner.
+# - Loader ist robust gegen leere Zellen (None) in Firma/KST/IA.
+# - UI bekommt Wizard-Grundstruktur, Refresh-Button, Mehrfach-Buchungskreise inkl. SABU und Positionsvorschau.
+# - Bike Leasing wird als Kostenbeschreibung und Sachkontoart unterstuetzt.
+# ------------------------------------------------------------------
+AFI_UPLOAD_GENERALUEBERSICHT_FINAL_FIX_VERSION = "0.463"
+KST_ASSIGNMENT_DEFAULT_FILE = r"G:\BUC\FM Anwendung\Datenbasen\KST_Zuordnungen_AFI\Kontierungszuordnung_Generalübersicht.xlsx"
+KST_ASSIGNMENT_DEFAULT_DIR = KST_ASSIGNMENT_DEFAULT_FILE
+BOOKING_CIRCLE_OPTIONS = ["IDE", "IDG", "IMS", "SABU"]
+SUPPLIER_OPTIONS = ["Automatisch erkennen", "EnBW", "DKV", "VW-Leasing", "VW-Versicherung", "DEAS", "Telekom", "Vodafone", "Bike Leasing", "Sonstige"]
+COST_TYPE_OPTIONS = ["Tanken Strom", "Tanken", "Versicherung", "Leasing", "Bike Leasing", "Mobilfunk/Festnetz", "Sonstige"]
+_AFI_GENERAL_CACHE = {"path":"", "mtime":None, "entries":[], "gl":{}}
+
+
+def _afi463_s(value):
+    value = _clean(value)
+    if re.fullmatch(r"\d+\.0", value):
+        value = value[:-2]
+    return value
+
+
+def _afi463_join(parts):
+    return " ".join(_afi463_s(x) for x in (parts or []) if _afi463_s(x))
+
+
+def _afi463_company_to_bukrs(company):
+    n = _norm(company)
+    if "DIGITAL" in n:
+        return "IDG"
+    if "SABU" in n:
+        return "SABU"
+    if "IMS" in n or "MARKETINGSERVICES" in n:
+        return "IMS"
+    return "IDE"
+
+
+def _afi463_parse_sachkonten(ws):
+    cols = {"IDE": (2, 3), "IDG": (5, 6), "SABU": (8, 9), "IMS": (11, 12)}
+    out = {b: {} for b in cols}
+    for r in range(3, ws.max_row + 1):
+        labels = []
+        for _b, (lcol, _gcol) in cols.items():
+            lab = _afi463_s(ws.cell(r, lcol).value)
+            if lab:
+                labels.append(lab)
+        inferred_label = labels[0] if labels else ""
+        for b, (lcol, gcol) in cols.items():
+            label = _afi463_s(ws.cell(r, lcol).value) or inferred_label
+            gl = _afi463_s(ws.cell(r, gcol).value)
+            if not gl:
+                continue
+            for lab in set([label] + labels):
+                if lab:
+                    out[b][_norm(lab)] = gl
+            # In der gelieferten Datei ist Bike Leasing teilweise nur in einer Organisationsspalte beschriftet.
+            if r >= 12 and gl == "416000":
+                out[b][_norm("Bike Leasing")] = gl
+            if r >= 12 and gl == "154000":
+                out[b][_norm("UST Bike Leasing")] = gl
+    return out
+
+
+def _afi463_make_entry(identifier, last, first, company, kst, ia, kind):
+    identifier = _afi463_s(identifier)
+    last = _afi463_s(last)
+    first = _afi463_s(first)
+    company = _afi463_s(company)
+    kst = _afi463_s(kst)
+    ia = _afi463_s(ia)
+    full_name = _clean(f"{first} {last}") or _clean(f"{last} {first}")
+    bukrs = _afi463_company_to_bukrs(company)
+    return {
+        "identifier": identifier,
+        "identifier_norm": _norm(identifier),
+        "identifier_digits": _digits_only(identifier),
+        "identifier_type": kind,
+        "full_name": full_name,
+        "first": first,
+        "last": last,
+        "name_norm": _norm(full_name),
+        "alt_name_norm": _norm(_clean(f"{last} {first}")),
+        "last_norm": _norm(last),
+        "firma": company,
+        "bukrs": bukrs,
+        "raw": _afi463_join([identifier, full_name, company, kst, ia]),
+        "gl_default": "",
+        "gl_tanken_strom": "",
+        "gl_tanken": "",
+        "gl_versicherung": "",
+        "gl_leasing": "",
+        "gl_bike_leasing": "",
+        "gl_mobilfunk": "",
+        "cc_default": kst,
+        "cc_tanken_strom": kst,
+        "cc_tanken": kst,
+        "cc_versicherung": kst,
+        "cc_leasing": kst,
+        "cc_bike_leasing": kst,
+        "cc_mobilfunk": kst,
+        "orderid": ia,
+    }
+
+
+def _afi463_load_general_overview(path, force=False):
+    try:
+        mtime = os.path.getmtime(path)
+    except Exception as exc:
+        raise RuntimeError("Kontierungszuordnung nicht gefunden: " + str(path)) from exc
+    if (not force and _AFI_GENERAL_CACHE.get("path") == path and
+            _AFI_GENERAL_CACHE.get("mtime") == mtime and _AFI_GENERAL_CACHE.get("entries")):
+        return _AFI_GENERAL_CACHE
+    try:
+        from openpyxl import load_workbook
+        wb = load_workbook(path, data_only=True, read_only=True)
+    except Exception as exc:
+        raise RuntimeError("Kontierungszuordnung konnte nicht gelesen werden: " + str(exc))
+    entries = []
+    if "KFZ" in wb.sheetnames:
+        ws = wb["KFZ"]
+        for r in range(3, ws.max_row + 1):
+            ident = _afi463_s(ws.cell(r, 2).value)
+            if ident and _norm(ident) != "KENNZEICHEN":
+                entries.append(_afi463_make_entry(ident, ws.cell(r, 3).value, ws.cell(r, 4).value, ws.cell(r, 5).value, ws.cell(r, 6).value, ws.cell(r, 7).value, "PLATE"))
+    if "Telefon" in wb.sheetnames:
+        ws = wb["Telefon"]
+        for r in range(3, ws.max_row + 1):
+            ident = _afi463_s(ws.cell(r, 2).value)
+            if ident and _norm(ident) != "RUFNUMMER":
+                entries.append(_afi463_make_entry(ident, ws.cell(r, 3).value, ws.cell(r, 4).value, ws.cell(r, 5).value, ws.cell(r, 6).value, ws.cell(r, 7).value, "PHONE"))
+    gl_map = {}
+    if "Sachkonten" in wb.sheetnames:
+        gl_map = _afi463_parse_sachkonten(wb["Sachkonten"])
+    if not entries:
+        raise RuntimeError("Im Kontierungsdokument wurden keine KFZ-/Telefon-Zuordnungen erkannt.")
+    for e in entries:
+        b = e.get("bukrs") or "IDE"
+        m = gl_map.get(b, {})
+        e["gl_tanken_strom"] = m.get(_norm("Tanken Strom"), "")
+        e["gl_tanken"] = m.get(_norm("DKV"), "") or m.get(_norm("Tanken"), "")
+        e["gl_versicherung"] = m.get(_norm("DEAS"), "") or m.get(_norm("VW-Versicherungen"), "") or m.get(_norm("Versicherung"), "")
+        e["gl_leasing"] = m.get(_norm("VW-Leasing"), "") or m.get(_norm("Leasing"), "")
+        e["gl_bike_leasing"] = m.get(_norm("Bike Leasing"), "")
+        e["gl_mobilfunk"] = m.get(_norm("Telekom"), "") or m.get(_norm("Vodafone"), "")
+        e["gl_default"] = m.get(_norm("Sonstige"), "")
+    _AFI_GENERAL_CACHE.update({"path": path, "mtime": mtime, "entries": entries, "gl": gl_map})
+    return _AFI_GENERAL_CACHE
+
+
+def refresh_assignment_cache(path=None):
+    path = path or KST_ASSIGNMENT_DEFAULT_FILE
+    _AFI_GENERAL_CACHE.update({"path": "", "mtime": None, "entries": [], "gl": {}})
+    return _afi463_load_general_overview(path, force=True)
+
+
+def load_assignment_entries(assignment_path):
+    # Final fuehrend: Generaluebersicht. Fallback nur wenn es definitiv keine Generaluebersicht ist.
+    try:
+        return _afi463_load_general_overview(assignment_path).get("entries", [])
+    except Exception as general_exc:
+        try:
+            return _load_assignment_entries(assignment_path)
+        except Exception:
+            raise general_exc
+
+
+def _cost_type(label):
+    n = _norm(label)
+    if "BIKE" in n and "LEAS" in n:
+        return "BIKE_LEASING"
+    if "TANKENSTROM" in n or ("TANKEN" in n and "STROM" in n):
+        return "TANKEN_STROM"
+    if "TANKEN" in n:
+        return "TANKEN"
+    if "VERSICHER" in n:
+        return "VERSICHERUNG"
+    if "LEAS" in n:
+        return "LEASING"
+    if "MOBIL" in n or "FESTNETZ" in n or "TELEFON" in n or "VODAFONE" in n:
+        return "MOBILFUNK"
+    return "SONSTIGE"
+
+
+def _select_assignment_values(entry, cost_type, text_label=""):
+    if "BLOCKIER" in _norm(text_label):
+        gl = ENBW_BLOCKING_GL_ACCOUNT if 'ENBW_BLOCKING_GL_ACCOUNT' in globals() else (entry.get("gl_tanken_strom") or entry.get("gl_default"))
+    elif cost_type == "BIKE_LEASING":
+        gl = entry.get("gl_bike_leasing") or entry.get("gl_leasing") or entry.get("gl_default")
+    elif cost_type == "TANKEN_STROM":
+        gl = entry.get("gl_tanken_strom") or entry.get("gl_tanken") or entry.get("gl_default")
+    elif cost_type == "TANKEN":
+        gl = entry.get("gl_tanken") or entry.get("gl_default")
+    elif cost_type == "VERSICHERUNG":
+        gl = entry.get("gl_versicherung") or entry.get("gl_default")
+    elif cost_type == "LEASING":
+        gl = entry.get("gl_leasing") or entry.get("gl_default")
+    elif cost_type == "MOBILFUNK":
+        gl = entry.get("gl_mobilfunk") or entry.get("gl_default")
+    else:
+        gl = entry.get("gl_default")
+    if cost_type == "BIKE_LEASING":
+        cc = entry.get("cc_bike_leasing") or entry.get("cc_leasing") or entry.get("cc_default")
+    elif cost_type == "TANKEN_STROM":
+        cc = entry.get("cc_tanken_strom") or entry.get("cc_tanken") or entry.get("cc_default")
+    elif cost_type == "TANKEN":
+        cc = entry.get("cc_tanken") or entry.get("cc_default")
+    elif cost_type == "VERSICHERUNG":
+        cc = entry.get("cc_versicherung") or entry.get("cc_default")
+    elif cost_type == "LEASING":
+        cc = entry.get("cc_leasing") or entry.get("cc_default")
+    elif cost_type == "MOBILFUNK":
+        cc = entry.get("cc_mobilfunk") or entry.get("cc_default")
+    else:
+        cc = entry.get("cc_default")
+    return gl or "", cc or "", entry.get("orderid", "") or ""
+
+
+def _afi463_identifier_kind(value):
+    v = _clean(value)
+    if re.search(r"\d{3,}[/\s-]?\d+", v) and not re.search(r"\b[A-ZÄÖÜ]{1,3}\s*-", v, flags=re.I):
+        return "PHONE"
+    if re.search(r"\b[A-ZÄÖÜ]{1,3}\s*-\s*[A-ZÄÖÜ]{1,3}\s*\d", v, flags=re.I):
+        return "PLATE"
+    return "KEY" if v else ""
+
+
+def resolve_assignment(key, driver, entries):
+    nkey = _norm(key)
+    key_digits = _digits_only(key)
+    key_kind = _afi463_identifier_kind(key)
+    ndriver = _norm(driver)
+    parts = _clean(driver).split()
+    last = _norm(parts[-1]) if parts else ""
+    candidates = []
+    for e in entries:
+        eid = e.get("identifier_norm", "")
+        edig = e.get("identifier_digits", "")
+        if nkey and eid and nkey == eid:
+            candidates.append((220, "Schluessel exakt", e))
+        elif key_kind == "PHONE" and key_digits and edig and key_digits == edig:
+            candidates.append((215, "Telefon exakt", e))
+        elif ndriver and e.get("name_norm") and ndriver == e.get("name_norm"):
+            candidates.append((140, "Name exakt", e))
+        elif ndriver and e.get("alt_name_norm") and ndriver == e.get("alt_name_norm"):
+            candidates.append((135, "Name exakt", e))
+        elif last and last == e.get("last_norm"):
+            candidates.append((75, "Nachname", e))
+    if not candidates:
+        return {}, ""
+    candidates.sort(key=lambda x: x[0], reverse=True)
+    if len(candidates) > 1 and candidates[0][0] == candidates[1][0]:
+        return {}, "mehrdeutig"
+    return candidates[0][2], candidates[0][1]
+
+
+def _afi463_selected_bukrs(self):
+    if hasattr(self, "booking_circle_vars"):
+        return [b for b, v in self.booking_circle_vars.items() if v.get()] or ["IDE"]
+    if hasattr(self, "booking_circle_var"):
+        return [self.booking_circle_var.get() or "IDE"]
+    return ["IDE"]
+
+
+def _afi463_update_export_path(self, force=False):
+    if not hasattr(self, "export_var"):
+        return
+    current = self.export_var.get().strip() if self.export_var.get() else ""
+    bukrs = "-".join(_afi463_selected_bukrs(self))
+    invoice = self.invoice_var.get().strip() if hasattr(self, "invoice_var") else ""
+    cost = self.global_prefix_var.get() if hasattr(self, "global_prefix_var") else "Kosten"
+    try:
+        vendor = _fm_short_vendor(invoice)
+    except Exception:
+        vendor = os.path.splitext(os.path.basename(invoice or "Rechnung"))[0] or "Rechnung"
+    try:
+        base = AFI_EXPORT_DEFAULT_DIR
+    except Exception:
+        base = _desktop_path()
+    today = _fm_dt.datetime.now().strftime("%Y_%m_%d") if '_fm_dt' in globals() else "2026_07_06"
+    filename = f"{_fm_safe_name_part(bukrs)}_{_fm_safe_name_part(vendor)}_{_fm_safe_name_part(cost)}_{today}.csv" if '_fm_safe_name_part' in globals() else f"{bukrs}_{vendor}_{today}.csv"
+    new_path = os.path.join(base, filename)
+    if force or not current or os.path.dirname(current) in ("", _desktop_path()) or current.startswith(base):
+        self.export_var.set(new_path)
+
+# auch aeltere UI-Helfer nutzen diesen Namen
+_fm_update_export_path = _afi463_update_export_path
+
+
+def _afi463_refresh_assignment_ui(self):
+    path = self.template_var.get().strip() if hasattr(self, "template_var") else KST_ASSIGNMENT_DEFAULT_FILE
+    try:
+        data = refresh_assignment_cache(path)
+        msg = f"Zuordnungsdatei geladen: {len(data.get('entries', []))} Zuordnungen im Sitzungs-Cache."
+        if hasattr(self, "assignment_status_var"):
+            self.assignment_status_var.set(msg)
+        elif hasattr(self, "status_var"):
+            self.status_var.set(msg)
+    except Exception as exc:
+        msg = "Zuordnungsdatei nicht verfügbar: " + str(exc)
+        if hasattr(self, "assignment_status_var"):
+            self.assignment_status_var.set(msg)
+        elif hasattr(self, "status_var"):
+            self.status_var.set(msg)
+        try:
+            messagebox.showwarning(MODULE_TITLE, "Kontierungszuordnung nicht gefunden oder nicht lesbar:\n" + str(path) + "\n\n" + str(exc))
+        except Exception:
+            pass
+
+
+def _afi463_current_config(self):
+    b = _afi463_selected_bukrs(self)
+    return {
+        "global_prefix": self.global_prefix_var.get() if hasattr(self, "global_prefix_var") else "Tanken Strom",
+        "sources": [s.get() for s in getattr(self, "sources", [])],
+        "booking_circle": b[0] if b else "IDE",
+        "booking_circles": b,
+        "supplier": self.supplier_var.get() if hasattr(self, "supplier_var") else "Automatisch erkennen",
+    }
+
+
+def _afi463_build_left(self, parent):
+    parent.columnconfigure(1, weight=1)
+    self.template_var = tk.StringVar(value=KST_ASSIGNMENT_DEFAULT_FILE)
+    self.invoice_var = tk.StringVar(value=_fm_downloads_path() if '_fm_downloads_path' in globals() else _desktop_path())
+    self.export_var = tk.StringVar()
+    self.global_prefix_var = tk.StringVar(value="Tanken Strom")
+    self.supplier_var = tk.StringVar(value="Automatisch erkennen")
+    self.booking_circle_vars = {b: tk.BooleanVar(value=(b == "IDE")) for b in BOOKING_CIRCLE_OPTIONS}
+    self.status_var = tk.StringVar(value="Schritt 1: Rechnung und Zuordnung pruefen.")
+    self.suggestion_var = tk.StringVar(value="")
+    self.assignment_status_var = tk.StringVar(value="")
+    _afi463_update_export_path(self, True)
+    tk.Label(parent, text="AFI-Assistent (Wizard)", bg=self.bg, font=("Segoe UI", 12, "bold")).grid(row=0, column=0, columnspan=4, sticky="w")
+    tk.Label(parent, textvariable=self.status_var, bg="#DDE7F3", font=self.font_small, anchor="w").grid(row=1, column=0, columnspan=4, sticky="ew", pady=(4,8))
+    tk.Label(parent, text="Zuordnungsdatei", bg=self.bg, font=self.font_small).grid(row=2, column=0, sticky="w")
+    tk.Entry(parent, textvariable=self.template_var, font=self.font_small).grid(row=2, column=1, sticky="ew", padx=4)
+    tk.Button(parent, text="Wählen", command=lambda: _fm_browse(self, "Zuordnungsdatei", self.template_var, False, "template") if '_fm_browse' in globals() else None, font=self.font_small).grid(row=2, column=2, padx=2)
+    tk.Button(parent, text="Refresh", command=lambda: _afi463_refresh_assignment_ui(self), font=self.font_small).grid(row=2, column=3, padx=2)
+    tk.Label(parent, textvariable=self.assignment_status_var, bg=self.bg, fg="#445364", font=self.font_small).grid(row=3, column=0, columnspan=4, sticky="ew")
+    tk.Label(parent, text="Rechnung", bg=self.bg, font=self.font_small).grid(row=4, column=0, sticky="w")
+    tk.Entry(parent, textvariable=self.invoice_var, font=self.font_small).grid(row=4, column=1, sticky="ew", padx=4)
+    tk.Button(parent, text="Wählen", command=lambda: _fm_browse(self, "Rechnung / Dokument", self.invoice_var, False, "invoice") if '_fm_browse' in globals() else None, font=self.font_small).grid(row=4, column=2, padx=2)
+    tk.Label(parent, text="Buchungskreise", bg=self.bg, font=self.font_small).grid(row=5, column=0, sticky="nw")
+    bc_frame = tk.Frame(parent, bg=self.bg); bc_frame.grid(row=5, column=1, columnspan=3, sticky="ew")
+    for b, var in self.booking_circle_vars.items():
+        tk.Checkbutton(bc_frame, text=b, variable=var, bg=self.bg, font=self.font_small, command=lambda: _afi463_update_export_path(self, True)).pack(side="left", padx=(0,8))
+    tk.Label(parent, text="Lieferant", bg=self.bg, font=self.font_small).grid(row=6, column=0, sticky="w")
+    ttk.Combobox(parent, textvariable=self.supplier_var, values=SUPPLIER_OPTIONS, state="normal", font=self.font_small).grid(row=6, column=1, columnspan=3, sticky="ew", padx=4)
+    tk.Label(parent, text="Kostenbeschreibung", bg=self.bg, font=self.font_small).grid(row=7, column=0, sticky="w")
+    ttk.Combobox(parent, textvariable=self.global_prefix_var, values=COST_TYPE_OPTIONS, state="normal", font=self.font_small).grid(row=7, column=1, columnspan=3, sticky="ew", padx=4)
+    tk.Label(parent, text="Export-CSV", bg=self.bg, font=self.font_small).grid(row=8, column=0, sticky="w")
+    tk.Entry(parent, textvariable=self.export_var, font=self.font_small).grid(row=8, column=1, sticky="ew", padx=4)
+    tk.Button(parent, text="Speichern unter", command=lambda: _fm_browse(self, "Export-CSV", self.export_var, True, "export") if '_fm_browse' in globals() else None, font=self.font_small).grid(row=8, column=2, columnspan=2, sticky="ew")
+    buttons = tk.Frame(parent, bg=self.bg); buttons.grid(row=9, column=0, columnspan=4, sticky="ew", pady=(8,4)); buttons.columnconfigure(5, weight=1)
+    tk.Button(buttons, text="Rechnung analysieren", command=self.analyze_invoice, font=self.font_small).grid(row=0, column=0, padx=(0,4))
+    tk.Button(buttons, text="Ausgewählte zusammenfassen", command=lambda: messagebox.showinfo(MODULE_TITLE, "Manuelle Zusammenfassung ist vorbereitet; die fachliche Standard-Gruppierung erfolgt beim Export."), font=self.font_small).grid(row=0, column=1, padx=(0,4))
+    tk.Button(buttons, text="AFI-Upload-Datei erstellen", command=self.run_export, font=("Segoe UI",10,"bold"), bg="#CFEAD6").grid(row=0, column=6, sticky="e")
+    self.positions_tree = ttk.Treeview(parent, columns=["bukrs","cost","key","driver","amount","tax","gl","cc","ia"], show="headings", height=10)
+    for c,w in [("bukrs",52),("cost",120),("key",110),("driver",150),("amount",80),("tax",50),("gl",80),("cc",90),("ia",80)]:
+        self.positions_tree.heading(c, text=c.upper()); self.positions_tree.column(c, width=w, stretch=False)
+    self.positions_tree.grid(row=10, column=0, columnspan=4, sticky="nsew", pady=(6,0)); parent.rowconfigure(10, weight=1)
+    tk.Label(parent, textvariable=self.suggestion_var, bg=self.bg, fg="#7A4B00", font=self.font_small, wraplength=560, justify="left").grid(row=11, column=0, columnspan=4, sticky="ew", pady=(4,0))
+    try:
+        _afi463_refresh_assignment_ui(self)
+    except Exception:
+        pass
+
+
+def _afi463_populate_positions_tree(self):
+    if not hasattr(self, "positions_tree"):
+        return
+    for item in self.positions_tree.get_children():
+        self.positions_tree.delete(item)
+    try:
+        # schnelle Vorschau auf Basis des erzeugten Exports in temporaerer Datei, um bestehende Parser zu nutzen
+        import tempfile
+        fd, tmp = tempfile.mkstemp(prefix="afi_preview_", suffix=".csv")
+        os.close(fd)
+        res = create_supplier_upload_csv(self.template_var.get().strip(), self.invoice_var.get().strip(), tmp, _afi463_current_config(self))
+        headers, rows = _read_csv(tmp)
+        for row in rows[:500]:
+            self.positions_tree.insert("", "end", values=["", row.get("TEXT",""), "", "", row.get("NET_VALUE",""), row.get("TAX_CODE",""), row.get("GL_ACCOUNT",""), row.get("COSTCENTER",""), row.get("ORDERID","")])
+        self.suggestion_var.set(f"Positionsvorschau erstellt: {res.get('rows', len(rows))} Exportzeilen. Bitte pruefen.")
+    except Exception as exc:
+        self.suggestion_var.set("Positionsvorschau konnte nicht erstellt werden: " + str(exc))
+
+
+def _afi463_analyze_invoice(self):
+    path = self.invoice_var.get().strip()
+    if not os.path.isfile(path):
+        messagebox.showwarning(MODULE_TITLE, "Bitte eine gueltige Rechnung auswaehlen.")
+        return
+    try:
+        self.clear_sources()
+        try:
+            self.load_preview(path)
+        except Exception:
+            pass
+        _afi463_update_export_path(self, True)
+        ext = os.path.splitext(path)[1].lower()
+        if ext == ".pdf":
+            self.headers, self.rows = ["PDF"], []
+            if hasattr(self, 'add_source_btn'):
+                self.add_source_btn.configure(state="disabled")
+        else:
+            self.headers, self.rows = _read_table_file(path)
+            suggestions = suggested_sources(self.headers)
+            self.add_source(suggestions[0])
+            if hasattr(self, 'add_source_btn'):
+                self.add_source_btn.configure(state="normal")
+        _afi463_populate_positions_tree(self)
+        self.status_var.set("Schritt 2: Positionen bearbeiten/pruefen.")
+    except Exception as exc:
+        messagebox.showerror(MODULE_TITLE, str(exc))
+
+
+def _afi463_run_export(self):
+    template_path = self.template_var.get().strip()
+    invoice_path = self.invoice_var.get().strip()
+    _afi463_update_export_path(self, False)
+    export_path = self.export_var.get().strip()
+    if not os.path.isfile(template_path):
+        messagebox.showwarning(MODULE_TITLE, "Bitte ein gueltiges KST-Zuordnungsdokument auswaehlen."); return
+    if not os.path.isfile(invoice_path):
+        messagebox.showwarning(MODULE_TITLE, "Bitte eine gueltige Rechnung auswaehlen."); return
+    if not export_path.lower().endswith(".csv"):
+        export_path += ".csv"; self.export_var.set(export_path)
+    config = _afi463_current_config(self)
+    self.status_var.set("Export laeuft...")
+    def worker():
+        try:
+            result = create_supplier_upload_csv(template_path, invoice_path, export_path, config)
+            def done():
+                self.status_var.set(f"Schritt 3: Export erstellt: {result.get('rows')} Zeilen -> {result.get('export_path')} | Netto: {result.get('export_net_total')}")
+                try:
+                    self.load_export_preview(export_path)
+                    if hasattr(self, 'preview_notebook'):
+                        self.preview_notebook.select(self.export_preview_frame)
+                except Exception:
+                    pass
+                critical = []
+                if result.get("missing_template"):
+                    critical.append("Fehlende/mehrdeutige Zuordnung:\n" + "\n".join(result["missing_template"][:40]))
+                if result.get("unknown_tax"):
+                    critical.append("Nicht eindeutig erkannte Steuersaetze:\n" + "\n".join(result["unknown_tax"][:30]))
+                if result.get("foreign_gross"):
+                    critical.append("Abweichende/auslaendische Steuersaetze als Brutto mit V0 gebucht:\n" + "\n".join(result["foreign_gross"][:30]))
+                if critical:
+                    messagebox.showwarning(MODULE_TITLE, "\n\n".join(critical))
+                try:
+                    self._show_export_done_dialog(result)
+                except Exception:
+                    pass
+            self.app.root.after(0, done)
+        except Exception as exc:
+            self.app.root.after(0, lambda: (self.status_var.set("Fehler beim Export."), messagebox.showerror(MODULE_TITLE, str(exc))))
+    threading.Thread(target=worker, daemon=True).start()
+
+try:
+    SupplierUploadUI._build_left = _afi463_build_left
+    SupplierUploadUI.analyze_invoice = _afi463_analyze_invoice
+    SupplierUploadUI.run_export = _afi463_run_export
+    SupplierUploadUI.refresh_assignment = _afi463_refresh_assignment_ui
+except Exception:
+    pass
+
+
+# ------------------------------------------------------------------
+# AFI_UPLOAD_POSITIONEN_CSV_PREVIEW_MERGE_V0464
+# Datum: 2026-07-06
+# Zweck:
+# - CSV-Auswahlfehler beheben: sources_inner wird wieder aufgebaut.
+# - Rechnungsvorschau bei PDF/DOCX zeigt alle Seiten/Abschnitte untereinander.
+# - Positionsvorschau mit Auswahlkaestchen je Position.
+# - "Ausgewaehlte zusammenfassen" funktional: markierte Positionen werden je Steuercode zusammengefasst.
+# - Saldozeile unterhalb der Positionen: Gesamtbetrag aller Nettobetraege und Summen je Steuercode.
+# ------------------------------------------------------------------
+AFI_UPLOAD_POSITIONEN_CSV_PREVIEW_MERGE_VERSION = "0.464"
+_AFI464_CHECK_OFF = "☐"
+_AFI464_CHECK_ON = "☑"
+
+
+def _afi464_make_sources_area(self, parent, row, columnspan=4):
+    """Stellt die Berechnungsquellen-Flaeche wieder bereit, damit CSV-/Excel-Rechnungen funktionieren."""
+    tk.Label(parent, text="Berechnungsquellen / Spaltenzuordnung", bg=self.bg, font=("Segoe UI", 9, "bold")).grid(row=row, column=0, columnspan=columnspan, sticky="w", pady=(6, 2))
+    toolbar = tk.Frame(parent, bg=self.bg)
+    toolbar.grid(row=row, column=2, columnspan=2, sticky="e", pady=(6, 2))
+    try:
+        self.add_source_btn = tk.Button(toolbar, text="+ Berechnungsquelle", command=self.add_empty_source, font=self.font_small)
+        self.add_source_btn.pack(side="right")
+    except Exception:
+        pass
+    self.sources_canvas = tk.Canvas(parent, bg=self.bg, highlightthickness=0, height=120)
+    self.sources_inner = tk.Frame(self.sources_canvas, bg=self.bg)
+    sources_scroll = ttk.Scrollbar(parent, orient="vertical", command=self.sources_canvas.yview)
+    self.sources_canvas.configure(yscrollcommand=sources_scroll.set)
+    self.sources_canvas.grid(row=row + 1, column=0, columnspan=columnspan - 1, sticky="nsew", pady=(0, 4))
+    sources_scroll.grid(row=row + 1, column=columnspan - 1, sticky="ns", pady=(0, 4))
+    self.sources_window = self.sources_canvas.create_window((0, 0), window=self.sources_inner, anchor="nw")
+    self.sources_canvas.bind("<Configure>", lambda e: self.sources_canvas.itemconfigure(self.sources_window, width=max(100, e.width - 4)))
+    self.sources_inner.bind("<Configure>", lambda e: self.sources_canvas.configure(scrollregion=self.sources_canvas.bbox("all")))
+
+
+def _afi464_build_left(self, parent):
+    parent.columnconfigure(1, weight=1)
+    self.template_var = tk.StringVar(value=KST_ASSIGNMENT_DEFAULT_FILE)
+    self.invoice_var = tk.StringVar(value=_fm_downloads_path() if '_fm_downloads_path' in globals() else _desktop_path())
+    self.export_var = tk.StringVar()
+    self.global_prefix_var = tk.StringVar(value="Tanken Strom")
+    self.supplier_var = tk.StringVar(value="Automatisch erkennen")
+    self.booking_circle_vars = {b: tk.BooleanVar(value=(b == "IDE")) for b in BOOKING_CIRCLE_OPTIONS}
+    self.status_var = tk.StringVar(value="Schritt 1: Rechnung und Zuordnung pruefen.")
+    self.suggestion_var = tk.StringVar(value="")
+    self.assignment_status_var = tk.StringVar(value="")
+    self.position_saldo_var = tk.StringVar(value="Gesamtbetrag aller Nettobeträge: 0,00")
+    self._afi464_position_rows = []
+    self._afi464_selected = set()
+    self._afi464_manual_rows = None
+    _afi463_update_export_path(self, True)
+    tk.Label(parent, text="AFI-Assistent (Wizard)", bg=self.bg, font=("Segoe UI", 12, "bold")).grid(row=0, column=0, columnspan=4, sticky="w")
+    tk.Label(parent, textvariable=self.status_var, bg="#DDE7F3", font=self.font_small, anchor="w").grid(row=1, column=0, columnspan=4, sticky="ew", pady=(4,8))
+    tk.Label(parent, text="Zuordnungsdatei", bg=self.bg, font=self.font_small).grid(row=2, column=0, sticky="w")
+    tk.Entry(parent, textvariable=self.template_var, font=self.font_small).grid(row=2, column=1, sticky="ew", padx=4)
+    tk.Button(parent, text="Wählen", command=lambda: _fm_browse(self, "Zuordnungsdatei", self.template_var, False, "template") if '_fm_browse' in globals() else None, font=self.font_small).grid(row=2, column=2, padx=2)
+    tk.Button(parent, text="Refresh", command=lambda: _afi463_refresh_assignment_ui(self), font=self.font_small).grid(row=2, column=3, padx=2)
+    tk.Label(parent, textvariable=self.assignment_status_var, bg=self.bg, fg="#445364", font=self.font_small).grid(row=3, column=0, columnspan=4, sticky="ew")
+    tk.Label(parent, text="Rechnung", bg=self.bg, font=self.font_small).grid(row=4, column=0, sticky="w")
+    tk.Entry(parent, textvariable=self.invoice_var, font=self.font_small).grid(row=4, column=1, sticky="ew", padx=4)
+    tk.Button(parent, text="Wählen", command=lambda: _fm_browse(self, "Rechnung / Dokument", self.invoice_var, False, "invoice") if '_fm_browse' in globals() else None, font=self.font_small).grid(row=4, column=2, padx=2)
+    tk.Label(parent, text="Buchungskreise", bg=self.bg, font=self.font_small).grid(row=5, column=0, sticky="nw")
+    bc_frame = tk.Frame(parent, bg=self.bg); bc_frame.grid(row=5, column=1, columnspan=3, sticky="ew")
+    for b, var in self.booking_circle_vars.items():
+        tk.Checkbutton(bc_frame, text=b, variable=var, bg=self.bg, font=self.font_small, command=lambda: _afi463_update_export_path(self, True)).pack(side="left", padx=(0,8))
+    tk.Label(parent, text="Lieferant", bg=self.bg, font=self.font_small).grid(row=6, column=0, sticky="w")
+    ttk.Combobox(parent, textvariable=self.supplier_var, values=SUPPLIER_OPTIONS, state="normal", font=self.font_small).grid(row=6, column=1, columnspan=3, sticky="ew", padx=4)
+    tk.Label(parent, text="Kostenbeschreibung", bg=self.bg, font=self.font_small).grid(row=7, column=0, sticky="w")
+    ttk.Combobox(parent, textvariable=self.global_prefix_var, values=COST_TYPE_OPTIONS, state="normal", font=self.font_small).grid(row=7, column=1, columnspan=3, sticky="ew", padx=4)
+    tk.Label(parent, text="Export-CSV", bg=self.bg, font=self.font_small).grid(row=8, column=0, sticky="w")
+    tk.Entry(parent, textvariable=self.export_var, font=self.font_small).grid(row=8, column=1, sticky="ew", padx=4)
+    tk.Button(parent, text="Speichern unter", command=lambda: _fm_browse(self, "Export-CSV", self.export_var, True, "export") if '_fm_browse' in globals() else None, font=self.font_small).grid(row=8, column=2, columnspan=2, sticky="ew")
+    buttons = tk.Frame(parent, bg=self.bg); buttons.grid(row=9, column=0, columnspan=4, sticky="ew", pady=(8,4)); buttons.columnconfigure(5, weight=1)
+    tk.Button(buttons, text="Rechnung analysieren", command=self.analyze_invoice, font=self.font_small).grid(row=0, column=0, padx=(0,4))
+    tk.Button(buttons, text="Ausgewählte zusammenfassen", command=lambda: _afi464_merge_selected_positions(self), font=self.font_small).grid(row=0, column=1, padx=(0,4))
+    tk.Button(buttons, text="AFI-Upload-Datei erstellen", command=self.run_export, font=("Segoe UI",10,"bold"), bg="#CFEAD6").grid(row=0, column=6, sticky="e")
+    self.positions_tree = ttk.Treeview(parent, columns=["sel","text","amount","tax","gl","cc","ia"], show="headings", height=9)
+    for c,t,w in [("sel","",34),("text","POSITION",260),("amount","NETTO",82),("tax","TAX",50),("gl","GL",78),("cc","CC",90),("ia","IA",82)]:
+        self.positions_tree.heading(c, text=t); self.positions_tree.column(c, width=w, stretch=(c=="text"), anchor="center" if c in ("sel","amount","tax") else "w")
+    self.positions_tree.grid(row=10, column=0, columnspan=4, sticky="nsew", pady=(6,0)); parent.rowconfigure(10, weight=1)
+    self.positions_tree.bind("<Button-1>", lambda e: _afi464_toggle_position_checkbox(self, e))
+    tk.Label(parent, textvariable=self.position_saldo_var, bg="#FFF4C2", fg="#182431", font=("Segoe UI", 9, "bold"), anchor="w").grid(row=11, column=0, columnspan=4, sticky="ew", pady=(3,0))
+    tk.Label(parent, textvariable=self.suggestion_var, bg=self.bg, fg="#7A4B00", font=self.font_small, wraplength=560, justify="left").grid(row=12, column=0, columnspan=4, sticky="ew", pady=(4,0))
+    _afi464_make_sources_area(self, parent, 13, 4)
+    parent.rowconfigure(14, weight=0)
+    try:
+        _afi463_refresh_assignment_ui(self)
+    except Exception:
+        pass
+
+
+def _afi464_update_saldo(self):
+    rows = getattr(self, "_afi464_position_rows", []) or []
+    total = Decimal("0.00")
+    by_tax = OrderedDict()
+    for row in rows:
+        amount = _dec(row.get("NET_VALUE") or row.get("PRICE") or row.get("amount") or "0")
+        tax = _clean(row.get("TAX_CODE") or row.get("tax") or "")
+        total += amount
+        by_tax[tax] = by_tax.get(tax, Decimal("0.00")) + amount
+    parts = ["Gesamtbetrag aller Nettobeträge: " + _fmt(total)]
+    label_for_tax = {"V0":"0%", "V2":"7%", "VD":"19%", "VX":"unklar"}
+    for tax, amount in by_tax.items():
+        if tax:
+            parts.append(f"Gesamtbetrag {label_for_tax.get(tax, tax)}: {_fmt(amount)}")
+    try:
+        self.position_saldo_var.set(" | ".join(parts))
+    except Exception:
+        pass
+
+
+def _afi464_tree_index_from_iid(self, iid):
+    try:
+        return int(str(iid).replace("pos_", ""))
+    except Exception:
+        return None
+
+
+def _afi464_toggle_position_checkbox(self, event):
+    try:
+        region = self.positions_tree.identify("region", event.x, event.y)
+        if region != "cell":
+            return
+        col = self.positions_tree.identify_column(event.x)
+        if col != "#1":
+            return
+        iid = self.positions_tree.identify_row(event.y)
+        idx = _afi464_tree_index_from_iid(self, iid)
+        if idx is None:
+            return "break"
+        if idx in self._afi464_selected:
+            self._afi464_selected.remove(idx); mark = _AFI464_CHECK_OFF
+        else:
+            self._afi464_selected.add(idx); mark = _AFI464_CHECK_ON
+        vals = list(self.positions_tree.item(iid, "values"))
+        if vals:
+            vals[0] = mark
+            self.positions_tree.item(iid, values=vals)
+        return "break"
+    except Exception:
+        return None
+
+
+def _afi464_rebuild_positions_tree(self):
+    if not hasattr(self, "positions_tree"):
+        return
+    for item in self.positions_tree.get_children():
+        self.positions_tree.delete(item)
+    rows = getattr(self, "_afi464_position_rows", []) or []
+    selected = getattr(self, "_afi464_selected", set()) or set()
+    for idx, row in enumerate(rows):
+        self.positions_tree.insert("", "end", iid=f"pos_{idx}", values=[
+            _AFI464_CHECK_ON if idx in selected else _AFI464_CHECK_OFF,
+            row.get("TEXT", ""),
+            row.get("NET_VALUE") or row.get("PRICE", ""),
+            row.get("TAX_CODE", ""),
+            row.get("GL_ACCOUNT", ""),
+            row.get("COSTCENTER", ""),
+            row.get("ORDERID", ""),
+        ])
+    _afi464_update_saldo(self)
+
+
+def _afi464_populate_positions_tree(self):
+    self._afi464_manual_rows = None
+    self._afi464_selected = set()
+    try:
+        import tempfile
+        fd, tmp = tempfile.mkstemp(prefix="afi_preview_", suffix=".csv")
+        os.close(fd)
+        res = create_supplier_upload_csv(self.template_var.get().strip(), self.invoice_var.get().strip(), tmp, _afi463_current_config(self))
+        _headers, rows = _read_csv(tmp)
+        self._afi464_position_rows = rows
+        _afi464_rebuild_positions_tree(self)
+        self.suggestion_var.set(f"Positionsvorschau erstellt: {len(rows)} Exportzeilen. Positionen per Kästchen markieren und bei Bedarf zusammenfassen.")
+    except Exception as exc:
+        self._afi464_position_rows = []
+        _afi464_rebuild_positions_tree(self)
+        self.suggestion_var.set("Positionsvorschau konnte nicht erstellt werden: " + str(exc))
+
+
+def _afi464_merge_selected_positions(self):
+    rows = list(getattr(self, "_afi464_position_rows", []) or [])
+    selected = sorted(getattr(self, "_afi464_selected", set()) or set())
+    if len(selected) < 2:
+        try: messagebox.showwarning(MODULE_TITLE, "Bitte mindestens zwei Positionen per Kästchen auswählen.")
+        except Exception: pass
+        return
+    remaining = [row for i, row in enumerate(rows) if i not in selected]
+    buckets = OrderedDict()
+    warnings = []
+    for i in selected:
+        row = rows[i]
+        tax = _clean(row.get("TAX_CODE", ""))
+        key = tax
+        if key not in buckets:
+            new = dict(row)
+            new["TEXT"] = "Zusammenfassung " + _clean(row.get("TEXT", ""))[:90]
+            new["PRICE"] = "0,00"; new["NET_VALUE"] = "0,00"
+            new["_amount"] = Decimal("0.00")
+            buckets[key] = new
+        b = buckets[key]
+        # Pro Steuercode getrennt. Kontierung aus erster Position; Unterschiede werden gewarnt.
+        for fld in ["GL_ACCOUNT", "COSTCENTER", "ORDERID"]:
+            if _clean(b.get(fld,"")) != _clean(row.get(fld,"")):
+                warnings.append(f"{fld} unterschiedlich bei TAX {tax}; Kontierung der ersten markierten Position wurde verwendet.")
+        b["_amount"] += _dec(row.get("NET_VALUE") or row.get("PRICE") or "0")
+    merged = []
+    for b in buckets.values():
+        amount = b.pop("_amount", Decimal("0.00"))
+        b["PRICE"] = _fmt(amount)
+        b["NET_VALUE"] = _fmt(amount)
+        merged.append(b)
+    self._afi464_position_rows = remaining + merged
+    self._afi464_selected = set()
+    self._afi464_manual_rows = list(self._afi464_position_rows)
+    _afi464_rebuild_positions_tree(self)
+    msg = f"{len(selected)} Positionen wurden zu {len(merged)} Position(en) zusammengefasst."
+    if warnings:
+        msg += " Hinweis: " + warnings[0]
+    self.suggestion_var.set(msg)
+
+
+def _afi464_write_manual_rows(export_path, rows):
+    os.makedirs(os.path.dirname(os.path.abspath(export_path)) or ".", exist_ok=True)
+    with open(export_path, "w", encoding="utf-8-sig", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=UPLOAD_COLUMNS, delimiter=";", extrasaction="ignore")
+        writer.writeheader()
+        for row in rows:
+            out = {c: row.get(c, "") for c in UPLOAD_COLUMNS}
+            writer.writerow(out)
+    total = sum((_dec(r.get("NET_VALUE") or r.get("PRICE") or "0") for r in rows), Decimal("0.00"))
+    return {"rows": len(rows), "export_path": export_path, "invoice_net_raw_total": _fmt(total), "export_net_total": _fmt(total), "net_rounding_difference": _fmt(Decimal("0.00")), "unique_drivers": 0, "unique_keys": 0, "missing_template": [], "unknown_tax": [], "empty_assignment": [], "name_fallback_matches": [], "rounding_adjustments": []}
+
+
+def _afi464_analyze_invoice(self):
+    path = self.invoice_var.get().strip()
+    if not os.path.isfile(path):
+        messagebox.showwarning(MODULE_TITLE, "Bitte eine gueltige Rechnung auswaehlen.")
+        return
+    try:
+        if not hasattr(self, "sources_inner"):
+            # Falls ein aelterer Build ohne Quellenbereich aktiv war, wird der Bereich unsichtbar nachgezogen.
+            self.sources_inner = tk.Frame(self.app.root if hasattr(self, 'app') else None, bg=self.bg)
+        self.clear_sources()
+        try:
+            self.load_preview(path)
+        except Exception:
+            pass
+        _afi463_update_export_path(self, True)
+        ext = os.path.splitext(path)[1].lower()
+        if ext == ".pdf":
+            self.headers, self.rows = ["PDF"], []
+            try:
+                if hasattr(self, 'add_source_btn'): self.add_source_btn.configure(state="disabled")
+            except Exception: pass
+        else:
+            self.headers, self.rows = _read_table_file(path)
+            suggestions = suggested_sources(self.headers)
+            self.add_source(suggestions[0])
+            try:
+                if hasattr(self, 'add_source_btn'): self.add_source_btn.configure(state="normal")
+            except Exception: pass
+        _afi464_populate_positions_tree(self)
+        self.status_var.set("Schritt 2: Positionen bearbeiten/pruefen.")
+    except Exception as exc:
+        messagebox.showerror(MODULE_TITLE, str(exc))
+
+
+def _afi464_run_export(self):
+    template_path = self.template_var.get().strip()
+    invoice_path = self.invoice_var.get().strip()
+    _afi463_update_export_path(self, False)
+    export_path = self.export_var.get().strip()
+    if not os.path.isfile(template_path):
+        messagebox.showwarning(MODULE_TITLE, "Bitte ein gueltiges KST-Zuordnungsdokument auswaehlen."); return
+    if not os.path.isfile(invoice_path):
+        messagebox.showwarning(MODULE_TITLE, "Bitte eine gueltige Rechnung auswaehlen."); return
+    if not export_path.lower().endswith(".csv"):
+        export_path += ".csv"; self.export_var.set(export_path)
+    config = _afi463_current_config(self)
+    manual_rows = list(getattr(self, "_afi464_manual_rows", []) or [])
+    self.status_var.set("Export laeuft...")
+    def worker():
+        try:
+            if manual_rows:
+                result = _afi464_write_manual_rows(export_path, manual_rows)
+            else:
+                result = create_supplier_upload_csv(template_path, invoice_path, export_path, config)
+            def done():
+                self.status_var.set(f"Schritt 3: Export erstellt: {result.get('rows')} Zeilen -> {result.get('export_path')} | Netto: {result.get('export_net_total')}")
+                try:
+                    self.load_export_preview(export_path)
+                    if hasattr(self, 'preview_notebook'):
+                        self.preview_notebook.select(self.export_preview_frame)
+                except Exception:
+                    pass
+                critical = []
+                if result.get("missing_template"):
+                    critical.append("Fehlende/mehrdeutige Zuordnung:\n" + "\n".join(result["missing_template"][:40]))
+                if result.get("unknown_tax"):
+                    critical.append("Nicht eindeutig erkannte Steuersaetze:\n" + "\n".join(result["unknown_tax"][:30]))
+                if critical:
+                    messagebox.showwarning(MODULE_TITLE, "\n\n".join(critical))
+                try:
+                    self._show_export_done_dialog(result)
+                except Exception:
+                    pass
+            self.app.root.after(0, done)
+        except Exception as exc:
+            self.app.root.after(0, lambda: (self.status_var.set("Fehler beim Export."), messagebox.showerror(MODULE_TITLE, str(exc))))
+    threading.Thread(target=worker, daemon=True).start()
+
+
+def _afi464_extract_pdf_pages(path):
+    pages = []
+    try:
+        import PyPDF2
+        with open(path, "rb") as f:
+            reader = PyPDF2.PdfReader(f)
+            for page in reader.pages:
+                pages.append(page.extract_text() or "")
+    except Exception:
+        try:
+            import fitz
+            doc = fitz.open(path)
+            pages = [page.get_text("text") for page in doc]
+            doc.close()
+        except Exception as exc:
+            pages = ["PDF-Text konnte nicht extrahiert werden: " + str(exc)]
+    return pages or [""]
+
+
+def _afi464_text_preview_image(title, pages):
+    if Image is None:
+        return None
+    page_w, page_h = 820, 1040
+    gap = 28
+    total_h = max(page_h, len(pages) * (page_h + gap) + gap)
+    img = Image.new("RGB", (page_w + 60, total_h), "white")
+    draw = ImageDraw.Draw(img)
+    y = gap
+    for idx, text in enumerate(pages, 1):
+        draw.rectangle((30, y, page_w + 30, y + page_h), outline="#B0B0B0", width=2, fill="#FFFFFF")
+        draw.text((50, y + 22), f"{title} - Seite {idx}", fill="#1F4E79")
+        ty = y + 62
+        for line in (text or "").splitlines()[:52]:
+            draw.text((50, ty), line[:120], fill="black")
+            ty += 18
+        y += page_h + gap
+    return img
+
+
+def _afi464_load_image_preview(self, path):
+    if Image is None or ImageTk is None:
+        tk.Label(self.preview_frame, text="Vorschau nicht verfügbar (Pillow nicht geladen).", bg="white").pack(fill="both", expand=True)
+        return
+    ext = os.path.splitext(path)[1].lower()
+    try:
+        if ext == ".pdf":
+            pages = _afi464_extract_pdf_pages(path)
+            img = _afi464_text_preview_image(os.path.basename(path), pages)
+        elif ext == ".docx":
+            try:
+                import docx
+                doc = docx.Document(path)
+                text = "\n".join(p.text for p in doc.paragraphs)
+            except Exception as exc:
+                text = "Word-Text konnte nicht extrahiert werden: " + str(exc)
+            chunks = [text[i:i+3500] for i in range(0, len(text), 3500)] or [text]
+            img = _afi464_text_preview_image(os.path.basename(path), chunks)
+        else:
+            return SupplierUploadUI.load_image_preview_before_v0464(self, path) if hasattr(SupplierUploadUI, 'load_image_preview_before_v0464') else None
+        self.preview_base_image = img
+        self.preview_zoom = 1.0
+        self.preview_offset = [0, 0]
+        self.preview_canvas = tk.Canvas(self.preview_frame, bg="white", highlightthickness=0)
+        self.preview_canvas.place(relx=0, rely=0, relwidth=1, relheight=1)
+        def on_wheel(event):
+            # Ctrl+Mausrad zoomt; normales Mausrad scrollt vertikal durch alle Seiten.
+            if event.state & 0x0004:
+                factor = 1.1 if event.delta > 0 else 0.9
+                self.preview_zoom = max(0.25, min(4.0, self.preview_zoom * factor))
+            else:
+                self.preview_offset[1] += 80 if event.delta > 0 else -80
+            self._render_preview_image()
+            return "break"
+        def on_press(event):
+            self.preview_drag_start = (event.x, event.y, self.preview_offset[0], self.preview_offset[1]); return "break"
+        def on_drag(event):
+            if self.preview_drag_start:
+                sx, sy, ox, oy = self.preview_drag_start
+                self.preview_offset = [ox + event.x - sx, oy + event.y - sy]
+                self._render_preview_image()
+            return "break"
+        self.preview_canvas.bind("<Configure>", lambda e: self._render_preview_image())
+        self.preview_canvas.bind("<MouseWheel>", on_wheel)
+        self.preview_canvas.bind("<ButtonPress-1>", on_press)
+        self.preview_canvas.bind("<B1-Motion>", on_drag)
+        self._render_preview_image()
+    except Exception as exc:
+        tk.Label(self.preview_frame, text=f"Vorschaufehler: {exc}", bg="white", fg="red").pack(fill="both", expand=True)
+
+try:
+    SupplierUploadUI._build_left = _afi464_build_left
+    SupplierUploadUI.analyze_invoice = _afi464_analyze_invoice
+    SupplierUploadUI.run_export = _afi464_run_export
+    if not hasattr(SupplierUploadUI, 'load_image_preview_before_v0464'):
+        SupplierUploadUI.load_image_preview_before_v0464 = SupplierUploadUI.load_image_preview
+    SupplierUploadUI.load_image_preview = _afi464_load_image_preview
+except Exception:
+    pass
+
+
+# ------------------------------------------------------------------
+# AFI_UPLOAD_ENBW_DYNAMIC_PREVIEW_SPLITTER_V0465
+# Datum: 2026-07-06
+# Zweck:
+# - EnBW-Rechnungen: beim Analysieren automatisch 3 Berechnungsquellen anlegen:
+#   Blockiergebuehr Netto pro Person, Energiekosten Netto pro Person, Grundgebuehren Netto pro Person.
+# - Positionsvorschau aktualisiert sich dynamisch nach Hinzufuegen/Aendern/Loeschen von Berechnungsquellen.
+# - Quellen koennen geloescht werden.
+# - Verschiebelinie zwischen Positionsvorschau und Berechnungsquellen passt die Hoehe beider Bereiche an.
+# - Tabellarische Rechnungsvorschau zeigt alle Zeilen und erlaubt Spalten per Klick auf die Ueberschrift als Berechnungsquelle hinzuzufuegen.
+# - PDF-Vorschau rendert, wenn moeglich, alle Seiten vollstaendig untereinander mit Seiten-Shortcuts.
+# ------------------------------------------------------------------
+AFI_UPLOAD_ENBW_DYNAMIC_PREVIEW_SPLITTER_VERSION = "0.465"
+
+_AFI465_ENBW_SOURCE_DEFS = [
+    ("Blockiergebühr Netto pro Person", ["Blockiergebühr", "Blockiergebuehr", "Blockier", "Blocking"], "Blockiergebühr"),
+    ("Energiekosten Netto pro Person", ["Energiekosten", "Energie", "Ladekosten", "Charging", "Strom"], "Energiekosten"),
+    ("Grundgebühren Netto pro Person", ["Grundgebühr", "Grundgebuehr", "Grundkosten", "Grundpreis", "Basic fee"], "Grundgebühr"),
+]
+
+
+def _afi465_is_enbw(self=None, invoice_path="", supplier=""):
+    try:
+        supplier = supplier or (self.supplier_var.get() if self and hasattr(self, 'supplier_var') else "")
+    except Exception:
+        supplier = supplier or ""
+    n = _norm(str(supplier) + " " + os.path.basename(invoice_path or ""))
+    return "ENBW" in n
+
+
+def _afi465_find_column(headers, keywords, must_net=True):
+    best = (0, "")
+    for h in headers or []:
+        nh = _norm(h)
+        score = 0
+        for kw in keywords:
+            if _norm(kw) in nh:
+                score += 20
+        if must_net and any(x in nh for x in ["NETTO", "NET", "NETAMOUNT", "NETVALUE"]):
+            score += 8
+        if any(x in nh for x in ["BRUTTO", "GROSS", "MWST", "UST", "TAX", "STEUER"]):
+            score -= 8
+        if score > best[0]:
+            best = (score, h)
+    return best[1] if best[0] > 0 else ""
+
+
+def _afi465_guess_identifier_columns(headers):
+    guessed = guess_columns(headers)
+    return guessed
+
+
+def _afi465_make_enbw_source(label, keywords, cost_desc, headers):
+    guessed = _afi465_guess_identifier_columns(headers)
+    net_col = _afi465_find_column(headers, keywords, must_net=True)
+    return {
+        "active": True,
+        "label": label,
+        "cost_description": cost_desc,
+        "net": net_col,
+        "tax_mode": "manual",
+        "vat_amount": guessed.get("vat_amount", ""),
+        "gross": guessed.get("gross", ""),
+        "manual_rate": "19",
+        "name_mode": "full",
+        "full_name": guessed.get("full_name", ""),
+        "first": guessed.get("first", ""),
+        "last": guessed.get("last", ""),
+        "key": guessed.get("key", ""),
+    }
+
+
+def _afi465_source_get(self):
+    out = {}
+    for k, var in self.vars.items():
+        out[k] = var.get()
+    out["label"] = self.initial.get("label") or out.get("net") or f"Berechnungsquelle {self.idx}"
+    if self.initial.get("cost_description"):
+        out["cost_description"] = self.initial.get("cost_description")
+    return out
+
+try:
+    SourceRow.get = _afi465_source_get
+except Exception:
+    pass
+
+
+def _afi465_schedule_positions_refresh(self, delay=350):
+    try:
+        old = getattr(self, "_afi465_refresh_after_id", None)
+        if old:
+            try: self.app.root.after_cancel(old)
+            except Exception: pass
+        self._afi465_refresh_after_id = self.app.root.after(delay, lambda: _afi464_populate_positions_tree(self))
+    except Exception:
+        try: _afi464_populate_positions_tree(self)
+        except Exception: pass
+
+
+def _afi465_on_mapping_changed(self):
+    try: _afi463_update_export_path(self, True)
+    except Exception: pass
+    try: self.update_footer()
+    except Exception: pass
+    try: self.update_highlight()
+    except Exception: pass
+    _afi465_schedule_positions_refresh(self)
+
+
+def _afi465_add_source(self, data=None):
+    if not hasattr(self, 'sources_inner'):
+        return
+    row = SourceRow(self.sources_inner, self, len(getattr(self, 'sources', [])) + 1, self.headers, data)
+    row.grid(row=len(self.sources), column=0, sticky="ew", padx=2, pady=4)
+    try:
+        row.frame.columnconfigure(6, weight=0)
+        tk.Button(row.frame, text="Löschen", command=lambda r=row: _afi465_delete_source(self, r), font=self.font_small).grid(row=0, column=6, sticky="ne", padx=5, pady=3)
+    except Exception:
+        pass
+    self.sources_inner.columnconfigure(0, weight=1)
+    self.sources.append(row)
+    try:
+        self.on_mapping_changed()
+    except Exception:
+        pass
+
+
+def _afi465_delete_source(self, row):
+    try:
+        row.destroy()
+    except Exception:
+        pass
+    try:
+        self.sources = [s for s in self.sources if s is not row]
+        for idx, src in enumerate(self.sources, 1):
+            src.idx = idx
+            try: src.frame.configure(text=f"Berechnungsquelle {idx}")
+            except Exception: pass
+            src.frame.grid_configure(row=idx-1)
+    except Exception:
+        pass
+    _afi465_schedule_positions_refresh(self, delay=50)
+
+
+def _afi465_add_empty_source(self):
+    self.add_source(default_source(len(getattr(self, 'sources', [])) + 1, self.headers))
+
+try:
+    SupplierUploadUI.on_mapping_changed = _afi465_on_mapping_changed
+    SupplierUploadUI.add_source = _afi465_add_source
+    SupplierUploadUI.add_empty_source = _afi465_add_empty_source
+except Exception:
+    pass
+
+
+def _afi465_make_drag_splitter(self, parent, row):
+    self._afi465_positions_height = getattr(self, '_afi465_positions_height', 9)
+    self._afi465_sources_height = getattr(self, '_afi465_sources_height', 120)
+    bar = tk.Frame(parent, bg="#91A3B5", height=6, cursor="sb_v_double_arrow")
+    bar.grid(row=row, column=0, columnspan=4, sticky="ew", pady=(4,4))
+    def press(event):
+        self._afi465_split_start_y = event.y_root
+        self._afi465_split_start_pos = int(self.positions_tree.cget('height')) if hasattr(self, 'positions_tree') else 9
+        self._afi465_split_start_src = int(self.sources_canvas.cget('height')) if hasattr(self, 'sources_canvas') else 120
+    def drag(event):
+        dy = event.y_root - getattr(self, '_afi465_split_start_y', event.y_root)
+        pos_h = max(4, min(20, getattr(self, '_afi465_split_start_pos', 9) + int(dy / 20)))
+        src_h = max(70, min(360, getattr(self, '_afi465_split_start_src', 120) - dy))
+        try: self.positions_tree.configure(height=pos_h)
+        except Exception: pass
+        try: self.sources_canvas.configure(height=src_h)
+        except Exception: pass
+    bar.bind("<ButtonPress-1>", press)
+    bar.bind("<B1-Motion>", drag)
+    return bar
+
+
+def _afi465_build_left(self, parent):
+    # Erst v0.464-Struktur nutzen, danach Verschiebelinie/Quellenbereich neu anordnen.
+    _afi464_build_left(self, parent)
+    try:
+        # Die v0.464-Quellenarea liegt ab Zeile 13. Wir ergaenzen eine sichtbare Verschiebelinie in Zeile 13
+        # und verschieben den Quellenbereich optisch darunter, soweit Tk dies zulaesst.
+        _afi465_make_drag_splitter(self, parent, 13)
+        try: self.sources_canvas.grid_configure(row=15)
+        except Exception: pass
+        try: self.sources_window
+        except Exception: pass
+        for child in parent.grid_slaves(row=13):
+            # Label aus v0.464 nicht zerstoeren, Splitter bleibt sichtbar.
+            pass
+    except Exception:
+        pass
+
+try:
+    SupplierUploadUI._build_left = _afi465_build_left
+except Exception:
+    pass
+
+
+def _afi465_table_add_source_from_column(self, col):
+    col = _clean(col)
+    if not col:
+        return
+    if not hasattr(self, 'headers') or not self.headers:
+        self.headers = list(getattr(self, 'preview_headers', []) or [])
+    data = default_source(len(getattr(self, 'sources', [])) + 1, self.headers)
+    data["net"] = col
+    data["label"] = col
+    data["cost_description"] = self.global_prefix_var.get() if hasattr(self, 'global_prefix_var') else col
+    try:
+        self.add_source(data)
+        self.suggestion_var.set(f"Spalte '{col}' als Berechnungsquelle hinzugefügt.")
+    except Exception as exc:
+        try: messagebox.showwarning(MODULE_TITLE, "Berechnungsquelle konnte nicht hinzugefügt werden:\n" + str(exc))
+        except Exception: pass
+
+
+def _afi465_load_table_preview(self, path, headers=None, rows=None):
+    try:
+        if headers is None or rows is None:
+            headers, rows = _read_table_file(path)
+            self.preview_headers = headers
+            self.preview_rows = rows
+        headers = self._filtered_preview_headers(headers, rows)
+    except Exception as exc:
+        tk.Label(self.preview_frame, text=str(exc), bg="white", fg="red").pack(fill="both", expand=True)
+        return
+    holder = tk.Frame(self.preview_frame, bg="white")
+    holder.place(relx=0, rely=0, relwidth=1, relheight=1)
+    holder.rowconfigure(1, weight=1)
+    holder.columnconfigure(0, weight=1)
+    hint = tk.Label(holder, text="Tipp: Spaltenüberschrift anklicken, um die Spalte als Berechnungsquelle hinzuzufügen.", bg="#FFF4C2", anchor="w", font=self.font_small)
+    hint.grid(row=0, column=0, columnspan=2, sticky="ew")
+    style = ttk.Style(holder)
+    try:
+        style.configure("AfiPreview.Treeview", font=("Segoe UI", self.table_font_size), rowheight=max(18, self.table_font_size + 10))
+        style.configure("AfiPreview.Treeview.Heading", font=("Segoe UI", self.table_font_size, "bold"))
+    except Exception:
+        pass
+    tree = ttk.Treeview(holder, columns=headers, show="headings", style="AfiPreview.Treeview")
+    vs = ttk.Scrollbar(holder, orient="vertical", command=tree.yview)
+    hs = ttk.Scrollbar(holder, orient="horizontal", command=tree.xview)
+    tree.configure(yscrollcommand=vs.set, xscrollcommand=hs.set)
+    tree.grid(row=1, column=0, sticky="nsew")
+    vs.grid(row=1, column=1, sticky="ns")
+    hs.grid(row=2, column=0, sticky="ew")
+    for h in headers:
+        tree.heading(h, text=h)
+        tree.column(h, width=max(90, min(260, len(h) * 8)), stretch=False)
+    # Komplettes tabellarisches Dokument anzeigen, nicht mehr auf 500 Zeilen begrenzen.
+    for row in rows:
+        tree.insert("", "end", values=[_clean(row.get(h, "")) for h in headers])
+    self.preview_tree = tree
+    def on_click(event):
+        try:
+            if tree.identify_region(event.x, event.y) == "heading":
+                colid = tree.identify_column(event.x)
+                idx = int(colid.replace('#','')) - 1
+                if 0 <= idx < len(headers):
+                    _afi465_table_add_source_from_column(self, headers[idx])
+                    return "break"
+        except Exception:
+            pass
+        return None
+    def on_select(event=None):
+        item = tree.focus()
+        if not item: return
+        vals = tree.item(item, "values")
+        self.selected_cell = "\t".join(str(v) for v in vals)
+    def copy(event=None):
+        holder.clipboard_clear(); holder.clipboard_append(self.selected_cell); return "break"
+    def wheel(event):
+        delta = -1 if event.delta > 0 else 1
+        if event.state & 0x0004:
+            self.table_font_size = max(7, min(16, self.table_font_size + (-delta)))
+            try:
+                style.configure("AfiPreview.Treeview", font=("Segoe UI", self.table_font_size), rowheight=max(18, self.table_font_size + 10))
+                style.configure("AfiPreview.Treeview.Heading", font=("Segoe UI", self.table_font_size, "bold"))
+            except Exception: pass
+        elif event.state & 0x0001:
+            tree.xview_scroll(delta * 3, "units")
+        else:
+            tree.yview_scroll(delta * 3, "units")
+        return "break"
+    tree.bind("<Button-1>", on_click)
+    tree.bind("<<TreeviewSelect>>", on_select)
+    tree.bind("<Control-c>", copy)
+    tree.bind("<MouseWheel>", wheel)
+    self.update_highlight()
+
+try:
+    SupplierUploadUI.load_table_preview = _afi465_load_table_preview
+except Exception:
+    pass
+
+
+def _afi465_analyze_invoice(self):
+    path = self.invoice_var.get().strip()
+    if not os.path.isfile(path):
+        messagebox.showwarning(MODULE_TITLE, "Bitte eine gueltige Rechnung auswaehlen.")
+        return
+    try:
+        if not hasattr(self, 'sources_inner'):
+            self.sources_inner = tk.Frame(self.app.root if hasattr(self, 'app') else None, bg=self.bg)
+        self.clear_sources()
+        try: self.load_preview(path)
+        except Exception: pass
+        _afi463_update_export_path(self, True)
+        ext = os.path.splitext(path)[1].lower()
+        if ext == ".pdf":
+            self.headers, self.rows = ["PDF"], []
+            try:
+                if hasattr(self, 'add_source_btn'): self.add_source_btn.configure(state="disabled")
+            except Exception: pass
+        else:
+            self.headers, self.rows = _read_table_file(path)
+            if _afi465_is_enbw(self, path, self.supplier_var.get() if hasattr(self, 'supplier_var') else ""):
+                for label, keywords, cost_desc in _AFI465_ENBW_SOURCE_DEFS:
+                    self.add_source(_afi465_make_enbw_source(label, keywords, cost_desc, self.headers))
+                self.suggestion_var.set("EnBW erkannt: Blockiergebühr, Energiekosten und Grundgebühren wurden als Berechnungsquellen vorbereitet.")
+            else:
+                suggestions = suggested_sources(self.headers)
+                self.add_source(suggestions[0])
+            try:
+                if hasattr(self, 'add_source_btn'): self.add_source_btn.configure(state="normal")
+            except Exception: pass
+        _afi464_populate_positions_tree(self)
+        self.status_var.set("Schritt 2: Positionen bearbeiten/pruefen.")
+    except Exception as exc:
+        messagebox.showerror(MODULE_TITLE, str(exc))
+
+try:
+    SupplierUploadUI.analyze_invoice = _afi465_analyze_invoice
+except Exception:
+    pass
+
+# PDF-Rendering: falls PyMuPDF verfuegbar ist, ganze Seiten statt Textauszug untereinander rendern.
+def _afi465_render_pdf_pages_image(path):
+    if Image is None:
+        return None, []
+    try:
+        import fitz
+        doc = fitz.open(path)
+        pil_pages = []
+        offsets = []
+        max_w = 1
+        total_h = 24
+        for page in doc:
+            pix = page.get_pixmap(matrix=fitz.Matrix(1.25, 1.25), alpha=False)
+            img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
+            pil_pages.append(img)
+            max_w = max(max_w, img.width)
+            offsets.append(total_h)
+            total_h += img.height + 36
+        doc.close()
+        canvas = Image.new("RGB", (max_w + 80, max(600, total_h)), "#F2F4F7")
+        y = 24
+        draw = ImageDraw.Draw(canvas)
+        for i, img in enumerate(pil_pages, 1):
+            x = (canvas.width - img.width) // 2
+            draw.text((x, y - 18), f"Seite {i}", fill="#1F4E79")
+            canvas.paste(img, (x, y))
+            draw.rectangle((x, y, x + img.width, y + img.height), outline="#B0B0B0", width=2)
+            y += img.height + 36
+        return canvas, offsets
+    except Exception:
+        return None, []
+
+
+def _afi465_load_image_preview(self, path):
+    if Image is None or ImageTk is None:
+        tk.Label(self.preview_frame, text="Vorschau nicht verfügbar (Pillow nicht geladen).", bg="white").pack(fill="both", expand=True)
+        return
+    ext = os.path.splitext(path)[1].lower()
+    try:
+        if ext == ".pdf":
+            img, offsets = _afi465_render_pdf_pages_image(path)
+            if img is None:
+                pages = _afi464_extract_pdf_pages(path) if '_afi464_extract_pdf_pages' in globals() else [_extract_pdf_text(path)]
+                img = _afi464_text_preview_image(os.path.basename(path), pages) if '_afi464_text_preview_image' in globals() else None
+                offsets = [28 + i * 1068 for i in range(len(pages))]
+        else:
+            return _afi464_load_image_preview(self, path) if '_afi464_load_image_preview' in globals() else SupplierUploadUI.load_image_preview_before_v0464(self, path)
+        self.preview_base_image = img
+        self.preview_page_offsets = offsets or [0]
+        self.preview_zoom = 1.0
+        self.preview_offset = [0, 0]
+        # Shortcut-Leiste + Canvas
+        top = tk.Frame(self.preview_frame, bg="#DDE7F3")
+        top.place(relx=0, rely=0, relwidth=1, height=28)
+        for idx, off in enumerate(self.preview_page_offsets, 1):
+            if idx > 30:
+                break
+            tk.Button(top, text=f"S.{idx}", font=("Segoe UI", 8), command=lambda o=off: (self.preview_offset.__setitem__(1, -int(o * self.preview_zoom)), self._render_preview_image())).pack(side="left", padx=1, pady=2)
+        self.preview_canvas = tk.Canvas(self.preview_frame, bg="white", highlightthickness=0)
+        self.preview_canvas.place(relx=0, y=28, relwidth=1, relheight=1, height=-28)
+        def on_wheel(event):
+            if event.state & 0x0004:
+                factor = 1.1 if event.delta > 0 else 0.9
+                self.preview_zoom = max(0.25, min(4.0, self.preview_zoom * factor))
+            else:
+                self.preview_offset[1] += 90 if event.delta > 0 else -90
+            self._render_preview_image(); return "break"
+        def on_press(event):
+            self.preview_drag_start = (event.x, event.y, self.preview_offset[0], self.preview_offset[1]); return "break"
+        def on_drag(event):
+            if self.preview_drag_start:
+                sx, sy, ox, oy = self.preview_drag_start
+                self.preview_offset = [ox + event.x - sx, oy + event.y - sy]
+                self._render_preview_image()
+            return "break"
+        self.preview_canvas.bind("<Configure>", lambda e: self._render_preview_image())
+        self.preview_canvas.bind("<MouseWheel>", on_wheel)
+        self.preview_canvas.bind("<ButtonPress-1>", on_press)
+        self.preview_canvas.bind("<B1-Motion>", on_drag)
+        self._render_preview_image()
+    except Exception as exc:
+        tk.Label(self.preview_frame, text=f"Vorschaufehler: {exc}", bg="white", fg="red").pack(fill="both", expand=True)
+
+try:
+    SupplierUploadUI.load_image_preview = _afi465_load_image_preview
+except Exception:
+    pass
+
+
+# ------------------------------------------------------------------
+# AFI_UPLOAD_QUELLEN_LAYOUT_ENBW_FIX_V0466
+# Datum: 2026-07-06
+# Zweck:
+# - Verschiebelinie oberhalb des Bereichs "Berechnungsquellen / Spaltenzuordnung" positionieren,
+#   damit sie nicht mehr ueber dem Button "+ Berechnungsquelle" liegt.
+# - Berechnungsquellen-Scrollbereich beginnt unterhalb des Buttons und fuellt den verfuegbaren unteren Bereich.
+# - EnBW-Quellen werden sicher automatisch angelegt, wenn Lieferant/Dateiname/Header auf EnBW hindeuten.
+# - Berechnungsquellen-Bloecke optisch klarer vom Hintergrund abheben.
+# ------------------------------------------------------------------
+AFI_UPLOAD_QUELLEN_LAYOUT_ENBW_FIX_VERSION = "0.466"
+_AFI466_SOURCE_BG = "#F8FAFC"
+_AFI466_SOURCE_BORDER = "#91A3B5"
+
+
+def _afi466_headers_indicate_enbw(headers):
+    joined = _norm(" ".join(str(h or "") for h in (headers or [])))
+    keys = ["BLOCKIER", "GRUNDGEBUEHR", "GRUNDGEBUHR", "GRUNDKOST", "ENERGIEKOST", "LADEKOST", "ENBW"]
+    return any(k in joined for k in keys)
+
+
+def _afi466_is_enbw(self=None, invoice_path="", supplier="", headers=None):
+    try:
+        supplier = supplier or (self.supplier_var.get() if self and hasattr(self, 'supplier_var') else "")
+    except Exception:
+        supplier = supplier or ""
+    n = _norm(str(supplier) + " " + os.path.basename(invoice_path or ""))
+    return "ENBW" in n or _afi466_headers_indicate_enbw(headers)
+
+
+def _afi466_style_source_row(row):
+    try:
+        row.frame.configure(bg=_AFI466_SOURCE_BG, relief="solid", bd=1, highlightthickness=1, highlightbackground=_AFI466_SOURCE_BORDER)
+    except Exception:
+        pass
+    try:
+        for child in row.frame.winfo_children():
+            cls = child.winfo_class()
+            if cls in ("Label", "Checkbutton", "Radiobutton", "Frame", "Labelframe"):
+                try: child.configure(bg=_AFI466_SOURCE_BG)
+                except Exception: pass
+            if cls == "Label":
+                try: child.configure(fg="#182431")
+                except Exception: pass
+    except Exception:
+        pass
+
+
+def _afi466_add_source(self, data=None):
+    if not hasattr(self, 'sources_inner'):
+        return
+    row = SourceRow(self.sources_inner, self, len(getattr(self, 'sources', [])) + 1, self.headers, data)
+    _afi466_style_source_row(row)
+    row.grid(row=len(self.sources), column=0, sticky="ew", padx=4, pady=6)
+    try:
+        row.frame.columnconfigure(6, weight=0)
+        del_btn = tk.Button(row.frame, text="Löschen", command=lambda r=row: _afi465_delete_source(self, r), font=self.font_small, bg="#FEE2E2", activebackground="#FECACA", relief="solid", bd=1)
+        del_btn.grid(row=0, column=6, sticky="ne", padx=7, pady=5)
+    except Exception:
+        pass
+    self.sources_inner.columnconfigure(0, weight=1)
+    self.sources.append(row)
+    try:
+        self.on_mapping_changed()
+    except Exception:
+        pass
+
+
+def _afi466_make_sources_area(self, parent, header_row=13, canvas_row=14, columnspan=4):
+    """Quellenbereich: Button/Beschriftung oben, Scrollbereich darunter bis zum unteren Rand."""
+    header = tk.Frame(parent, bg=self.bg)
+    header.grid(row=header_row, column=0, columnspan=columnspan, sticky="ew", pady=(2, 2))
+    header.columnconfigure(0, weight=1)
+    tk.Label(header, text="Berechnungsquellen / Spaltenzuordnung", bg=self.bg, font=("Segoe UI", 9, "bold")).grid(row=0, column=0, sticky="w")
+    self.add_source_btn = tk.Button(header, text="+ Berechnungsquelle", command=self.add_empty_source, font=self.font_small)
+    self.add_source_btn.grid(row=0, column=1, sticky="e")
+    self.sources_canvas = tk.Canvas(parent, bg=self.bg, highlightthickness=0)
+    self.sources_inner = tk.Frame(self.sources_canvas, bg=self.bg)
+    sources_scroll = ttk.Scrollbar(parent, orient="vertical", command=self.sources_canvas.yview)
+    self.sources_canvas.configure(yscrollcommand=sources_scroll.set)
+    self.sources_canvas.grid(row=canvas_row, column=0, columnspan=columnspan - 1, sticky="nsew", pady=(0, 0))
+    sources_scroll.grid(row=canvas_row, column=columnspan - 1, sticky="ns", pady=(0, 0))
+    parent.rowconfigure(canvas_row, weight=1)
+    self.sources_window = self.sources_canvas.create_window((0, 0), window=self.sources_inner, anchor="nw")
+    self.sources_canvas.bind("<Configure>", lambda e: self.sources_canvas.itemconfigure(self.sources_window, width=max(100, e.width - 4)))
+    self.sources_inner.bind("<Configure>", lambda e: self.sources_canvas.configure(scrollregion=self.sources_canvas.bbox("all")))
+
+
+def _afi466_make_drag_splitter(self, parent, row=12):
+    bar = tk.Frame(parent, bg="#6F8194", height=5, cursor="sb_v_double_arrow")
+    bar.grid(row=row, column=0, columnspan=4, sticky="ew", pady=(2, 3))
+    def press(event):
+        self._afi466_split_start_y = event.y_root
+        try: self._afi466_split_start_pos = int(self.positions_tree.cget('height'))
+        except Exception: self._afi466_split_start_pos = 9
+    def drag(event):
+        dy = event.y_root - getattr(self, '_afi466_split_start_y', event.y_root)
+        # Nach unten: Positionsbereich groesser. Nach oben: Quellenbereich groesser.
+        pos_h = max(4, min(20, getattr(self, '_afi466_split_start_pos', 9) + int(dy / 18)))
+        try: self.positions_tree.configure(height=pos_h)
+        except Exception: pass
+    bar.bind("<ButtonPress-1>", press)
+    bar.bind("<B1-Motion>", drag)
+    return bar
+
+
+def _afi466_build_left(self, parent):
+    parent.columnconfigure(1, weight=1)
+    self.template_var = tk.StringVar(value=KST_ASSIGNMENT_DEFAULT_FILE)
+    self.invoice_var = tk.StringVar(value=_fm_downloads_path() if '_fm_downloads_path' in globals() else _desktop_path())
+    self.export_var = tk.StringVar()
+    self.global_prefix_var = tk.StringVar(value="Tanken Strom")
+    self.supplier_var = tk.StringVar(value="Automatisch erkennen")
+    self.booking_circle_vars = {b: tk.BooleanVar(value=(b == "IDE")) for b in BOOKING_CIRCLE_OPTIONS}
+    self.status_var = tk.StringVar(value="Schritt 1: Rechnung und Zuordnung pruefen.")
+    self.suggestion_var = tk.StringVar(value="")
+    self.assignment_status_var = tk.StringVar(value="")
+    self.position_saldo_var = tk.StringVar(value="Gesamtbetrag aller Nettobeträge: 0,00")
+    self._afi464_position_rows = []
+    self._afi464_selected = set()
+    self._afi464_manual_rows = None
+    _afi463_update_export_path(self, True)
+    tk.Label(parent, text="AFI-Assistent (Wizard)", bg=self.bg, font=("Segoe UI", 12, "bold")).grid(row=0, column=0, columnspan=4, sticky="w")
+    tk.Label(parent, textvariable=self.status_var, bg="#DDE7F3", font=self.font_small, anchor="w").grid(row=1, column=0, columnspan=4, sticky="ew", pady=(4,8))
+    tk.Label(parent, text="Zuordnungsdatei", bg=self.bg, font=self.font_small).grid(row=2, column=0, sticky="w")
+    tk.Entry(parent, textvariable=self.template_var, font=self.font_small).grid(row=2, column=1, sticky="ew", padx=4)
+    tk.Button(parent, text="Wählen", command=lambda: _fm_browse(self, "Zuordnungsdatei", self.template_var, False, "template") if '_fm_browse' in globals() else None, font=self.font_small).grid(row=2, column=2, padx=2)
+    tk.Button(parent, text="Refresh", command=lambda: _afi463_refresh_assignment_ui(self), font=self.font_small).grid(row=2, column=3, padx=2)
+    tk.Label(parent, textvariable=self.assignment_status_var, bg=self.bg, fg="#445364", font=self.font_small).grid(row=3, column=0, columnspan=4, sticky="ew")
+    tk.Label(parent, text="Rechnung", bg=self.bg, font=self.font_small).grid(row=4, column=0, sticky="w")
+    tk.Entry(parent, textvariable=self.invoice_var, font=self.font_small).grid(row=4, column=1, sticky="ew", padx=4)
+    tk.Button(parent, text="Wählen", command=lambda: _fm_browse(self, "Rechnung / Dokument", self.invoice_var, False, "invoice") if '_fm_browse' in globals() else None, font=self.font_small).grid(row=4, column=2, padx=2)
+    tk.Label(parent, text="Buchungskreise", bg=self.bg, font=self.font_small).grid(row=5, column=0, sticky="nw")
+    bc_frame = tk.Frame(parent, bg=self.bg); bc_frame.grid(row=5, column=1, columnspan=3, sticky="ew")
+    for b, var in self.booking_circle_vars.items():
+        tk.Checkbutton(bc_frame, text=b, variable=var, bg=self.bg, font=self.font_small, command=lambda: _afi463_update_export_path(self, True)).pack(side="left", padx=(0,8))
+    tk.Label(parent, text="Lieferant", bg=self.bg, font=self.font_small).grid(row=6, column=0, sticky="w")
+    ttk.Combobox(parent, textvariable=self.supplier_var, values=SUPPLIER_OPTIONS, state="normal", font=self.font_small).grid(row=6, column=1, columnspan=3, sticky="ew", padx=4)
+    tk.Label(parent, text="Kostenbeschreibung", bg=self.bg, font=self.font_small).grid(row=7, column=0, sticky="w")
+    ttk.Combobox(parent, textvariable=self.global_prefix_var, values=COST_TYPE_OPTIONS, state="normal", font=self.font_small).grid(row=7, column=1, columnspan=3, sticky="ew", padx=4)
+    tk.Label(parent, text="Export-CSV", bg=self.bg, font=self.font_small).grid(row=8, column=0, sticky="w")
+    tk.Entry(parent, textvariable=self.export_var, font=self.font_small).grid(row=8, column=1, sticky="ew", padx=4)
+    tk.Button(parent, text="Speichern unter", command=lambda: _fm_browse(self, "Export-CSV", self.export_var, True, "export") if '_fm_browse' in globals() else None, font=self.font_small).grid(row=8, column=2, columnspan=2, sticky="ew")
+    buttons = tk.Frame(parent, bg=self.bg); buttons.grid(row=9, column=0, columnspan=4, sticky="ew", pady=(8,4)); buttons.columnconfigure(5, weight=1)
+    tk.Button(buttons, text="Rechnung analysieren", command=self.analyze_invoice, font=self.font_small).grid(row=0, column=0, padx=(0,4))
+    tk.Button(buttons, text="Ausgewählte zusammenfassen", command=lambda: _afi464_merge_selected_positions(self), font=self.font_small).grid(row=0, column=1, padx=(0,4))
+    tk.Button(buttons, text="AFI-Upload-Datei erstellen", command=self.run_export, font=("Segoe UI",10,"bold"), bg="#CFEAD6").grid(row=0, column=6, sticky="e")
+    self.positions_tree = ttk.Treeview(parent, columns=["sel","text","amount","tax","gl","cc","ia"], show="headings", height=9)
+    for c,t,w in [("sel","",34),("text","POSITION",260),("amount","NETTO",82),("tax","TAX",50),("gl","GL",78),("cc","CC",90),("ia","IA",82)]:
+        self.positions_tree.heading(c, text=t); self.positions_tree.column(c, width=w, stretch=(c=="text"), anchor="center" if c in ("sel","amount","tax") else "w")
+    self.positions_tree.grid(row=10, column=0, columnspan=4, sticky="nsew", pady=(6,0))
+    parent.rowconfigure(10, weight=0)
+    self.positions_tree.bind("<Button-1>", lambda e: _afi464_toggle_position_checkbox(self, e))
+    tk.Label(parent, textvariable=self.position_saldo_var, bg="#FFF4C2", fg="#182431", font=("Segoe UI", 9, "bold"), anchor="w").grid(row=11, column=0, columnspan=4, sticky="ew", pady=(3,0))
+    # Verschiebelinie liegt jetzt klar oberhalb von Label/Button der Berechnungsquellen.
+    _afi466_make_drag_splitter(self, parent, row=12)
+    _afi466_make_sources_area(self, parent, header_row=13, canvas_row=14, columnspan=4)
+    tk.Label(parent, textvariable=self.suggestion_var, bg=self.bg, fg="#7A4B00", font=self.font_small, wraplength=560, justify="left").grid(row=15, column=0, columnspan=4, sticky="ew", pady=(4,0))
+    parent.rowconfigure(14, weight=1)
+    try:
+        _afi463_refresh_assignment_ui(self)
+    except Exception:
+        pass
+
+
+def _afi466_analyze_invoice(self):
+    path = self.invoice_var.get().strip()
+    if not os.path.isfile(path):
+        messagebox.showwarning(MODULE_TITLE, "Bitte eine gueltige Rechnung auswaehlen.")
+        return
+    try:
+        if not hasattr(self, 'sources_inner'):
+            self.sources_inner = tk.Frame(self.app.root if hasattr(self, 'app') else None, bg=self.bg)
+        self.clear_sources()
+        try: self.load_preview(path)
+        except Exception: pass
+        _afi463_update_export_path(self, True)
+        ext = os.path.splitext(path)[1].lower()
+        if ext == ".pdf":
+            self.headers, self.rows = ["PDF"], []
+            try:
+                if hasattr(self, 'add_source_btn'): self.add_source_btn.configure(state="disabled")
+            except Exception: pass
+        else:
+            self.headers, self.rows = _read_table_file(path)
+            if _afi466_is_enbw(self, path, self.supplier_var.get() if hasattr(self, 'supplier_var') else "", self.headers):
+                for label, keywords, cost_desc in _AFI465_ENBW_SOURCE_DEFS:
+                    self.add_source(_afi465_make_enbw_source(label, keywords, cost_desc, self.headers))
+                self.suggestion_var.set("EnBW erkannt: Blockiergebühr, Energiekosten und Grundgebühren wurden als Berechnungsquellen vorbereitet.")
+            else:
+                suggestions = suggested_sources(self.headers)
+                self.add_source(suggestions[0])
+            try:
+                if hasattr(self, 'add_source_btn'): self.add_source_btn.configure(state="normal")
+            except Exception: pass
+        _afi464_populate_positions_tree(self)
+        self.status_var.set("Schritt 2: Positionen bearbeiten/pruefen.")
+    except Exception as exc:
+        messagebox.showerror(MODULE_TITLE, str(exc))
+
+try:
+    SupplierUploadUI._build_left = _afi466_build_left
+    SupplierUploadUI.add_source = _afi466_add_source
+    SupplierUploadUI.analyze_invoice = _afi466_analyze_invoice
+except Exception:
+    pass
+
+
+# ------------------------------------------------------------------
+# AFI_UPLOAD_UI_SOURCE_OPTIONS_CLEANUP_V0467
+# Datum: 2026-07-06
+# Zweck:
+# - EnBW: "Grundgebühr je Nutzer Netto" statt "Grundgebühr" verwenden und separat ausweisen.
+# - Je Berechnungsquelle Optionen: separat ausweisen, keine automatische Fahrerzuordnung.
+# - Blockiergebühren werden als je Nutzer auszuweisende Quelle vorbelegt.
+# - Berechnungsquellen farblich minimal unterscheiden.
+# - Zuordnungsdatei-Auswahl hinter klappbarem Häkchen verstecken.
+# - Texte "AFI-Assistent (Wizard)" und "Schritt N: ..." aus der UI entfernen.
+# ------------------------------------------------------------------
+AFI_UPLOAD_UI_SOURCE_OPTIONS_CLEANUP_VERSION = "0.467"
+
+_AFI467_SOURCE_COLORS = ["#F8FAFC", "#F4FBF7", "#F7F8FF", "#FFF9F0", "#F9F5FF", "#F3FAFA"]
+_AFI465_ENBW_SOURCE_DEFS = [
+    ("Blockiergebühr Netto pro Person", ["Blockiergebühr", "Blockiergebuehr", "Blockier", "Blocking"], "Blockiergebühr"),
+    ("Energiekosten Netto pro Person", ["Energiekosten", "Energie", "Ladekosten", "Charging", "Strom"], "Energiekosten"),
+    ("Grundgebühr je Nutzer Netto", ["Grundgebühr je Nutzer", "Grundgebuehr je Nutzer", "Grundgebühr", "Grundgebuehr", "Grundkosten", "Grundpreis", "Basic fee"], "Grundgebühr je Nutzer"),
+]
+
+
+def _afi467_bool(value):
+    try:
+        return bool(value.get())
+    except Exception:
+        return bool(value)
+
+
+def _afi467_source_defaults(data):
+    data = dict(data or {})
+    label_norm = _norm((data.get("label") or "") + " " + (data.get("cost_description") or ""))
+    # Blockiergebuehren sind fachlich immer je Nutzer separat, aber weiterhin mit Fahrerzuordnung.
+    if "BLOCKIER" in label_norm:
+        data.setdefault("separate_positions", True)
+        data.setdefault("force_per_user", True)
+        data.setdefault("no_driver_assignment", False)
+    if "GRUNDGEBUEHRJENUTZER" in label_norm or "GRUNDGEBUHRJENUTZER" in label_norm:
+        data.setdefault("separate_positions", True)
+    return data
+
+
+def _afi467_make_enbw_source(label, keywords, cost_desc, headers):
+    data = _afi465_make_enbw_source(label, keywords, cost_desc, headers)
+    data["label"] = label
+    data["cost_description"] = cost_desc
+    return _afi467_source_defaults(data)
+
+# EnBW-Erzeugung nutzt ab jetzt die neuen Defaults.
+try:
+    _afi465_make_enbw_source = _afi467_make_enbw_source
+except Exception:
+    pass
+
+
+def _afi467_style_source_row(row, index=0):
+    bg = _AFI467_SOURCE_COLORS[index % len(_AFI467_SOURCE_COLORS)]
+    try:
+        row.frame.configure(bg=bg, relief="solid", bd=1, highlightthickness=1, highlightbackground="#91A3B5")
+    except Exception:
+        pass
+    try:
+        for child in row.frame.winfo_children():
+            cls = child.winfo_class()
+            if cls in ("Label", "Checkbutton", "Radiobutton", "Frame", "Labelframe"):
+                try: child.configure(bg=bg)
+                except Exception: pass
+    except Exception:
+        pass
+    return bg
+
+
+def _afi467_add_source_options(self, row, data, bg):
+    try:
+        data = _afi467_source_defaults(data)
+        row.vars["separate_positions"] = tk.BooleanVar(value=bool(data.get("separate_positions", False)))
+        row.vars["no_driver_assignment"] = tk.BooleanVar(value=bool(data.get("no_driver_assignment", False)))
+        row.vars["force_per_user"] = tk.BooleanVar(value=bool(data.get("force_per_user", False)))
+        opt = tk.Frame(row.frame, bg=bg)
+        opt.grid(row=11, column=0, columnspan=7, sticky="ew", padx=5, pady=(4, 5))
+        tk.Checkbutton(opt, text="Separat ausweisen", variable=row.vars["separate_positions"], bg=bg, font=self.font_small, command=self.on_mapping_changed).pack(side="left", padx=(0, 14))
+        tk.Checkbutton(opt, text="Keine automatische Fahrerzuordnung", variable=row.vars["no_driver_assignment"], bg=bg, font=self.font_small, command=self.on_mapping_changed).pack(side="left", padx=(0, 14))
+        if data.get("force_per_user"):
+            tk.Label(opt, text="Blockiergebühr: je Nutzer", bg=bg, fg="#7A4B00", font=("Segoe UI", 8, "bold")).pack(side="left")
+    except Exception:
+        pass
+
+
+def _afi467_add_source(self, data=None):
+    if not hasattr(self, 'sources_inner'):
+        return
+    data = _afi467_source_defaults(data)
+    row = SourceRow(self.sources_inner, self, len(getattr(self, 'sources', [])) + 1, self.headers, data)
+    bg = _afi467_style_source_row(row, len(getattr(self, 'sources', [])))
+    _afi467_add_source_options(self, row, data, bg)
+    row.grid(row=len(self.sources), column=0, sticky="ew", padx=4, pady=6)
+    try:
+        row.frame.columnconfigure(6, weight=0)
+        del_btn = tk.Button(row.frame, text="Löschen", command=lambda r=row: _afi465_delete_source(self, r), font=self.font_small, bg="#FEE2E2", activebackground="#FECACA", relief="solid", bd=1)
+        del_btn.grid(row=0, column=6, sticky="ne", padx=7, pady=5)
+    except Exception:
+        pass
+    self.sources_inner.columnconfigure(0, weight=1)
+    self.sources.append(row)
+    try:
+        self.on_mapping_changed()
+    except Exception:
+        pass
+
+
+def _afi467_source_get(self):
+    out = {}
+    for k, var in self.vars.items():
+        try: out[k] = var.get()
+        except Exception: out[k] = var
+    out["label"] = self.initial.get("label") or out.get("net") or f"Berechnungsquelle {self.idx}"
+    if self.initial.get("cost_description"):
+        out["cost_description"] = self.initial.get("cost_description")
+    return out
+
+try:
+    SupplierUploadUI.add_source = _afi467_add_source
+    SourceRow.get = _afi467_source_get
+except Exception:
+    pass
+
+
+def _afi467_toggle_assignment_frame(self):
+    try:
+        if self.show_assignment_var.get():
+            self.assignment_frame.grid()
+        else:
+            self.assignment_frame.grid_remove()
+    except Exception:
+        pass
+
+
+def _afi467_build_left(self, parent):
+    parent.columnconfigure(1, weight=1)
+    self.template_var = tk.StringVar(value=KST_ASSIGNMENT_DEFAULT_FILE)
+    self.invoice_var = tk.StringVar(value=_fm_downloads_path() if '_fm_downloads_path' in globals() else _desktop_path())
+    self.export_var = tk.StringVar()
+    self.global_prefix_var = tk.StringVar(value="Tanken Strom")
+    self.supplier_var = tk.StringVar(value="Automatisch erkennen")
+    self.booking_circle_vars = {b: tk.BooleanVar(value=(b == "IDE")) for b in BOOKING_CIRCLE_OPTIONS}
+    self.show_assignment_var = tk.BooleanVar(value=False)
+    self.suggestion_var = tk.StringVar(value="")
+    self.assignment_status_var = tk.StringVar(value="")
+    self.position_saldo_var = tk.StringVar(value="Gesamtbetrag aller Nettobeträge: 0,00")
+    self._afi464_position_rows = []
+    self._afi464_selected = set()
+    self._afi464_manual_rows = None
+    # Kompatibilitaet: ältere Logik setzt status_var; wird aber nicht mehr sichtbar gerendert.
+    self.status_var = tk.StringVar(value="")
+    _afi463_update_export_path(self, True)
+
+    tk.Checkbutton(parent, text="Zuordnungsdatei anzeigen", variable=self.show_assignment_var, command=lambda: _afi467_toggle_assignment_frame(self), bg=self.bg, font=self.font_small).grid(row=0, column=0, columnspan=4, sticky="w", pady=(0, 3))
+    self.assignment_frame = tk.Frame(parent, bg=self.bg)
+    self.assignment_frame.grid(row=1, column=0, columnspan=4, sticky="ew")
+    self.assignment_frame.columnconfigure(1, weight=1)
+    tk.Label(self.assignment_frame, text="Zuordnungsdatei", bg=self.bg, font=self.font_small).grid(row=0, column=0, sticky="w")
+    tk.Entry(self.assignment_frame, textvariable=self.template_var, font=self.font_small).grid(row=0, column=1, sticky="ew", padx=4)
+    tk.Button(self.assignment_frame, text="Wählen", command=lambda: _fm_browse(self, "Zuordnungsdatei", self.template_var, False, "template") if '_fm_browse' in globals() else None, font=self.font_small).grid(row=0, column=2, padx=2)
+    tk.Button(self.assignment_frame, text="Refresh", command=lambda: _afi463_refresh_assignment_ui(self), font=self.font_small).grid(row=0, column=3, padx=2)
+    tk.Label(self.assignment_frame, textvariable=self.assignment_status_var, bg=self.bg, fg="#445364", font=self.font_small).grid(row=1, column=0, columnspan=4, sticky="ew")
+    self.assignment_frame.grid_remove()
+
+    tk.Label(parent, text="Rechnung", bg=self.bg, font=self.font_small).grid(row=2, column=0, sticky="w")
+    tk.Entry(parent, textvariable=self.invoice_var, font=self.font_small).grid(row=2, column=1, sticky="ew", padx=4)
+    tk.Button(parent, text="Wählen", command=lambda: _fm_browse(self, "Rechnung / Dokument", self.invoice_var, False, "invoice") if '_fm_browse' in globals() else None, font=self.font_small).grid(row=2, column=2, padx=2)
+    tk.Label(parent, text="Buchungskreise", bg=self.bg, font=self.font_small).grid(row=3, column=0, sticky="nw")
+    bc_frame = tk.Frame(parent, bg=self.bg); bc_frame.grid(row=3, column=1, columnspan=3, sticky="ew")
+    for b, var in self.booking_circle_vars.items():
+        tk.Checkbutton(bc_frame, text=b, variable=var, bg=self.bg, font=self.font_small, command=lambda: _afi463_update_export_path(self, True)).pack(side="left", padx=(0,8))
+    tk.Label(parent, text="Lieferant", bg=self.bg, font=self.font_small).grid(row=4, column=0, sticky="w")
+    ttk.Combobox(parent, textvariable=self.supplier_var, values=SUPPLIER_OPTIONS, state="normal", font=self.font_small).grid(row=4, column=1, columnspan=3, sticky="ew", padx=4)
+    tk.Label(parent, text="Kostenbeschreibung", bg=self.bg, font=self.font_small).grid(row=5, column=0, sticky="w")
+    ttk.Combobox(parent, textvariable=self.global_prefix_var, values=COST_TYPE_OPTIONS, state="normal", font=self.font_small).grid(row=5, column=1, columnspan=3, sticky="ew", padx=4)
+    tk.Label(parent, text="Export-CSV", bg=self.bg, font=self.font_small).grid(row=6, column=0, sticky="w")
+    tk.Entry(parent, textvariable=self.export_var, font=self.font_small).grid(row=6, column=1, sticky="ew", padx=4)
+    tk.Button(parent, text="Speichern unter", command=lambda: _fm_browse(self, "Export-CSV", self.export_var, True, "export") if '_fm_browse' in globals() else None, font=self.font_small).grid(row=6, column=2, columnspan=2, sticky="ew")
+    buttons = tk.Frame(parent, bg=self.bg); buttons.grid(row=7, column=0, columnspan=4, sticky="ew", pady=(8,4)); buttons.columnconfigure(5, weight=1)
+    tk.Button(buttons, text="Rechnung analysieren", command=self.analyze_invoice, font=self.font_small).grid(row=0, column=0, padx=(0,4))
+    tk.Button(buttons, text="Ausgewählte zusammenfassen", command=lambda: _afi464_merge_selected_positions(self), font=self.font_small).grid(row=0, column=1, padx=(0,4))
+    tk.Button(buttons, text="AFI-Upload-Datei erstellen", command=self.run_export, font=("Segoe UI",10,"bold"), bg="#CFEAD6").grid(row=0, column=6, sticky="e")
+    self.positions_tree = ttk.Treeview(parent, columns=["sel","text","amount","tax","gl","cc","ia"], show="headings", height=9)
+    for c,t,w in [("sel","",34),("text","POSITION",260),("amount","NETTO",82),("tax","TAX",50),("gl","GL",78),("cc","CC",90),("ia","IA",82)]:
+        self.positions_tree.heading(c, text=t); self.positions_tree.column(c, width=w, stretch=(c=="text"), anchor="center" if c in ("sel","amount","tax") else "w")
+    self.positions_tree.grid(row=8, column=0, columnspan=4, sticky="nsew", pady=(6,0))
+    self.positions_tree.bind("<Button-1>", lambda e: _afi464_toggle_position_checkbox(self, e))
+    tk.Label(parent, textvariable=self.position_saldo_var, bg="#FFF4C2", fg="#182431", font=("Segoe UI", 9, "bold"), anchor="w").grid(row=9, column=0, columnspan=4, sticky="ew", pady=(3,0))
+    _afi466_make_drag_splitter(self, parent, row=10)
+    _afi466_make_sources_area(self, parent, header_row=11, canvas_row=12, columnspan=4)
+    tk.Label(parent, textvariable=self.suggestion_var, bg=self.bg, fg="#7A4B00", font=self.font_small, wraplength=560, justify="left").grid(row=13, column=0, columnspan=4, sticky="ew", pady=(4,0))
+    parent.rowconfigure(12, weight=1)
+    try:
+        _afi463_refresh_assignment_ui(self)
+    except Exception:
+        pass
+
+try:
+    SupplierUploadUI._build_left = _afi467_build_left
+except Exception:
+    pass
+
+# Exportnachbearbeitung fuer Quellenoption "Keine automatische Fahrerzuordnung".
+_create_supplier_upload_csv_before_v0467_options = create_supplier_upload_csv
+
+def create_supplier_upload_csv(assignment_path, invoice_path, export_path, config):
+    result = _create_supplier_upload_csv_before_v0467_options(assignment_path, invoice_path, export_path, config)
+    try:
+        sources = [s for s in (config or {}).get("sources", []) if s.get("active", True)]
+        no_driver_sources = []
+        for src in sources:
+            if bool(src.get("no_driver_assignment")):
+                label = _clean(src.get("cost_description") or src.get("label") or src.get("net") or "")
+                if label:
+                    no_driver_sources.append(label)
+        if no_driver_sources and os.path.isfile(export_path):
+            with open(export_path, "r", encoding="utf-8-sig", newline="") as f:
+                reader = csv.DictReader(f, delimiter=";")
+                fieldnames = reader.fieldnames or UPLOAD_COLUMNS
+                rows = list(reader)
+            changed = 0
+            for row in rows:
+                nt = _norm(row.get("TEXT", ""))
+                if any(_norm(label) in nt for label in no_driver_sources):
+                    row["COSTCENTER"] = ""
+                    row["ORDERID"] = ""
+                    changed += 1
+            if changed:
+                with open(export_path, "w", encoding="utf-8-sig", newline="") as f:
+                    writer = csv.DictWriter(f, fieldnames=fieldnames, delimiter=";", extrasaction="ignore")
+                    writer.writeheader(); writer.writerows(rows)
+                if isinstance(result, dict):
+                    result["no_driver_assignment_rows"] = changed
+    except Exception:
+        pass
+    return result
+
+
+# ------------------------------------------------------------------
+# AFI_UPLOAD_ANALYSE_PREVIEW_FIX_V0468
+# Datum: 2026-07-06
+# Zweck:
+# - Fehler bei "Rechnung analysieren" beheben: EnBW-Quellenerzeugung war durch Alias-Override rekursionsgefaehrdet.
+# - CSV-/Excel-Dokumentenvorschau zeigt final alle Zeilen und alle Spalten.
+# - PDF-Dokumentenvorschau rendert final alle Seiten untereinander inkl. Scrollbar und Seiten-Shortcuts.
+# - Doppelte Testschleife: synthetische CSV- und PDF-Faelle werden durch Kompilierung/Import/Exportpfad pruefbar.
+# - CSV-Exportlogik beachtet final Quellenoptionen: Separat ausweisen, Keine automatische Fahrerzuordnung, Blockiergebuehr je Nutzer.
+# ------------------------------------------------------------------
+AFI_UPLOAD_ANALYSE_PREVIEW_FIX_VERSION = "0.468"
+
+
+def _afi468_make_enbw_source(label, keywords, cost_desc, headers):
+    guessed = guess_columns(headers)
+    net_col = _afi465_find_column(headers, keywords, must_net=True) if '_afi465_find_column' in globals() else ""
+    data = {
+        "active": True,
+        "label": label,
+        "cost_description": cost_desc,
+        "net": net_col,
+        "tax_mode": "manual",
+        "vat_amount": guessed.get("vat_amount", ""),
+        "gross": guessed.get("gross", ""),
+        "manual_rate": "19",
+        "name_mode": "full",
+        "full_name": guessed.get("full_name", ""),
+        "first": guessed.get("first", ""),
+        "last": guessed.get("last", ""),
+        "key": guessed.get("key", ""),
+    }
+    if '_afi467_source_defaults' in globals():
+        data = _afi467_source_defaults(data)
+    return data
+
+# Final harte Zuweisung: keine Rekursion ueber alte Alias-Kette.
+_afi465_make_enbw_source = _afi468_make_enbw_source
+
+
+def _afi468_source_flag(src, key):
+    value = src.get(key, False)
+    if isinstance(value, str):
+        return value.strip().lower() in ("1", "true", "ja", "yes", "on")
+    return bool(value)
+
+
+def _afi468_source_cost_desc(src, global_prefix):
+    return _clean(src.get("cost_description") or src.get("label") or src.get("net") or global_prefix) or global_prefix
+
+
+def _afi468_driver_key_from_row(row, src, idx):
+    driver = _driver_from_row(row, src)
+    key = _clean(row.get(src.get("key", ""), "")) if src.get("key") else ""
+    if not key and driver:
+        key = driver
+    if not key or not driver:
+        fb = _fallback_name_from_row(row)
+        if fb:
+            driver = driver or fb
+            key = key or fb
+    if not key and not driver:
+        driver = key = f"UNZUORDENBAR Zeile {idx+2}"
+    return key, driver
+
+
+def _afi468_amount_tax(row, src, net):
+    tax_mode = src.get("tax_mode", "vat")
+    if tax_mode == "manual":
+        rate = _dec(src.get("manual_rate", "19"))
+        gross = net * (Decimal("1.00") + rate / Decimal("100"))
+        return _amount_and_tax_from_values(net, gross, rate)
+    if tax_mode == "gross":
+        gross = _dec(row.get(src.get("gross", ""), "")) if src.get("gross") else Decimal("0")
+        if gross:
+            vat = gross - net
+            tax = _tax_code_from_net_vat(net, vat)
+            if tax == "VX":
+                rate = ((gross - net) / net * Decimal("100")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP) if net else Decimal("0")
+                return _amount_and_tax_from_values(net, gross, rate)
+            return net, tax, False
+        return net, "VX", False
+    rate = _dec(row.get(src.get("vat_amount", ""), "")) if src.get("vat_amount") else Decimal("19")
+    gross = _dec(row.get(src.get("gross", ""), "")) if src.get("gross") else Decimal("0")
+    if not gross and rate not in VALID_NET_TAX_RATES:
+        gross = net * (Decimal("1.00") + rate / Decimal("100"))
+    return _amount_and_tax_from_values(net, gross, rate)
+
+
+_create_supplier_upload_csv_before_v0468 = create_supplier_upload_csv
+
+def create_supplier_upload_csv(assignment_path, invoice_path, export_path, config):
+    ext = os.path.splitext(invoice_path)[1].lower()
+    # PDF-Parser bleiben bewusst beim bisherigen, lieferantenspezifisch gepatchten Parser.
+    if ext == ".pdf":
+        return _create_supplier_upload_csv_before_v0468(assignment_path, invoice_path, export_path, config)
+    assignment_entries = load_assignment_entries(assignment_path)
+    global_prefix = _clean((config or {}).get("global_prefix", "Tanken Strom")) or "Tanken Strom"
+    headers, rows = _read_table_file(invoice_path)
+    sources = [s for s in (config or {}).get("sources", []) if s.get("active", True) and s.get("net")]
+    if not sources:
+        raise RuntimeError("Bitte mindestens eine aktive Berechnungsquelle mit Betragsspalte auswählen.")
+    groups = OrderedDict()
+    warnings_missing = []
+    warnings_tax = []
+    warnings_empty_assignment = []
+    warnings_foreign_gross = []
+    invoice_total = Decimal("0.00")
+    unique_drivers = set()
+    unique_keys = set()
+
+    def add_export_row(src, row, idx, key, driver, amount, tax, foreign):
+        cost_desc = _afi468_source_cost_desc(src, global_prefix)
+        separate = _afi468_source_flag(src, "separate_positions") or _afi468_source_flag(src, "force_per_user")
+        no_driver = _afi468_source_flag(src, "no_driver_assignment")
+        is_blocking = "BLOCKIER" in _norm(cost_desc) or "BLOCKIER" in _norm(src.get("label", "")) or "BLOCKIER" in _norm(src.get("net", ""))
+        # Blockiergebuehren bleiben immer je Nutzer/Zeile sichtbar.
+        if is_blocking:
+            separate = True
+        if no_driver:
+            rkey = _clean(cost_desc)
+            rdriver = _clean(cost_desc)
+            gl = cc = orderid = ""
+            missing = False
+        else:
+            info, how = resolve_assignment(key, driver, assignment_entries)
+            if not info:
+                gl = cc = orderid = ""
+                missing = True
+                warnings_missing.append(f"{key} / {driver}: {'mehrdeutige Zuordnung' if how == 'mehrdeutig' else 'keine Zuordnung'}")
+            else:
+                gl, cc, orderid = _select_assignment_values(info, _cost_type(cost_desc), cost_desc)
+                missing = not (gl and cc)
+                if missing:
+                    warnings_missing.append(f"{key} / {driver}: Sachkonto/KST unvollständig (Sachkonto='{gl}', KST='{cc}')")
+            rkey = key
+            rdriver = driver
+        if is_blocking:
+            text = _clean(" ".join([cost_desc, key, driver]))
+        elif no_driver:
+            text = cost_desc
+        else:
+            text_parts = [cost_desc]
+            if key: text_parts.append(key)
+            if driver and _norm(driver) != _norm(key): text_parts.append(driver)
+            text = _clean(" ".join(text_parts))
+        if separate:
+            gkey = ("ROW", id(src), idx, tax, _norm(text))
+        else:
+            gkey = ("GROUP", _norm(cost_desc), _norm(rkey), _norm(rdriver), tax, gl, cc, orderid)
+        if gkey not in groups:
+            groups[gkey] = {"TEXT": text, "amount": Decimal("0.00"), "TAX_CODE": tax, "GL_ACCOUNT": gl, "COSTCENTER": cc, "ORDERID": orderid}
+        groups[gkey]["amount"] += amount
+
+    for src in sources:
+        net_col = src.get("net", "")
+        for idx, row in enumerate(rows):
+            net = _dec(row.get(net_col, ""))
+            if net == 0:
+                continue
+            key, driver = _afi468_driver_key_from_row(row, src, idx)
+            if key.startswith("UNZUORDENBAR"):
+                warnings_empty_assignment.append(f"{_afi468_source_cost_desc(src, global_prefix)}: Zeile {idx+2} ohne Fahrer/Schlüssel")
+            amount, tax, foreign = _afi468_amount_tax(row, src, net)
+            if tax == "VX":
+                warnings_tax.append(f"{_afi468_source_cost_desc(src, global_prefix)} / {key} / {driver}: Steuer nicht eindeutig")
+            if foreign:
+                warnings_foreign_gross.append(f"{_afi468_source_cost_desc(src, global_prefix)} / {key}: abweichender/ausländischer Steuersatz -> Bruttobetrag mit V0 verwendet")
+            invoice_total += amount
+            if driver: unique_drivers.add(_norm(driver))
+            if key: unique_keys.add(_norm(key))
+            add_export_row(src, row, idx, key, driver, amount, tax, foreign)
+
+    ordered = list(groups.values())
+    os.makedirs(os.path.dirname(os.path.abspath(export_path)) or ".", exist_ok=True)
+    with open(export_path, "w", encoding="utf-8-sig", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=UPLOAD_COLUMNS, delimiter=";", extrasaction="ignore")
+        writer.writeheader()
+        for g in ordered:
+            amount = Decimal(g.get("amount", "0")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+            writer.writerow({
+                "TEXT": g.get("TEXT", ""),
+                "PRICE": _fmt(amount),
+                "PRICE_UNIT": "1",
+                "QUANTITY": "1",
+                "UNIT": "ST",
+                "NET_VALUE": _fmt(amount),
+                "TAX_CODE": g.get("TAX_CODE", ""),
+                "GL_ACCOUNT": g.get("GL_ACCOUNT", ""),
+                "COSTCENTER": g.get("COSTCENTER", ""),
+                "ORDERID": g.get("ORDERID", ""),
+            })
+    export_total = sum(Decimal(g.get("amount", "0")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP) for g in ordered)
+    target_total = invoice_total.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    return {"rows": len(ordered), "export_path": export_path, "invoice_net_raw_total": _fmt(invoice_total), "export_net_total": _fmt(export_total), "net_rounding_difference": _fmt(export_total - target_total), "unique_drivers": len([x for x in unique_drivers if x]), "unique_keys": len([x for x in unique_keys if x]), "missing_template": warnings_missing, "unknown_tax": warnings_tax, "empty_assignment": warnings_empty_assignment, "name_fallback_matches": [], "rounding_adjustments": [], "foreign_gross": warnings_foreign_gross}
+
+
+def _afi468_load_table_preview(self, path, headers=None, rows=None):
+    try:
+        if headers is None or rows is None:
+            headers, rows = _read_table_file(path)
+            self.preview_headers = headers
+            self.preview_rows = rows
+        headers = list(headers or [])  # keine Filterung: gesamte CSV/Excel anzeigen
+    except Exception as exc:
+        tk.Label(self.preview_frame, text=str(exc), bg="white", fg="red").pack(fill="both", expand=True)
+        return
+    holder = tk.Frame(self.preview_frame, bg="white")
+    holder.place(relx=0, rely=0, relwidth=1, relheight=1)
+    holder.rowconfigure(1, weight=1)
+    holder.columnconfigure(0, weight=1)
+    info = tk.Label(holder, text=f"Vollständige Tabellenvorschau: {len(rows)} Zeilen, {len(headers)} Spalten. Spaltenüberschrift anklicken = als Berechnungsquelle hinzufügen.", bg="#FFF4C2", anchor="w", font=self.font_small)
+    info.grid(row=0, column=0, columnspan=2, sticky="ew")
+    style = ttk.Style(holder)
+    try:
+        style.configure("AfiPreview.Treeview", font=("Segoe UI", self.table_font_size), rowheight=max(18, self.table_font_size + 10))
+        style.configure("AfiPreview.Treeview.Heading", font=("Segoe UI", self.table_font_size, "bold"))
+    except Exception: pass
+    tree = ttk.Treeview(holder, columns=headers, show="headings", style="AfiPreview.Treeview")
+    vs = ttk.Scrollbar(holder, orient="vertical", command=tree.yview)
+    hs = ttk.Scrollbar(holder, orient="horizontal", command=tree.xview)
+    tree.configure(yscrollcommand=vs.set, xscrollcommand=hs.set)
+    tree.grid(row=1, column=0, sticky="nsew")
+    vs.grid(row=1, column=1, sticky="ns")
+    hs.grid(row=2, column=0, sticky="ew")
+    for h in headers:
+        tree.heading(h, text=h)
+        tree.column(h, width=max(90, min(280, len(h) * 8)), stretch=False)
+    for row in rows:
+        tree.insert("", "end", values=[_clean(row.get(h, "")) for h in headers])
+    self.preview_tree = tree
+    def on_click(event):
+        try:
+            if tree.identify_region(event.x, event.y) == "heading":
+                colid = tree.identify_column(event.x)
+                idx = int(colid.replace("#", "")) - 1
+                if 0 <= idx < len(headers):
+                    _afi465_table_add_source_from_column(self, headers[idx])
+                    return "break"
+        except Exception:
+            pass
+    def wheel(event):
+        delta = -1 if event.delta > 0 else 1
+        if event.state & 0x0001:
+            tree.xview_scroll(delta * 3, "units")
+        else:
+            tree.yview_scroll(delta * 3, "units")
+        return "break"
+    tree.bind("<Button-1>", on_click)
+    tree.bind("<MouseWheel>", wheel)
+    self.update_highlight()
+
+
+def _afi468_render_pdf_pages_image(path):
+    if Image is None:
+        return None, []
+    try:
+        import fitz
+        doc = fitz.open(path)
+        pil_pages = []
+        offsets = []
+        max_w = 1
+        total_h = 24
+        for page in doc:
+            pix = page.get_pixmap(matrix=fitz.Matrix(1.20, 1.20), alpha=False)
+            img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
+            pil_pages.append(img)
+            max_w = max(max_w, img.width)
+            offsets.append(total_h)
+            total_h += img.height + 42
+        doc.close()
+        if not pil_pages:
+            return None, []
+        canvas = Image.new("RGB", (max_w + 90, max(700, total_h)), "#F2F4F7")
+        draw = ImageDraw.Draw(canvas)
+        y = 24
+        for idx, img in enumerate(pil_pages, 1):
+            x = (canvas.width - img.width) // 2
+            draw.text((x, max(2, y - 18)), f"Seite {idx}", fill="#1F4E79")
+            canvas.paste(img, (x, y))
+            draw.rectangle((x, y, x + img.width, y + img.height), outline="#B0B0B0", width=2)
+            y += img.height + 42
+        return canvas, offsets
+    except Exception:
+        try:
+            pages = _afi464_extract_pdf_pages(path)
+            return _afi464_text_preview_image(os.path.basename(path), pages), [28 + i * 1068 for i in range(len(pages))]
+        except Exception:
+            return None, []
+
+
+def _afi468_load_image_preview(self, path):
+    if Image is None or ImageTk is None:
+        tk.Label(self.preview_frame, text="Vorschau nicht verfügbar (Pillow nicht geladen).", bg="white").pack(fill="both", expand=True)
+        return
+    ext = os.path.splitext(path)[1].lower()
+    if ext != ".pdf":
+        try:
+            return _afi464_load_image_preview(self, path)
+        except Exception:
+            return SupplierUploadUI.load_image_preview_before_v0464(self, path) if hasattr(SupplierUploadUI, 'load_image_preview_before_v0464') else None
+    try:
+        img, offsets = _afi468_render_pdf_pages_image(path)
+        if img is None:
+            raise RuntimeError("PDF konnte nicht gerendert werden.")
+        self.preview_base_image = img
+        self.preview_page_offsets = offsets or [0]
+        self.preview_zoom = 1.0
+        self.preview_offset = [0, 0]
+        top = tk.Frame(self.preview_frame, bg="#DDE7F3")
+        top.place(relx=0, rely=0, relwidth=1, height=30)
+        tk.Label(top, text=f"PDF-Vorschau: {len(self.preview_page_offsets)} Seiten", bg="#DDE7F3", font=("Segoe UI", 8, "bold")).pack(side="left", padx=(4, 8))
+        for idx, off in enumerate(self.preview_page_offsets, 1):
+            if idx > 40: break
+            tk.Button(top, text=f"S.{idx}", font=("Segoe UI", 8), command=lambda o=off: (self.preview_offset.__setitem__(1, -int(o * self.preview_zoom)), self._render_preview_image())).pack(side="left", padx=1, pady=2)
+        self.preview_canvas = tk.Canvas(self.preview_frame, bg="white", highlightthickness=0)
+        self.preview_canvas.place(relx=0, y=30, relwidth=1, relheight=1, height=-30, width=-16)
+        scroll = ttk.Scrollbar(self.preview_frame, orient="vertical")
+        scroll.place(relx=1, x=-16, y=30, width=16, relheight=1, height=-30)
+        def set_scrollbar():
+            try:
+                ch = max(1, self.preview_canvas.winfo_height())
+                total = max(1, int(self.preview_base_image.size[1] * self.preview_zoom))
+                top_pos = max(0, -self.preview_offset[1])
+                first = min(1.0, top_pos / total)
+                last = min(1.0, (top_pos + ch) / total)
+                scroll.set(first, last)
+            except Exception: pass
+        old_render = self._render_preview_image
+        def render_and_scroll():
+            old_render(); set_scrollbar()
+        self._render_preview_image = render_and_scroll
+        def yview(*args):
+            try:
+                ch = max(1, self.preview_canvas.winfo_height())
+                total = max(1, int(self.preview_base_image.size[1] * self.preview_zoom))
+                if args[0] == "moveto":
+                    frac = float(args[1])
+                    self.preview_offset[1] = -int(frac * total)
+                elif args[0] == "scroll":
+                    units = int(args[1])
+                    self.preview_offset[1] -= units * 90
+                self._render_preview_image()
+            except Exception: pass
+        scroll.configure(command=yview)
+        def on_wheel(event):
+            if event.state & 0x0004:
+                factor = 1.1 if event.delta > 0 else 0.9
+                self.preview_zoom = max(0.25, min(4.0, self.preview_zoom * factor))
+            else:
+                self.preview_offset[1] += 90 if event.delta > 0 else -90
+            self._render_preview_image(); return "break"
+        def on_press(event):
+            self.preview_drag_start = (event.x, event.y, self.preview_offset[0], self.preview_offset[1]); return "break"
+        def on_drag(event):
+            if self.preview_drag_start:
+                sx, sy, ox, oy = self.preview_drag_start
+                self.preview_offset = [ox + event.x - sx, oy + event.y - sy]
+                self._render_preview_image()
+            return "break"
+        self.preview_canvas.bind("<Configure>", lambda e: self._render_preview_image())
+        self.preview_canvas.bind("<MouseWheel>", on_wheel)
+        self.preview_canvas.bind("<ButtonPress-1>", on_press)
+        self.preview_canvas.bind("<B1-Motion>", on_drag)
+        self._render_preview_image()
+    except Exception as exc:
+        tk.Label(self.preview_frame, text=f"Vorschaufehler: {exc}", bg="white", fg="red").pack(fill="both", expand=True)
+
+
+def _afi468_analyze_invoice(self):
+    path = self.invoice_var.get().strip()
+    if not os.path.isfile(path):
+        messagebox.showwarning(MODULE_TITLE, "Bitte eine gueltige Rechnung auswaehlen.")
+        return
+    try:
+        if not hasattr(self, 'sources_inner'):
+            self.sources_inner = tk.Frame(self.app.root if hasattr(self, 'app') else None, bg=self.bg)
+        self.clear_sources()
+        try:
+            self.load_preview(path)
+        except Exception:
+            pass
+        _afi463_update_export_path(self, True)
+        ext = os.path.splitext(path)[1].lower()
+        if ext == ".pdf":
+            self.headers, self.rows = ["PDF"], []
+            try:
+                if hasattr(self, 'add_source_btn'): self.add_source_btn.configure(state="disabled")
+            except Exception: pass
+        else:
+            self.headers, self.rows = _read_table_file(path)
+            if _afi466_is_enbw(self, path, self.supplier_var.get() if hasattr(self, 'supplier_var') else "", self.headers):
+                for label, keywords, cost_desc in _AFI465_ENBW_SOURCE_DEFS:
+                    self.add_source(_afi468_make_enbw_source(label, keywords, cost_desc, self.headers))
+                self.suggestion_var.set("EnBW erkannt: Blockiergebühr, Energiekosten und Grundgebühr je Nutzer wurden als Berechnungsquellen vorbereitet.")
+            else:
+                suggestions = suggested_sources(self.headers)
+                self.add_source(suggestions[0])
+            try:
+                if hasattr(self, 'add_source_btn'): self.add_source_btn.configure(state="normal")
+            except Exception: pass
+        _afi464_populate_positions_tree(self)
+    except Exception as exc:
+        messagebox.showerror(MODULE_TITLE, str(exc))
+
+try:
+    SupplierUploadUI.load_table_preview = _afi468_load_table_preview
+    SupplierUploadUI.load_image_preview = _afi468_load_image_preview
+    SupplierUploadUI.analyze_invoice = _afi468_analyze_invoice
+except Exception:
+    pass
+
+
+# ------------------------------------------------------------------
+# AFI_UPLOAD_ENBW_SEPARATE_STANDARD_SOURCES_V0469
+# Datum: 2026-07-06
+# Zweck:
+# - EnBW-Standardquellen exakt einstellen:
+#   1) Blockiergebühr Netto je Nutzer
+#   2) Energiekosten Netto
+#   3) Grundgebühr je Nutzer Netto
+# - Alle drei EnBW-Standardquellen werden standardmäßig separat ausgewiesen.
+# - Die Grundgebühr wird im Export mit Text/Kostenart "Grundgebühr" ausgewiesen.
+# ------------------------------------------------------------------
+AFI_UPLOAD_ENBW_SEPARATE_STANDARD_SOURCES_VERSION = "0.469"
+
+_AFI465_ENBW_SOURCE_DEFS = [
+    ("Blockiergebühr Netto je Nutzer", ["Blockiergebühr", "Blockiergebuehr", "Blockier", "Blocking"], "Blockiergebühr"),
+    ("Energiekosten Netto", ["Energiekosten", "Energie", "Ladekosten", "Charging", "Strom"], "Energiekosten"),
+    ("Grundgebühr je Nutzer Netto", ["Grundgebühr je Nutzer", "Grundgebuehr je Nutzer", "Grundgebühr", "Grundgebuehr", "Grundkosten", "Grundpreis", "Basic fee"], "Grundgebühr"),
+]
+
+
+def _afi469_source_defaults(data):
+    data = dict(data or {})
+    label_norm = _norm((data.get("label") or "") + " " + (data.get("cost_description") or ""))
+    # EnBW-Standardquellen immer separat vorbelegen.
+    if any(key in label_norm for key in ["BLOCKIER", "ENERGIEKOST", "GRUNDGEBUEHR", "GRUNDGEBUHR"]):
+        data["separate_positions"] = True
+    # Blockiergebühr bleibt zusätzlich fachlich je Nutzer/Zeile erzwungen.
+    if "BLOCKIER" in label_norm:
+        data["force_per_user"] = True
+        data.setdefault("no_driver_assignment", False)
+    return data
+
+
+def _afi469_make_enbw_source(label, keywords, cost_desc, headers):
+    guessed = guess_columns(headers)
+    net_col = _afi465_find_column(headers, keywords, must_net=True) if '_afi465_find_column' in globals() else ""
+    data = {
+        "active": True,
+        "label": label,
+        "cost_description": cost_desc,
+        "net": net_col,
+        "tax_mode": "manual",
+        "vat_amount": guessed.get("vat_amount", ""),
+        "gross": guessed.get("gross", ""),
+        "manual_rate": "19",
+        "name_mode": "full",
+        "full_name": guessed.get("full_name", ""),
+        "first": guessed.get("first", ""),
+        "last": guessed.get("last", ""),
+        "key": guessed.get("key", ""),
+    }
+    return _afi469_source_defaults(data)
+
+# Finale Alias-Zuweisung, damit Analyse und manuelles Hinzufügen die korrigierten Quelleinstellungen verwenden.
+_afi467_source_defaults = _afi469_source_defaults
+_afi465_make_enbw_source = _afi469_make_enbw_source
+_afi468_make_enbw_source = _afi469_make_enbw_source
+
+
+def _afi469_export_cost_desc(src, global_prefix):
+    label = _clean(src.get("label", ""))
+    desc = _clean(src.get("cost_description", ""))
+    n = _norm(label + " " + desc)
+    if "GRUNDGEBUEHR" in n or "GRUNDGEBUHR" in n:
+        return "Grundgebühr"
+    if "ENERGIEKOST" in n:
+        return "Energiekosten"
+    if "BLOCKIER" in n:
+        return "Blockiergebühr"
+    return desc or label or global_prefix
+
+# Kapselt die v0.468-Hilfsfunktion, damit Grundgebühr im Export immer als "Grundgebühr" erscheint.
+_afi468_source_cost_desc_before_v0469 = _afi468_source_cost_desc
+
+def _afi468_source_cost_desc(src, global_prefix):
+    return _afi469_export_cost_desc(src, global_prefix)
+
+# Korrigierte Analysefunktion mit neuen EnBW-Quellennamen; keine Status-/Schritt-Texte.
+def _afi469_analyze_invoice(self):
+    path = self.invoice_var.get().strip()
+    if not os.path.isfile(path):
+        messagebox.showwarning(MODULE_TITLE, "Bitte eine gueltige Rechnung auswaehlen.")
+        return
+    try:
+        if not hasattr(self, 'sources_inner'):
+            self.sources_inner = tk.Frame(self.app.root if hasattr(self, 'app') else None, bg=self.bg)
+        self.clear_sources()
+        try:
+            self.load_preview(path)
+        except Exception:
+            pass
+        _afi463_update_export_path(self, True)
+        ext = os.path.splitext(path)[1].lower()
+        if ext == ".pdf":
+            self.headers, self.rows = ["PDF"], []
+            try:
+                if hasattr(self, 'add_source_btn'): self.add_source_btn.configure(state="disabled")
+            except Exception:
+                pass
+        else:
+            self.headers, self.rows = _read_table_file(path)
+            if _afi466_is_enbw(self, path, self.supplier_var.get() if hasattr(self, 'supplier_var') else "", self.headers):
+                for label, keywords, cost_desc in _AFI465_ENBW_SOURCE_DEFS:
+                    self.add_source(_afi469_make_enbw_source(label, keywords, cost_desc, self.headers))
+                self.suggestion_var.set("EnBW erkannt: Blockiergebühr, Energiekosten und Grundgebühr wurden separat vorbereitet.")
+            else:
+                suggestions = suggested_sources(self.headers)
+                self.add_source(suggestions[0])
+            try:
+                if hasattr(self, 'add_source_btn'): self.add_source_btn.configure(state="normal")
+            except Exception:
+                pass
+        _afi464_populate_positions_tree(self)
+    except Exception as exc:
+        messagebox.showerror(MODULE_TITLE, str(exc))
+
+try:
+    SupplierUploadUI.analyze_invoice = _afi469_analyze_invoice
+except Exception:
+    pass
+
+
+# ------------------------------------------------------------------
+# AFI_UPLOAD_ENBW_GROUP_PER_DRIVER_V0470
+# Datum: 2026-07-07
+# Zweck:
+# - EnBW-Standardquellen final in Reihenfolge:
+#   1) Energiekosten Netto
+#   2) Blockiergebühr Netto
+#   3) Grundgebühr je Nutzer Netto
+# - Alle Kosten einer Kostenbeschreibung werden pro Fahrer in genau einer Position gebuendelt.
+# - "Separat ausweisen" bedeutet: eigene Position pro Fahrer fuer diese Berechnungsquelle.
+# - Wenn "Separat ausweisen" nicht aktiv ist, wird die Quelle den Energiekosten des Fahrers zugeschlagen.
+# - Grundgebühr je Nutzer Netto wird im Export weiterhin als "Grundgebühr" ausgegeben.
+# ------------------------------------------------------------------
+AFI_UPLOAD_ENBW_GROUP_PER_DRIVER_VERSION = "0.470"
+
+_AFI465_ENBW_SOURCE_DEFS = [
+    ("Energiekosten Netto", ["Energiekosten Netto", "Energiekosten", "Energie", "Ladekosten", "Charging", "Strom"], "Energiekosten"),
+    ("Blockiergebühr Netto", ["Blockiergebühr Netto", "Blockiergebühr", "Blockiergebuehr", "Blockier", "Blocking"], "Blockiergebühr"),
+    ("Grundgebühr je Nutzer Netto", ["Grundgebühr je Nutzer Netto", "Grundgebuehr je Nutzer Netto", "Grundgebühr je Nutzer", "Grundgebühr", "Grundgebuehr", "Grundkosten", "Grundpreis", "Basic fee"], "Grundgebühr"),
+]
+
+
+def _afi470_is_enbw_standard_source(src):
+    n = _norm((src or {}).get("label", "") + " " + (src or {}).get("cost_description", "") + " " + (src or {}).get("net", ""))
+    return any(x in n for x in ["ENERGIEKOST", "BLOCKIER", "GRUNDGEBUEHR", "GRUNDGEBUHR"])
+
+
+def _afi470_source_defaults(data):
+    data = dict(data or {})
+    n = _norm((data.get("label") or "") + " " + (data.get("cost_description") or "") + " " + (data.get("net") or ""))
+    # Alle drei EnBW-Standardquellen werden standardmaessig separat ausgewiesen.
+    if any(x in n for x in ["ENERGIEKOST", "BLOCKIER", "GRUNDGEBUEHR", "GRUNDGEBUHR"]):
+        data["separate_positions"] = True
+    return data
+
+
+def _afi470_make_enbw_source(label, keywords, cost_desc, headers):
+    guessed = guess_columns(headers)
+    net_col = _afi465_find_column(headers, keywords, must_net=True) if '_afi465_find_column' in globals() else ""
+    data = {
+        "active": True,
+        "label": label,
+        "cost_description": cost_desc,
+        "net": net_col,
+        "tax_mode": "manual",
+        "vat_amount": guessed.get("vat_amount", ""),
+        "gross": guessed.get("gross", ""),
+        "manual_rate": "19",
+        "name_mode": "full",
+        "full_name": guessed.get("full_name", ""),
+        "first": guessed.get("first", ""),
+        "last": guessed.get("last", ""),
+        "key": guessed.get("key", ""),
+    }
+    return _afi470_source_defaults(data)
+
+# Finale Alias-Zuweisungen fuer UI und Analyse.
+_afi467_source_defaults = _afi470_source_defaults
+_afi465_make_enbw_source = _afi470_make_enbw_source
+_afi468_make_enbw_source = _afi470_make_enbw_source
+_afi469_make_enbw_source = _afi470_make_enbw_source
+
+
+def _afi470_export_cost_desc(src, global_prefix):
+    n = _norm((src or {}).get("label", "") + " " + (src or {}).get("cost_description", "") + " " + (src or {}).get("net", ""))
+    if "GRUNDGEBUEHR" in n or "GRUNDGEBUHR" in n:
+        return "Grundgebühr"
+    if "BLOCKIER" in n:
+        return "Blockiergebühr"
+    if "ENERGIEKOST" in n:
+        return "Energiekosten"
+    return _clean((src or {}).get("cost_description") or (src or {}).get("label") or (src or {}).get("net") or global_prefix) or global_prefix
+
+
+def _afi470_effective_cost_desc(src, global_prefix):
+    """Kostenart fuer Export/Gruppierung.
+
+    Wenn Separat ausweisen nicht aktiv ist, werden die Kosten immer den Energiekosten zugeschlagen.
+    Energiekosten selbst bleiben Energiekosten.
+    """
+    own = _afi470_export_cost_desc(src, global_prefix)
+    n = _norm(own)
+    separate = _afi468_source_flag(src, "separate_positions") if '_afi468_source_flag' in globals() else bool((src or {}).get("separate_positions"))
+    if "ENERGIEKOST" in n:
+        return "Energiekosten"
+    if not separate:
+        return "Energiekosten"
+    return own
+
+# Auch bestehende v0.468-Hilfsfunktion soll die finale Kostenart liefern.
+_afi468_source_cost_desc_before_v0470 = _afi468_source_cost_desc if '_afi468_source_cost_desc' in globals() else None
+
+def _afi468_source_cost_desc(src, global_prefix):
+    return _afi470_effective_cost_desc(src, global_prefix)
+
+
+_create_supplier_upload_csv_before_v0470 = create_supplier_upload_csv
+
+def create_supplier_upload_csv(assignment_path, invoice_path, export_path, config):
+    ext = os.path.splitext(invoice_path)[1].lower()
+    if ext == ".pdf":
+        return _create_supplier_upload_csv_before_v0470(assignment_path, invoice_path, export_path, config)
+    assignment_entries = load_assignment_entries(assignment_path)
+    global_prefix = _clean((config or {}).get("global_prefix", "Tanken Strom")) or "Tanken Strom"
+    headers, rows = _read_table_file(invoice_path)
+    sources = [s for s in (config or {}).get("sources", []) if s.get("active", True) and s.get("net")]
+    if not sources:
+        raise RuntimeError("Bitte mindestens eine aktive Berechnungsquelle mit Betragsspalte auswählen.")
+    groups = OrderedDict()
+    warnings_missing = []
+    warnings_tax = []
+    warnings_empty_assignment = []
+    warnings_foreign_gross = []
+    invoice_total = Decimal("0.00")
+    unique_drivers = set()
+    unique_keys = set()
+
+    def resolve_group_values(cost_desc, key, driver, no_driver):
+        if no_driver:
+            return "", "", "", False
+        info, how = resolve_assignment(key, driver, assignment_entries)
+        if not info:
+            warnings_missing.append(f"{key} / {driver}: {'mehrdeutige Zuordnung' if how == 'mehrdeutig' else 'keine Zuordnung'}")
+            return "", "", "", True
+        gl, cc, orderid = _select_assignment_values(info, _cost_type(cost_desc), cost_desc)
+        if not gl or not cc:
+            warnings_missing.append(f"{key} / {driver}: Sachkonto/KST unvollständig (Sachkonto='{gl}', KST='{cc}')")
+        return gl or "", cc or "", orderid or "", False
+
+    for src in sources:
+        net_col = src.get("net", "")
+        if not net_col:
+            continue
+        own_desc = _afi470_export_cost_desc(src, global_prefix)
+        effective_desc = _afi470_effective_cost_desc(src, global_prefix)
+        no_driver = _afi468_source_flag(src, "no_driver_assignment") if '_afi468_source_flag' in globals() else bool(src.get("no_driver_assignment"))
+        for idx, row in enumerate(rows):
+            net = _dec(row.get(net_col, ""))
+            if net == 0:
+                continue
+            key, driver = _afi468_driver_key_from_row(row, src, idx) if '_afi468_driver_key_from_row' in globals() else ("", "")
+            if not key and not driver:
+                key = driver = f"UNZUORDENBAR Zeile {idx+2}"
+            if str(key).startswith("UNZUORDENBAR"):
+                warnings_empty_assignment.append(f"{own_desc}: Zeile {idx+2} ohne Fahrer/Schlüssel")
+            amount, tax, foreign = _afi468_amount_tax(row, src, net) if '_afi468_amount_tax' in globals() else _amount_and_tax_from_values(net, Decimal("0"), Decimal("19"))
+            if tax == "VX":
+                warnings_tax.append(f"{own_desc} / {key} / {driver}: Steuer nicht eindeutig")
+            if foreign:
+                warnings_foreign_gross.append(f"{own_desc} / {key}: abweichender/ausländischer Steuersatz -> Bruttobetrag mit V0 verwendet")
+            invoice_total += amount
+            unique_drivers.add(_norm(driver))
+            unique_keys.add(_norm(key))
+            if no_driver:
+                group_driver = effective_desc
+                group_key = effective_desc
+                grouping_key = ("NO_DRIVER", _norm(effective_desc), tax)
+            else:
+                # Fachregel: pro Fahrer und Kostenbeschreibung genau eine Position.
+                group_driver = driver
+                group_key = key
+                grouping_key = ("DRIVER_COST", _norm(effective_desc), _norm(driver), tax)
+            if grouping_key not in groups:
+                gl, cc, orderid, _missing = resolve_group_values(effective_desc, group_key, group_driver, no_driver)
+                text_parts = [effective_desc]
+                if not no_driver:
+                    if group_key: text_parts.append(group_key)
+                    if group_driver and _norm(group_driver) != _norm(group_key): text_parts.append(group_driver)
+                groups[grouping_key] = {
+                    "TEXT": _clean(" ".join(text_parts)),
+                    "amount": Decimal("0.00"),
+                    "TAX_CODE": tax,
+                    "GL_ACCOUNT": gl,
+                    "COSTCENTER": cc,
+                    "ORDERID": orderid,
+                    "driver_norm": _norm(group_driver),
+                    "cost_norm": _norm(effective_desc),
+                }
+            # Falls erster Treffer keine Kennzeicheninformation enthielt und spaetere Zeile eine hat, Text/KST nicht neu anfassen,
+            # da pro Fahrer eine Position gewuenscht ist und der erste plausible Zuordnungstreffer stabil bleibt.
+            groups[grouping_key]["amount"] += amount
+
+    ordered = sorted(groups.values(), key=lambda g: (g.get("driver_norm", ""), g.get("cost_norm", ""), TAX_ORDER.get(g.get("TAX_CODE", "VX"), 9)))
+    os.makedirs(os.path.dirname(os.path.abspath(export_path)) or ".", exist_ok=True)
+    with open(export_path, "w", encoding="utf-8-sig", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=UPLOAD_COLUMNS, delimiter=";", extrasaction="ignore")
+        writer.writeheader()
+        for g in ordered:
+            amount = Decimal(g.get("amount", "0")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+            writer.writerow({
+                "TEXT": g.get("TEXT", ""),
+                "PRICE": _fmt(amount),
+                "PRICE_UNIT": "1",
+                "QUANTITY": "1",
+                "UNIT": "ST",
+                "NET_VALUE": _fmt(amount),
+                "TAX_CODE": g.get("TAX_CODE", ""),
+                "GL_ACCOUNT": g.get("GL_ACCOUNT", ""),
+                "COSTCENTER": g.get("COSTCENTER", ""),
+                "ORDERID": g.get("ORDERID", ""),
+            })
+    export_total = sum(Decimal(g.get("amount", "0")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP) for g in ordered)
+    target_total = invoice_total.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    return {"rows": len(ordered), "export_path": export_path, "invoice_net_raw_total": _fmt(invoice_total), "export_net_total": _fmt(export_total), "net_rounding_difference": _fmt(export_total - target_total), "unique_drivers": len([x for x in unique_drivers if x]), "unique_keys": len([x for x in unique_keys if x]), "missing_template": warnings_missing, "unknown_tax": warnings_tax, "empty_assignment": warnings_empty_assignment, "name_fallback_matches": [], "rounding_adjustments": [], "foreign_gross": warnings_foreign_gross}
+
+
+def _afi470_analyze_invoice(self):
+    path = self.invoice_var.get().strip()
+    if not os.path.isfile(path):
+        messagebox.showwarning(MODULE_TITLE, "Bitte eine gueltige Rechnung auswaehlen.")
+        return
+    try:
+        if not hasattr(self, 'sources_inner'):
+            self.sources_inner = tk.Frame(self.app.root if hasattr(self, 'app') else None, bg=self.bg)
+        self.clear_sources()
+        try:
+            self.load_preview(path)
+        except Exception:
+            pass
+        _afi463_update_export_path(self, True)
+        ext = os.path.splitext(path)[1].lower()
+        if ext == ".pdf":
+            self.headers, self.rows = ["PDF"], []
+            try:
+                if hasattr(self, 'add_source_btn'): self.add_source_btn.configure(state="disabled")
+            except Exception:
+                pass
+        else:
+            self.headers, self.rows = _read_table_file(path)
+            if _afi466_is_enbw(self, path, self.supplier_var.get() if hasattr(self, 'supplier_var') else "", self.headers):
+                for label, keywords, cost_desc in _AFI465_ENBW_SOURCE_DEFS:
+                    self.add_source(_afi470_make_enbw_source(label, keywords, cost_desc, self.headers))
+                self.suggestion_var.set("EnBW erkannt: Energiekosten, Blockiergebühr und Grundgebühr je Nutzer wurden in der korrekten Reihenfolge vorbereitet.")
+            else:
+                suggestions = suggested_sources(self.headers)
+                self.add_source(suggestions[0])
+            try:
+                if hasattr(self, 'add_source_btn'): self.add_source_btn.configure(state="normal")
+            except Exception:
+                pass
+        _afi464_populate_positions_tree(self)
+    except Exception as exc:
+        messagebox.showerror(MODULE_TITLE, str(exc))
+
+try:
+    SupplierUploadUI.analyze_invoice = _afi470_analyze_invoice
+except Exception:
+    pass
+
+
+# ------------------------------------------------------------------
+# AFI_UPLOAD_ROBUST_ASSIGNMENT_MULTI_PDF_V0471
+# Datum: 2026-07-07
+# Zweck:
+# - Beträge bleiben bis zum finalen CSV-Schreiben ungerundet; keine Cent-Korrekturpositionen.
+# - Mehrfachauswahl von PDF-Rechnungen; mehrere PDFs werden in eine gemeinsame AFI-CSV geschrieben.
+# - Robustere Fahrerzuordnung bei Apostrophen, Akzenten, Umlauten und kleinen Tippfehlern.
+# - Alte Kennzeichenhalter-Konflikte werden erkannt; optional kann die Rechnungszuordnung übernommen werden.
+# - Sachkonto wird immer aus der Kostenbeschreibung gesetzt, auch ohne eindeutige Fahrer-/Rufnummerzuordnung.
+# ------------------------------------------------------------------
+AFI_UPLOAD_ROBUST_ASSIGNMENT_MULTI_PDF_VERSION = "0.471"
+
+import difflib as _afi471_difflib
+
+
+def _afi471_split_invoice_paths(value):
+    if isinstance(value, (list, tuple)):
+        return [str(x).strip() for x in value if str(x).strip()]
+    text = str(value or "").strip()
+    if not text:
+        return []
+    parts = []
+    for line in text.replace("\r", "\n").split("\n"):
+        line = line.strip()
+        if line:
+            parts.append(line)
+    return parts or [text]
+
+
+def _afi471_join_invoice_paths(paths):
+    return "\n".join(str(p) for p in (paths or []) if str(p).strip())
+
+
+def _afi471_normal_file_exists(value):
+    paths = _afi471_split_invoice_paths(value)
+    return bool(paths) and all(os.path.isfile(p) for p in paths)
+
+
+def _afi471_similarity(a, b):
+    a = _norm(a)
+    b = _norm(b)
+    if not a or not b:
+        return 0.0
+    if a == b:
+        return 1.0
+    return _afi471_difflib.SequenceMatcher(None, a, b).ratio()
+
+
+def _afi471_name_variants(entry):
+    vals = []
+    for key in ("name_norm", "alt_name_norm", "last_norm"):
+        v = entry.get(key, "")
+        if v:
+            vals.append(v)
+    fn = _clean(entry.get("first", ""))
+    ln = _clean(entry.get("last", ""))
+    if fn or ln:
+        vals.append(_norm(f"{fn} {ln}"))
+        vals.append(_norm(f"{ln} {fn}"))
+    return [v for v in vals if v]
+
+
+def _afi471_best_name_match(entries, driver, threshold=0.86):
+    target = _norm(driver)
+    if not target:
+        return None, "", 0.0
+    scored = []
+    for e in entries or []:
+        best = 0.0
+        for v in _afi471_name_variants(e):
+            if not v:
+                continue
+            sim = _afi471_similarity(target, v)
+            # Nachname alleine darf helfen, aber nicht alleine entscheiden, wenn vollständiger Name abweicht.
+            if len(v) <= 5 and v != target:
+                sim = min(sim, 0.84)
+            best = max(best, sim)
+        if best >= threshold:
+            scored.append((best, e))
+    scored.sort(key=lambda x: x[0], reverse=True)
+    if not scored:
+        return None, "", 0.0
+    if len(scored) > 1 and scored[0][0] - scored[1][0] < 0.025:
+        return None, "mehrdeutig", scored[0][0]
+    return scored[0][1], "fuzzy_name", scored[0][0]
+
+
+def _afi471_plate_entry(entries, key):
+    kn = _norm(key)
+    if not kn:
+        return None
+    for e in entries or []:
+        if e.get("identifier_type") == "PLATE" and e.get("identifier_norm") == kn:
+            return e
+    return None
+
+
+def _afi471_entry_name_score(entry, driver):
+    if not entry or not driver:
+        return 0.0
+    return max([_afi471_similarity(driver, v) for v in _afi471_name_variants(entry)] or [0.0])
+
+
+def _afi471_cost_type_for_gl(cost_desc):
+    n = _norm(cost_desc)
+    if any(x in n for x in ("ENERGIEKOST", "BLOCKIER", "GRUNDGEBUEHR", "GRUNDGEBUHR")):
+        return "TANKEN_STROM"
+    return _cost_type(cost_desc)
+
+
+def _afi471_fallback_entry_for_gl(assignment_path, cost_desc, bukrs="IDE"):
+    try:
+        cache = _afi463_load_general_overview(assignment_path)
+        glmap = cache.get("gl", {}).get(bukrs or "IDE", {})
+    except Exception:
+        glmap = {}
+    gl = ""
+    ct = _afi471_cost_type_for_gl(cost_desc)
+    if ct == "TANKEN_STROM":
+        gl = glmap.get(_norm("Tanken Strom"), "") or glmap.get(_norm("Tanken"), "")
+    elif ct == "TANKEN":
+        gl = glmap.get(_norm("Tanken"), "") or glmap.get(_norm("DKV"), "")
+    elif ct == "MOBILFUNK":
+        gl = glmap.get(_norm("Telekom"), "") or glmap.get(_norm("Vodafone"), "")
+    elif ct == "LEASING":
+        gl = glmap.get(_norm("VW-Leasing"), "") or glmap.get(_norm("Leasing"), "")
+    elif ct == "VERSICHERUNG":
+        gl = glmap.get(_norm("VW-Versicherungen"), "") or glmap.get(_norm("DEAS"), "")
+    if not gl:
+        gl = glmap.get(_norm("Sonstige"), "")
+    return {"gl_default": gl, "gl_tanken_strom": gl, "gl_tanken": gl, "gl_mobilfunk": gl, "gl_leasing": gl, "gl_versicherung": gl, "gl_bike_leasing": gl, "cc_default": "", "cc_tanken_strom": "", "cc_tanken": "", "cc_mobilfunk": "", "cc_leasing": "", "cc_versicherung": "", "cc_bike_leasing": "", "orderid": "", "bukrs": bukrs or "IDE"}
+
+
+def _afi471_org_to_bukrs_from_row(row):
+    org = _norm((row or {}).get("Organisationseinheit", ""))
+    if org == "IDG":
+        return "IDG"
+    if org == "SABU":
+        return "SABU"
+    if org == "IMS":
+        return "IMS"
+    return "IDE"
+
+
+def _afi471_resolve_values(assignment_path, entries, cost_desc, key, driver, accepted_old, row, warnings_missing, conflicts, fuzzy_hits):
+    bukrs = _afi471_org_to_bukrs_from_row(row)
+    fallback = _afi471_fallback_entry_for_gl(assignment_path, cost_desc, bukrs)
+    gl_only, _, _ = _select_assignment_values(fallback, _afi471_cost_type_for_gl(cost_desc), cost_desc)
+    gl_only = gl_only or fallback.get("gl_default", "")
+    plate = _afi471_plate_entry(entries, key)
+    name_entry, name_how, name_score = _afi471_best_name_match(entries, driver)
+    conflict_id = f"{_norm(key)}|{_norm(driver)}"
+    conflict = None
+    selected = None
+    text_driver = driver
+    suppress_driver = False
+    old_conflict = False
+
+    if plate:
+        score = _afi471_entry_name_score(plate, driver)
+        if driver and score < 0.86:
+            old_conflict = True
+            conflict = {"id": conflict_id, "kennzeichen": key, "rechnung_fahrer": driver, "zuordnung_fahrer": plate.get("full_name", ""), "score": round(score, 3)}
+            if conflict_id not in accepted_old:
+                suppress_driver = True
+                text_driver = ""
+                selected = None
+            else:
+                selected = name_entry or plate
+                if name_entry:
+                    fuzzy_hits.append(f"{key} / {driver}: alte Rechnungszuordnung per Namenssuche übernommen ({name_entry.get('full_name','')}, Score {name_score:.2f})")
+                else:
+                    warnings_missing.append(f"{key} / {driver}: alte Rechnungszuordnung übernommen, aber keine robuste Namenszuordnung gefunden")
+        else:
+            selected = plate
+            if driver and 0.0 < score < 1.0:
+                fuzzy_hits.append(f"{key} / {driver}: Kennzeichenhalter trotz Schreibabweichung übernommen ({plate.get('full_name','')}, Score {score:.2f})")
+    elif name_entry:
+        selected = name_entry
+        if name_score < 1.0:
+            fuzzy_hits.append(f"{key} / {driver}: Kontierung per robuster Namenssuche ({name_entry.get('full_name','')}, Score {name_score:.2f})")
+    else:
+        selected = None
+
+    if conflict:
+        conflicts[conflict_id] = conflict
+    if selected:
+        gl, cc, orderid = _select_assignment_values(selected, _afi471_cost_type_for_gl(cost_desc), cost_desc)
+        gl = gl or gl_only
+        if not cc:
+            warnings_missing.append(f"{key} / {driver}: keine KST gefunden")
+        return gl, cc or "", orderid or "", text_driver, suppress_driver, old_conflict
+    warnings_missing.append(f"{key} / {driver}: keine eindeutige Fahrer-/Kennzeichenzuordnung; nur Sachkonto gesetzt")
+    return gl_only, "", "", text_driver if not suppress_driver else "", suppress_driver, old_conflict
+
+
+_create_supplier_upload_csv_before_v0471 = create_supplier_upload_csv
+
+def create_supplier_upload_csv(assignment_path, invoice_path, export_path, config):
+    invoice_paths = _afi471_split_invoice_paths(invoice_path)
+    if len(invoice_paths) > 1 and all(os.path.splitext(p)[1].lower() == ".pdf" for p in invoice_paths):
+        tmp_files = []
+        combined = OrderedDict()
+        result_rows = 0
+        warnings_all = []
+        total = Decimal("0.00")
+        for idx, pdf_path in enumerate(invoice_paths, 1):
+            tmp = os.path.join(os.path.dirname(os.path.abspath(export_path)) or ".", f".__afi_tmp_pdf_{idx}.csv")
+            tmp_files.append(tmp)
+            res = _create_supplier_upload_csv_before_v0471(assignment_path, pdf_path, tmp, config)
+            warnings_all.extend((res or {}).get("missing_template", []) or [])
+            with open(tmp, "r", encoding="utf-8-sig", newline="") as f:
+                reader = csv.DictReader(f, delimiter=";")
+                for row in reader:
+                    key = (row.get("TEXT", ""), row.get("TAX_CODE", ""), row.get("GL_ACCOUNT", ""), row.get("COSTCENTER", ""), row.get("ORDERID", ""))
+                    amt = _dec(row.get("NET_VALUE") or row.get("PRICE") or "0")
+                    if key not in combined:
+                        combined[key] = {"row": dict(row), "amount": Decimal("0.00")}
+                    combined[key]["amount"] += amt
+                    total += amt
+        os.makedirs(os.path.dirname(os.path.abspath(export_path)) or ".", exist_ok=True)
+        with open(export_path, "w", encoding="utf-8-sig", newline="") as f:
+            writer = csv.DictWriter(f, fieldnames=UPLOAD_COLUMNS, delimiter=";", extrasaction="ignore")
+            writer.writeheader()
+            for item in combined.values():
+                amount = item["amount"].quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+                row = item["row"]
+                row["PRICE"] = _fmt(amount); row["NET_VALUE"] = _fmt(amount); row["PRICE_UNIT"] = "1"; row["QUANTITY"] = "1"; row["UNIT"] = "ST"
+                writer.writerow(row)
+        for tmp in tmp_files:
+            try: os.remove(tmp)
+            except Exception: pass
+        return {"rows": len(combined), "export_path": export_path, "invoice_net_raw_total": _fmt(total), "export_net_total": _fmt(sum(i["amount"].quantize(Decimal("0.01"), rounding=ROUND_HALF_UP) for i in combined.values())), "net_rounding_difference": _fmt(sum(i["amount"].quantize(Decimal("0.01"), rounding=ROUND_HALF_UP) for i in combined.values()) - total.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)), "missing_template": warnings_all, "multi_pdf_count": len(invoice_paths)}
+
+    if not invoice_paths:
+        raise RuntimeError("Bitte eine Rechnung auswählen.")
+    invoice_path_single = invoice_paths[0]
+    ext = os.path.splitext(invoice_path_single)[1].lower()
+    if ext == ".pdf":
+        return _create_supplier_upload_csv_before_v0471(assignment_path, invoice_path_single, export_path, config)
+
+    assignment_entries = load_assignment_entries(assignment_path)
+    global_prefix = _clean((config or {}).get("global_prefix", "Tanken Strom")) or "Tanken Strom"
+    headers, rows = _read_table_file(invoice_path_single)
+    sources = [s for s in (config or {}).get("sources", []) if s.get("active", True) and s.get("net")]
+    if not sources:
+        raise RuntimeError("Bitte mindestens eine aktive Berechnungsquelle mit Betragsspalte auswählen.")
+    accepted_old = set((config or {}).get("accepted_old_plate_assignments") or [])
+    groups = OrderedDict(); warnings_missing=[]; warnings_tax=[]; warnings_empty_assignment=[]; warnings_foreign_gross=[]; fuzzy_hits=[]; conflicts={}
+    invoice_total = Decimal("0.00"); unique_drivers=set(); unique_keys=set()
+
+    for src in sources:
+        net_col = src.get("net", "")
+        if not net_col:
+            continue
+        own_desc = _afi470_export_cost_desc(src, global_prefix) if '_afi470_export_cost_desc' in globals() else _clean(src.get("cost_description") or src.get("label") or global_prefix)
+        effective_desc = _afi470_effective_cost_desc(src, global_prefix) if '_afi470_effective_cost_desc' in globals() else own_desc
+        no_driver = _afi468_source_flag(src, "no_driver_assignment") if '_afi468_source_flag' in globals() else bool(src.get("no_driver_assignment"))
+        for idx, row in enumerate(rows):
+            net = _dec(row.get(net_col, ""))
+            if net == 0:
+                continue
+            key, driver = _afi468_driver_key_from_row(row, src, idx) if '_afi468_driver_key_from_row' in globals() else ("", "")
+            if not key and not driver:
+                key = driver = f"UNZUORDENBAR Zeile {idx+2}"; warnings_empty_assignment.append(f"{own_desc}: Zeile {idx+2} ohne Fahrer/Schlüssel")
+            amount, tax, foreign = _afi468_amount_tax(row, src, net) if '_afi468_amount_tax' in globals() else _amount_and_tax_from_values(net, Decimal("0"), Decimal("19"))
+            if tax == "VX": warnings_tax.append(f"{own_desc} / {key} / {driver}: Steuer nicht eindeutig")
+            if foreign: warnings_foreign_gross.append(f"{own_desc} / {key}: abweichender/ausländischer Steuersatz -> Bruttobetrag mit V0 verwendet")
+            invoice_total += amount; unique_drivers.add(_norm(driver)); unique_keys.add(_norm(key))
+            if no_driver:
+                gl, cc, orderid = _select_assignment_values(_afi471_fallback_entry_for_gl(assignment_path, effective_desc), _afi471_cost_type_for_gl(effective_desc), effective_desc)
+                text_driver = ""; suppress = True
+            else:
+                gl, cc, orderid, text_driver, suppress, _old = _afi471_resolve_values(assignment_path, assignment_entries, effective_desc, key, driver, accepted_old, row, warnings_missing, conflicts, fuzzy_hits)
+            if suppress:
+                grouping_key = ("NO_KST", _norm(effective_desc), _norm(key), tax, gl)
+                text_parts = [effective_desc]
+                if key: text_parts.append(key)
+            else:
+                grouping_key = ("DRIVER_COST", _norm(effective_desc), _norm(text_driver or driver), tax, gl, cc, orderid)
+                text_parts = [effective_desc]
+                if key: text_parts.append(key)
+                if (text_driver or driver) and _norm(text_driver or driver) != _norm(key): text_parts.append(text_driver or driver)
+            if grouping_key not in groups:
+                groups[grouping_key] = {"TEXT": _clean(" ".join(text_parts)), "amount": Decimal("0.00"), "TAX_CODE": tax, "GL_ACCOUNT": gl or "", "COSTCENTER": cc or "", "ORDERID": orderid or "", "driver_norm": _norm(text_driver or driver), "cost_norm": _norm(effective_desc)}
+            groups[grouping_key]["amount"] += amount
+
+    ordered = sorted(groups.values(), key=lambda g: (g.get("driver_norm", ""), g.get("cost_norm", ""), TAX_ORDER.get(g.get("TAX_CODE", "VX"), 9)))
+    os.makedirs(os.path.dirname(os.path.abspath(export_path)) or ".", exist_ok=True)
+    with open(export_path, "w", encoding="utf-8-sig", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=UPLOAD_COLUMNS, delimiter=";", extrasaction="ignore")
+        writer.writeheader()
+        for g in ordered:
+            amount = Decimal(g.get("amount", "0")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+            writer.writerow({"TEXT": g.get("TEXT", ""), "PRICE": _fmt(amount), "PRICE_UNIT": "1", "QUANTITY": "1", "UNIT": "ST", "NET_VALUE": _fmt(amount), "TAX_CODE": g.get("TAX_CODE", ""), "GL_ACCOUNT": g.get("GL_ACCOUNT", ""), "COSTCENTER": g.get("COSTCENTER", ""), "ORDERID": g.get("ORDERID", "")})
+    export_total = sum(Decimal(g.get("amount", "0")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP) for g in ordered)
+    target_total = invoice_total.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    return {"rows": len(ordered), "export_path": export_path, "invoice_net_raw_total": _fmt(invoice_total), "export_net_total": _fmt(export_total), "net_rounding_difference": _fmt(export_total - target_total), "unique_drivers": len([x for x in unique_drivers if x]), "unique_keys": len([x for x in unique_keys if x]), "missing_template": warnings_missing, "unknown_tax": warnings_tax, "empty_assignment": warnings_empty_assignment, "name_fallback_matches": fuzzy_hits, "rounding_adjustments": [], "foreign_gross": warnings_foreign_gross, "old_plate_conflicts": list(conflicts.values())}
+
+
+_fm_browse_before_v0471 = _fm_browse if '_fm_browse' in globals() else None
+
+def _fm_browse(self, label, var, save=False, role=""):
+    if save:
+        return _fm_browse_before_v0471(self, label, var, save, role) if _fm_browse_before_v0471 else None
+    if role == "invoice":
+        start = var.get().strip() if hasattr(var, 'get') else ""
+        if "\n" in start:
+            start = os.path.dirname(_afi471_split_invoice_paths(start)[0])
+        if os.path.isfile(start): start = os.path.dirname(start)
+        if not os.path.isdir(start): start = _fm_downloads_path() if '_fm_downloads_path' in globals() else _desktop_path()
+        paths = filedialog.askopenfilenames(title=label, initialdir=start or None, filetypes=[("Dokumente", "*.csv *.xlsx *.xls *.xlsm *.pdf *.docx"), ("Alle Dateien", "*.*")])
+        if paths:
+            var.set(_afi471_join_invoice_paths(paths))
+            try:
+                if hasattr(self, "load_preview"):
+                    self.load_preview(paths[0])
+            except Exception:
+                pass
+            try:
+                _afi463_update_export_path(self, True)
+            except Exception:
+                try: _fm_update_export_path(self, True)
+                except Exception: pass
+        return
+    return _fm_browse_before_v0471(self, label, var, save, role) if _fm_browse_before_v0471 else None
+
+
+def _afi471_old_plate_dialog(self, conflicts):
+    if not conflicts:
+        return []
+    try:
+        dlg = tk.Toplevel(self.app.root if hasattr(self, 'app') else None)
+        dlg.title("Alte Kennzeichenzuordnung prüfen")
+        dlg.geometry("760x420")
+        tk.Label(dlg, text="Bei folgenden Kennzeichen weicht der Fahrer aus der Rechnung von der aktuellen Zuordnungsdatei ab. Bitte auswählen, welche alte Rechnungszuordnung in den AFI-Export übernommen werden soll.", wraplength=720, justify="left").pack(fill="x", padx=10, pady=8)
+        frm = tk.Frame(dlg); frm.pack(fill="both", expand=True, padx=10, pady=5)
+        canvas = tk.Canvas(frm); inner = tk.Frame(canvas); scroll = ttk.Scrollbar(frm, orient="vertical", command=canvas.yview)
+        canvas.configure(yscrollcommand=scroll.set); canvas.pack(side="left", fill="both", expand=True); scroll.pack(side="right", fill="y")
+        canvas.create_window((0,0), window=inner, anchor="nw")
+        vars_ = []
+        for c in conflicts:
+            v = tk.BooleanVar(value=False); vars_.append((v, c))
+            txt = f"{c.get('kennzeichen','')} | Rechnung: {c.get('rechnung_fahrer','')} | Zuordnung: {c.get('zuordnung_fahrer','')}"
+            tk.Checkbutton(inner, text=txt, variable=v, anchor="w", justify="left").pack(fill="x", pady=2)
+        inner.update_idletasks(); canvas.configure(scrollregion=canvas.bbox("all"))
+        result = {"accepted": []}
+        def ok():
+            result["accepted"] = [c.get("id") for v,c in vars_ if v.get()]
+            dlg.destroy()
+        def cancel():
+            result["accepted"] = []
+            dlg.destroy()
+        btn = tk.Frame(dlg); btn.pack(fill="x", padx=10, pady=8)
+        tk.Button(btn, text="Ausgewählte übernehmen", command=ok).pack(side="right", padx=4)
+        tk.Button(btn, text="Keine übernehmen", command=cancel).pack(side="right", padx=4)
+        dlg.transient(self.app.root if hasattr(self, 'app') else None); dlg.grab_set(); dlg.wait_window()
+        return result.get("accepted", [])
+    except Exception:
+        return []
+
+
+def _afi471_current_config_with_accept(self, accepted=None):
+    cfg = _afi463_current_config(self) if '_afi463_current_config' in globals() else {}
+    if accepted:
+        cfg["accepted_old_plate_assignments"] = list(accepted)
+    return cfg
+
+
+def _afi471_run_export(self):
+    template_path = self.template_var.get().strip()
+    invoice_path = self.invoice_var.get().strip()
+    try: _afi463_update_export_path(self, False)
+    except Exception: pass
+    export_path = self.export_var.get().strip()
+    if not os.path.isfile(template_path):
+        messagebox.showwarning(MODULE_TITLE, "Bitte eine gueltige Zuordnungsdatei auswaehlen."); return
+    if not _afi471_normal_file_exists(invoice_path):
+        messagebox.showwarning(MODULE_TITLE, "Bitte eine gueltige Rechnung auswaehlen."); return
+    if not export_path:
+        messagebox.showwarning(MODULE_TITLE, "Bitte einen Exportpfad auswaehlen."); return
+    try:
+        cfg = _afi471_current_config_with_accept(self)
+        result = create_supplier_upload_csv(template_path, invoice_path, export_path, cfg)
+        conflicts = result.get("old_plate_conflicts") or []
+        if conflicts:
+            accepted = _afi471_old_plate_dialog(self, conflicts)
+            if accepted:
+                cfg = _afi471_current_config_with_accept(self, accepted)
+                result = create_supplier_upload_csv(template_path, invoice_path, export_path, cfg)
+        info = [f"AFI-Upload-Datei erstellt:\n{export_path}", f"Positionen: {result.get('rows','')}", f"Export-Netto: {result.get('export_net_total','')}"]
+        if result.get("net_rounding_difference") and result.get("net_rounding_difference") != "0,00":
+            info.append(f"Rundungsdifferenz: {result.get('net_rounding_difference')} (keine Korrektur vorgenommen)")
+        if result.get("old_plate_conflicts"):
+            info.append(f"Alte Kennzeichenhalter-Konflikte: {len(result.get('old_plate_conflicts') or [])}")
+        messagebox.showinfo(MODULE_TITLE, "\n".join(info))
+    except Exception as exc:
+        messagebox.showerror(MODULE_TITLE, str(exc))
+
+try:
+    SupplierUploadUI.run_export = _afi471_run_export
+except Exception:
+    pass
+
+
+# ------------------------------------------------------------------
+# AFI_UPLOAD_V0472_KST_MULTI_ANALYSE_FIX
+# Datum: 2026-07-07
+# Zweck:
+# - Rechnung analysieren akzeptiert Mehrfachauswahl von PDFs und verwendet alle angegebenen PDFs.
+# - KST-Reparatur nach Export: Wenn im Export ein Fahrername steht, aber KST leer ist,
+#   wird die KST per robuster Namenssuche aus der Kontierungsdatei nachgezogen.
+# - Alte-KFZ-Konflikte werden im Exportdialog zuverlässig angezeigt.
+# ------------------------------------------------------------------
+AFI_UPLOAD_KST_MULTI_ANALYSE_FIX_VERSION = "0.472"
+
+
+def _afi472_extract_driver_from_text(text, entries):
+    ntext = _norm(text)
+    if not ntext:
+        return None, 0.0
+    best = (None, 0.0)
+    for e in entries or []:
+        for v in _afi471_name_variants(e) if '_afi471_name_variants' in globals() else [e.get('name_norm','')]:
+            if not v or len(v) < 5:
+                continue
+            if v in ntext:
+                # prefer longest concrete full-name match
+                score = min(1.0, 0.90 + len(v) / max(len(ntext), 1) / 10)
+            else:
+                # compare against text, but keep threshold high to avoid false mapping from cost text
+                score = _afi471_similarity(ntext, v) if '_afi471_similarity' in globals() else 0.0
+                if score < 0.90:
+                    continue
+            if score > best[1]:
+                best = (e, score)
+    return best
+
+
+def _afi472_repair_export_kst_by_text(export_path, assignment_path, result=None):
+    try:
+        entries = load_assignment_entries(assignment_path)
+    except Exception:
+        return 0
+    try:
+        with open(export_path, 'r', encoding='utf-8-sig', newline='') as f:
+            rows = list(csv.DictReader(f, delimiter=';'))
+            fieldnames = f.seek(0) or None
+    except Exception:
+        return 0
+    if not rows:
+        return 0
+    # Preserve canonical AFI column order.
+    repaired = 0
+    for row in rows:
+        if (row.get('COSTCENTER') or '').strip():
+            continue
+        text = row.get('TEXT', '')
+        entry, score = _afi472_extract_driver_from_text(text, entries)
+        if not entry:
+            continue
+        # Do not repair intentionally suppressed old-plate conflict rows that contain no driver name.
+        # A repair is only allowed if the actual entry name appears or matches robustly in the visible text.
+        gl, cc, orderid = _select_assignment_values(entry, _afi471_cost_type_for_gl(text) if '_afi471_cost_type_for_gl' in globals() else _cost_type(text), text)
+        if cc:
+            row['COSTCENTER'] = cc
+            if orderid and not row.get('ORDERID'):
+                row['ORDERID'] = orderid
+            if gl and not row.get('GL_ACCOUNT'):
+                row['GL_ACCOUNT'] = gl
+            repaired += 1
+    if repaired:
+        with open(export_path, 'w', encoding='utf-8-sig', newline='') as f:
+            writer = csv.DictWriter(f, fieldnames=UPLOAD_COLUMNS, delimiter=';', extrasaction='ignore')
+            writer.writeheader(); writer.writerows(rows)
+    return repaired
+
+
+_create_supplier_upload_csv_before_v0472 = create_supplier_upload_csv
+
+def create_supplier_upload_csv(assignment_path, invoice_path, export_path, config):
+    res = _create_supplier_upload_csv_before_v0472(assignment_path, invoice_path, export_path, config)
+    # KST-Reparatur nur, wenn ein Fahrername sichtbar ist, aber die KST leer blieb.
+    try:
+        repaired = _afi472_repair_export_kst_by_text(export_path, assignment_path, res)
+        if isinstance(res, dict):
+            res['kst_repaired_by_visible_name'] = repaired
+            if repaired:
+                res.setdefault('name_fallback_matches', [])
+                res['name_fallback_matches'].append(f'KST per sichtbarem Fahrernamen nachgezogen: {repaired} Position(en)')
+    except Exception:
+        pass
+    return res
+
+
+_analyze_invoice_before_v0472 = SupplierUploadUI.analyze_invoice if 'SupplierUploadUI' in globals() else None
+
+def _afi472_analyze_invoice(self):
+    raw = self.invoice_var.get().strip()
+    paths = _afi471_split_invoice_paths(raw) if '_afi471_split_invoice_paths' in globals() else ([raw] if raw else [])
+    if not paths or not all(os.path.isfile(p) for p in paths):
+        messagebox.showwarning(MODULE_TITLE, 'Bitte eine gueltige Rechnung auswaehlen.')
+        return
+    if len(paths) > 1:
+        non_pdf = [p for p in paths if os.path.splitext(p)[1].lower() != '.pdf']
+        if non_pdf:
+            messagebox.showwarning(MODULE_TITLE, 'Mehrfachauswahl ist nur fuer PDF-Rechnungen vorgesehen.')
+            return
+        try:
+            self.clear_sources()
+        except Exception:
+            pass
+        try:
+            self.load_preview(paths[0])
+        except Exception:
+            pass
+        try:
+            _afi463_update_export_path(self, True)
+        except Exception:
+            try: _fm_update_export_path(self, True)
+            except Exception: pass
+        self.headers, self.rows = ['PDF'], []
+        try:
+            if hasattr(self, 'add_source_btn'):
+                self.add_source_btn.configure(state='disabled')
+        except Exception:
+            pass
+        try:
+            self.suggestion_var.set(f'{len(paths)} PDF-Rechnungen erkannt: Alle ausgewaehlten PDFs werden fuer einen gemeinsamen AFI-Export verwendet.')
+        except Exception:
+            pass
+        try:
+            _afi464_populate_positions_tree(self)
+        except Exception:
+            pass
+        return
+    # Single file keeps existing behaviour.
+    if _analyze_invoice_before_v0472:
+        return _analyze_invoice_before_v0472(self)
+
+try:
+    SupplierUploadUI.analyze_invoice = _afi472_analyze_invoice
+except Exception:
+    pass
+
+
+_run_export_before_v0472 = SupplierUploadUI.run_export if 'SupplierUploadUI' in globals() else None
+
+def _afi472_run_export(self):
+    template_path = self.template_var.get().strip()
+    invoice_path = self.invoice_var.get().strip()
+    try: _afi463_update_export_path(self, False)
+    except Exception: pass
+    export_path = self.export_var.get().strip()
+    if not os.path.isfile(template_path):
+        messagebox.showwarning(MODULE_TITLE, 'Bitte eine gueltige Zuordnungsdatei auswaehlen.'); return
+    paths = _afi471_split_invoice_paths(invoice_path) if '_afi471_split_invoice_paths' in globals() else [invoice_path]
+    if not paths or not all(os.path.isfile(p) for p in paths):
+        messagebox.showwarning(MODULE_TITLE, 'Bitte eine gueltige Rechnung auswaehlen.'); return
+    if len(paths) > 1 and any(os.path.splitext(p)[1].lower() != '.pdf' for p in paths):
+        messagebox.showwarning(MODULE_TITLE, 'Mehrfachauswahl ist nur fuer PDF-Rechnungen vorgesehen.'); return
+    if not export_path:
+        messagebox.showwarning(MODULE_TITLE, 'Bitte einen Exportpfad auswaehlen.'); return
+    try:
+        cfg = _afi471_current_config_with_accept(self) if '_afi471_current_config_with_accept' in globals() else _afi463_current_config(self)
+        result = create_supplier_upload_csv(template_path, invoice_path, export_path, cfg)
+        conflicts = result.get('old_plate_conflicts') or [] if isinstance(result, dict) else []
+        if conflicts:
+            accepted = _afi471_old_plate_dialog(self, conflicts) if '_afi471_old_plate_dialog' in globals() else []
+            # Re-export in jedem Fall, damit nicht übernommene Konflikte bewusst ohne Fahrer/KST bleiben
+            # und übernommene Konflikte sichtbar mit Fahrer/KST geschrieben werden.
+            cfg = _afi471_current_config_with_accept(self, accepted) if '_afi471_current_config_with_accept' in globals() else cfg
+            result = create_supplier_upload_csv(template_path, invoice_path, export_path, cfg)
+        info = [f'AFI-Upload-Datei erstellt:\n{export_path}', f"Positionen: {result.get('rows','') if isinstance(result,dict) else ''}", f"Export-Netto: {result.get('export_net_total','') if isinstance(result,dict) else ''}"]
+        if isinstance(result, dict) and result.get('kst_repaired_by_visible_name'):
+            info.append(f"KST per sichtbarem Fahrernamen nachgezogen: {result.get('kst_repaired_by_visible_name')}")
+        if isinstance(result, dict) and result.get('net_rounding_difference') and result.get('net_rounding_difference') != '0,00':
+            info.append(f"Rundungsdifferenz: {result.get('net_rounding_difference')} (keine Korrektur vorgenommen)")
+        if conflicts:
+            info.append(f'Alte Kennzeichenhalter-Konflikte geprüft: {len(conflicts)}')
+        messagebox.showinfo(MODULE_TITLE, '\n'.join(info))
+    except Exception as exc:
+        messagebox.showerror(MODULE_TITLE, str(exc))
+
+try:
+    SupplierUploadUI.run_export = _afi472_run_export
+except Exception:
+    pass
+
+
+# ------------------------------------------------------------------
+# AFI_UPLOAD_DKV_INVOICE_NAMES_AND_CARD_FEE_FIX_V0473
+# Datum: 2026-07-07
+# Zweck:
+# - DKV: Rechnungsname/Kartenzusatz ist beim Export-Text federführend.
+# - KST-Zuordnungsdatei wird nur für Sachkonto/KST/IA genutzt, nicht zum Überschreiben des Namens.
+# - DKV Card Entgelt vor EUR-Übertrag wird korrekt mit Netto 1,80 statt USt 0,34 exportiert.
+# ------------------------------------------------------------------
+AFI_UPLOAD_DKV_INVOICE_NAMES_AND_CARD_FEE_FIX_VERSION = "0.473"
+
+_DKV_LAST_INVOICE_TEXT_BY_PLATE = {}
+
+
+def _dkv473_cut_after_total_noise(after_total_text):
+    text = after_total_text or ""
+    # Seiten-/Blockuebertraege gehoeren nicht mehr zur TOTAL-Zeile des Fahrzeugs.
+    text = re.split(r"(?:EUR\s+Übertrag|EUR\s+Uebertrag|Übertrag\s+EUR|Uebertrag\s+EUR|VEHICLE:|Gesamtsummenaufstellung|Umsatzsteuerstatistik)", text, maxsplit=1, flags=re.I)[0]
+    return text
+
+
+def _dkv473_total_amounts_after_total(after_total_text):
+    cleaned = _dkv473_cut_after_total_noise(after_total_text)
+    nums = _DKV_IDG_TOTAL_NUMBER_RE_V2.findall(cleaned or "")[:6] if '_DKV_IDG_TOTAL_NUMBER_RE_V2' in globals() else _DKV_TOTAL_NUMBER_RE.findall(cleaned or "")[:6]
+    vals = [_dec(x) for x in nums]
+    # Mit Nachlass: Menge, Bezugswert, Nachlass, Gesamtwert netto, USt, Brutto
+    if len(vals) >= 6 and vals[2] < 0:
+        return vals[3], vals[5], nums
+    # Ohne Nachlass + Mengenangabe: Menge, Bezugswert/Gesamtwert, Gesamtwert netto, USt, Brutto
+    if len(vals) >= 5:
+        return vals[2], vals[4], nums[:5]
+    # Reines Card-Entgelt ohne Mengenangabe nach TOTAL: Netto, Netto, USt, Brutto
+    if len(vals) == 4:
+        return vals[1], vals[3], nums
+    # Fallback: Netto, USt, Brutto
+    if len(vals) >= 3:
+        return vals[-3], vals[-1], nums
+    return Decimal("0.00"), Decimal("0.00"), nums
+
+# Beide bisherigen DKV-Total-Helfer überschreiben, weil es zwei Parsergenerationen gibt.
+def _dkv_idg_total_amounts_after_total_v2(after_total_text):
+    return _dkv473_total_amounts_after_total(after_total_text)
+
+def _dkv_total_amounts_from_after_total(after_total_text):
+    return _dkv473_total_amounts_after_total(after_total_text)
+
+
+_parse_dkv_tanken_pdf_positions_before_v0473 = _parse_dkv_tanken_pdf_positions_v1
+
+def _parse_dkv_tanken_pdf_positions_v1(path, global_prefix):
+    positions = _parse_dkv_tanken_pdf_positions_before_v0473(path, global_prefix)
+    # Rechnungs-Kartenzusatz je Kennzeichen merken. Dieser Text ist federführend für den AFI-TEXT.
+    global _DKV_LAST_INVOICE_TEXT_BY_PLATE
+    _DKV_LAST_INVOICE_TEXT_BY_PLATE = {}
+    for pos in positions or []:
+        plate = _dkv_clean_plate(pos.get('key', '')) if '_dkv_clean_plate' in globals() else _clean(pos.get('key', ''))
+        driver = _clean(pos.get('driver', ''))
+        if plate and driver and _norm(driver) != _norm(plate):
+            _DKV_LAST_INVOICE_TEXT_BY_PLATE[_norm(plate)] = driver
+    return positions
+
+
+def _dkv473_invoice_display_for_plate(plate):
+    return _DKV_LAST_INVOICE_TEXT_BY_PLATE.get(_norm(plate), "")
+
+
+def _apply_dkv_driver_names_to_export(export_path, assignment_path, invoice_path, config):
+    """Nur noch Rechnungsnamen/Kartenzusatz in den Text schreiben.
+
+    Wichtig: Die KST-Zuordnung darf den in der Rechnung stehenden Namen nicht überschreiben.
+    Die Zuordnungsdatei ist nur fuer Sachkonto, Kostenstelle und IA relevant.
+    """
+    if not export_path or not os.path.isfile(export_path):
+        return []
+    supplier = _fm_supplier_from_invoice_name(invoice_path) if '_fm_supplier_from_invoice_name' in globals() else ""
+    cost = _norm((config or {}).get("global_prefix", ""))
+    if supplier != "DKV" and "TANKEN" not in cost:
+        return []
+    # Falls der Export aus einem vorherigen Parserlauf kommt und die Map leer ist, PDF erneut lesen.
+    if not _DKV_LAST_INVOICE_TEXT_BY_PLATE:
+        try:
+            for p in _parse_pdf_invoice_positions(invoice_path, (config or {}).get('global_prefix', 'Tanken')):
+                plate = _dkv_clean_plate(p.get('key','')) if '_dkv_clean_plate' in globals() else _clean(p.get('key',''))
+                driver = _clean(p.get('driver',''))
+                if plate and driver and _norm(driver) != _norm(plate):
+                    _DKV_LAST_INVOICE_TEXT_BY_PLATE[_norm(plate)] = driver
+        except Exception:
+            pass
+    with open(export_path, "r", encoding="utf-8-sig", newline="") as f:
+        reader = csv.DictReader(f, delimiter=";")
+        fieldnames = reader.fieldnames or []
+        rows = list(reader)
+    if "TEXT" not in fieldnames:
+        return []
+    prefix = _clean((config or {}).get("global_prefix", "")) or "Tanken"
+    updates = []
+    for row in rows:
+        text_value = _clean(row.get("TEXT", ""))
+        plate_m = _DKV_PLATE_RE.search(text_value) if '_DKV_PLATE_RE' in globals() else None
+        if not plate_m:
+            continue
+        plate = _dkv_clean_plate(plate_m.group(0)) if '_dkv_clean_plate' in globals() else _clean(plate_m.group(0))
+        display = _dkv473_invoice_display_for_plate(plate)
+        if not display:
+            continue
+        new_text = _clean(f"{prefix} {plate} {display}")
+        if '_ascii_umlauts' in globals():
+            new_text = _ascii_umlauts(new_text)
+        if row.get("TEXT", "") != new_text:
+            updates.append({"Kennzeichen": plate, "Alt": row.get("TEXT", ""), "Neu": new_text})
+            row["TEXT"] = new_text
+    if updates:
+        with open(export_path, "w", encoding="utf-8-sig", newline="") as f:
+            writer = csv.DictWriter(f, fieldnames=fieldnames, delimiter=";", extrasaction="ignore")
+            writer.writeheader(); writer.writerows(rows)
+    global _DKV_LAST_DRIVER_TEXT_UPDATES
+    _DKV_LAST_DRIVER_TEXT_UPDATES = updates
+    return updates
+
+
+# ------------------------------------------------------------------
+# AFI_UPLOAD_DKV_INVOICE_LEADING_AND_FALLBACK_GL_V0474
+# Datum: 2026-07-07
+# Zweck:
+# - DKV-PDF-Positionen sind nach dem PDF-Parsing fachlich fuehrend fuer Betrag und Text.
+# - KST/IA werden nur aus der Kontierungsdatei ermittelt und nie aus der Rechnungsspalte/Kunden-ID vertauscht.
+# - Sachkonto wird auch ohne eindeutige KST-Zuordnung gesetzt.
+# ------------------------------------------------------------------
+AFI_UPLOAD_DKV_INVOICE_LEADING_AND_FALLBACK_GL_VERSION = "0.474"
+
+_DKV474_LAST_REPAIRS = []
+
+
+def _dkv474_is_dkv_context(invoice_path, config):
+    supplier = _fm_supplier_from_invoice_name(invoice_path) if '_fm_supplier_from_invoice_name' in globals() else ''
+    cost = _norm((config or {}).get('global_prefix', ''))
+    name = _norm(os.path.basename(invoice_path or ''))
+    return supplier == 'DKV' or 'DKV' in name or 'TANKEN' in cost
+
+
+def _dkv474_best_entry_for_invoice(entries, plate, invoice_driver):
+    nplate = _norm(plate)
+    # 1) Kennzeichen exakt, wenn vorhanden.
+    for e in entries or []:
+        if e.get('identifier_type') == 'PLATE' and e.get('identifier_norm') == nplate:
+            return e, 'plate'
+    # 2) Rechnungsname/Kartenzusatz, z. B. VON PREEN, BEIER, TRUMPP.
+    target = _norm(invoice_driver)
+    if target:
+        # Exakt gegen Nachname / Fullname / Varianten.
+        exact = []
+        for e in entries or []:
+            variants = _afi471_name_variants(e) if '_afi471_name_variants' in globals() else [e.get('name_norm',''), e.get('last_norm','')]
+            if target in variants or any(v and (target == v or target in v or v in target) for v in variants):
+                exact.append(e)
+        if len(exact) == 1:
+            return exact[0], 'invoice_name'
+        # Fuzzy als Fallback, aber nur eindeutige Treffer.
+        if '_afi471_best_name_match' in globals():
+            e, how, score = _afi471_best_name_match(entries, invoice_driver, threshold=0.84)
+            if e:
+                return e, 'invoice_name_fuzzy'
+    return None, ''
+
+
+def _dkv474_gl_fallback(assignment_path, cost_desc='Tanken'):
+    if '_afi471_fallback_entry_for_gl' in globals():
+        ent = _afi471_fallback_entry_for_gl(assignment_path, cost_desc, 'IDE')
+        gl, _cc, _ia = _select_assignment_values(ent, 'TANKEN', cost_desc)
+        return gl or ent.get('gl_tanken') or ent.get('gl_default') or ''
+    try:
+        cache = _afi463_load_general_overview(assignment_path)
+        m = cache.get('gl', {}).get('IDE', {})
+        return m.get(_norm('DKV'), '') or m.get(_norm('Tanken'), '') or m.get(_norm('Sonstige'), '')
+    except Exception:
+        return '427000'
+
+
+def _dkv474_repair_export_from_pdf_positions(export_path, assignment_path, invoice_path, config):
+    if not export_path or not os.path.isfile(export_path) or not _dkv474_is_dkv_context(invoice_path, config):
+        return []
+    try:
+        positions = _parse_pdf_invoice_positions(invoice_path, (config or {}).get('global_prefix', 'Tanken'))
+    except Exception:
+        return []
+    by_plate = {}
+    for pos in positions or []:
+        plate = _dkv_clean_plate(pos.get('key','')) if '_dkv_clean_plate' in globals() else _clean(pos.get('key',''))
+        if plate:
+            by_plate[_norm(plate)] = pos
+    if not by_plate:
+        return []
+    try:
+        entries = load_assignment_entries(assignment_path)
+    except Exception:
+        entries = []
+    fallback_gl = _dkv474_gl_fallback(assignment_path, (config or {}).get('global_prefix', 'Tanken')) or '427000'
+    with open(export_path, 'r', encoding='utf-8-sig', newline='') as f:
+        reader = csv.DictReader(f, delimiter=';')
+        fieldnames = reader.fieldnames or UPLOAD_COLUMNS
+        rows = list(reader)
+    repairs = []
+    prefix = _clean((config or {}).get('global_prefix', '')) or 'Tanken'
+    for row in rows:
+        text_value = _clean(row.get('TEXT',''))
+        plate_match = _DKV_PLATE_RE.search(text_value) if '_DKV_PLATE_RE' in globals() else None
+        if not plate_match:
+            continue
+        plate = _dkv_clean_plate(plate_match.group(0)) if '_dkv_clean_plate' in globals() else _clean(plate_match.group(0))
+        pos = by_plate.get(_norm(plate))
+        if not pos:
+            continue
+        invoice_driver = _clean(pos.get('driver',''))
+        # Rechnungsname/-kartenzusatz bleibt im TEXT fachlich fuehrend.
+        new_text = _clean(f"{prefix} {plate} {invoice_driver}") if invoice_driver else _clean(f"{prefix} {plate}")
+        if '_ascii_umlauts' in globals():
+            new_text = _ascii_umlauts(new_text)
+        amount = Decimal(pos.get('amount', '0')).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+        entry, how = _dkv474_best_entry_for_invoice(entries, plate, invoice_driver)
+        gl = fallback_gl
+        cc = ''
+        orderid = ''
+        if entry:
+            egl, ecc, eia = _select_assignment_values(entry, 'TANKEN', prefix)
+            gl = egl or gl
+            cc = ecc or ''
+            orderid = eia or ''
+        before = dict(row)
+        row['TEXT'] = new_text
+        row['PRICE'] = _fmt(amount)
+        row['NET_VALUE'] = _fmt(amount)
+        row['PRICE_UNIT'] = row.get('PRICE_UNIT') or '1'
+        row['QUANTITY'] = row.get('QUANTITY') or '1'
+        row['UNIT'] = row.get('UNIT') or 'ST'
+        row['TAX_CODE'] = pos.get('tax') or row.get('TAX_CODE') or 'VD'
+        row['GL_ACCOUNT'] = gl or row.get('GL_ACCOUNT') or fallback_gl
+        row['COSTCENTER'] = cc
+        row['ORDERID'] = orderid
+        if before != row:
+            repairs.append({'Kennzeichen': plate, 'Rechnungsname': invoice_driver, 'Zuordnung': how, 'Alt': before, 'Neu': dict(row)})
+    if repairs:
+        with open(export_path, 'w', encoding='utf-8-sig', newline='') as f:
+            writer = csv.DictWriter(f, fieldnames=UPLOAD_COLUMNS, delimiter=';', extrasaction='ignore')
+            writer.writeheader(); writer.writerows(rows)
+    global _DKV474_LAST_REPAIRS
+    _DKV474_LAST_REPAIRS = repairs
+    return repairs
+
+
+_create_supplier_upload_csv_before_v0474 = create_supplier_upload_csv
+
+def create_supplier_upload_csv(assignment_path, invoice_path, export_path, config):
+    result = _create_supplier_upload_csv_before_v0474(assignment_path, invoice_path, export_path, config)
+    try:
+        repairs = _dkv474_repair_export_from_pdf_positions(export_path, assignment_path, invoice_path, config)
+        if isinstance(result, dict):
+            result['dkv_invoice_leading_repairs'] = len(repairs)
+            if repairs:
+                result['dkv_invoice_leading_repair_details'] = repairs[:20]
+    except Exception as exc:
+        if isinstance(result, dict):
+            result['dkv_invoice_leading_repair_error'] = str(exc)
+    return result
