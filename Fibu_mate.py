@@ -11259,9 +11259,9 @@ def _fm471_render_main_menu(self):
         {'title':'Wissenszentrale','cmd':lambda: self.open_knowledge_base(),'fixed':None,'lock':False,'icon':'knowledge','fold':False},
     ]
     middle_tiles = [
-        {'title':'Tools - Hauptbuch','cmd':lambda: self.show_page('data_prep','Tools - Hauptbuch',True),'fixed':None,'lock':False,'icon':'pdf_xls','fold':False},
-        {'title':'Tools - Debitoren','cmd':lambda: self.show_page('debitoren_tools','Tools - Debitoren',True),'fixed':None,'lock':False,'icon':'modules','fold':False},
-        {'title':'Dateiausgabe','cmd':lambda: self.show_page('file_output','Dateiausgabe',True),'fixed':None,'lock':False,'icon':'doc_file','fold':False},
+        {'title':'Tools - Hauptbuch','cmd':lambda: self.show_page('data_prep','Tools - Hauptbuch',True),'fixed':None,'lock':False,'icon':'fibu_data_prep','fold':False},
+        {'title':'Tools - Debitoren','cmd':lambda: self.show_page('debitoren_tools','Tools - Debitoren',True),'fixed':None,'lock':False,'icon':'fibu_data_prep','fold':False},
+        {'title':'Dateiausgabe','cmd':lambda: self.show_page('file_output','Dateiausgabe',True),'fixed':None,'lock':False,'icon':'file_explorer','fold':False},
     ]
     mini_tiles = [
         {'title':'In Entwicklung','cmd':self.try_open_in_dev,'fixed':GREY_TILE,'lock':True,'icon':'lock','fold':False},
@@ -12620,6 +12620,11 @@ def _fm474_render_users_menu(self):
     cont=tk.Frame(self.root,bg=BG); self.widget_items.append(cont); self.canvas.create_window(0,top,window=cont,anchor='nw',width=w,height=vh)
     body=tk.Frame(cont,bg=BG); body.pack(fill='both',expand=True,padx=24)
     footer=tk.Frame(body,bg=BG); footer.pack(side='bottom',fill='x',pady=(8,0))
+    try:
+        if self.my_role() in (ROLE_E3, ROLE_E4):
+            tk.Button(footer,text='Neuen Benutzer anlegen',command=lambda:_fm508_open_new_user_dialog(self),bg=BLUE,fg='white',font=('Segoe UI',10,'bold'),bd=0,padx=14,pady=8,cursor='hand2').pack(side='left',padx=(0,10),pady=(0,4))
+    except Exception:
+        pass
     cv=tk.Canvas(body,bg=BG,highlightthickness=0,bd=0); sb=tk.Scrollbar(body,orient='vertical',command=cv.yview)
     frame=tk.Frame(cv,bg=BG); win=cv.create_window((0,0),window=frame,anchor='nw'); cv.configure(yscrollcommand=sb.set); cv.pack(side='left',fill='both',expand=True); sb.pack(side='right',fill='y')
     try: self.register_scroll_canvas(cv,sb)
@@ -13612,9 +13617,9 @@ def _fm482_render_main_menu(self):
         {'title':'Wissenszentrale','cmd':lambda: self.open_knowledge_base(),'fixed':None,'lock':False,'icon':'knowledge','fold':False},
     ]
     middle_tiles = [
-        {'title':'Tools - Hauptbuch','cmd':lambda: self.show_page('data_prep','Tools - Hauptbuch',True),'fixed':None,'lock':False,'icon':'pdf_xls','fold':False},
-        {'title':'Tools - Debitoren','cmd':lambda: self.show_page('debitoren_tools','Tools - Debitoren',True),'fixed':None,'lock':False,'icon':'modules','fold':False},
-        {'title':'Dateiausgabe','cmd':lambda: self.show_page('file_output','Dateiausgabe',True),'fixed':None,'lock':False,'icon':'doc_file','fold':False},
+        {'title':'Tools - Hauptbuch','cmd':lambda: self.show_page('data_prep','Tools - Hauptbuch',True),'fixed':None,'lock':False,'icon':'fibu_data_prep','fold':False},
+        {'title':'Tools - Debitoren','cmd':lambda: self.show_page('debitoren_tools','Tools - Debitoren',True),'fixed':None,'lock':False,'icon':'fibu_data_prep','fold':False},
+        {'title':'Dateiausgabe','cmd':lambda: self.show_page('file_output','Dateiausgabe',True),'fixed':None,'lock':False,'icon':'file_explorer','fold':False},
     ]
     mini_tiles = [
         {'title':'In Entwicklung','cmd':self.try_open_in_dev,'fixed':GREY_TILE,'lock':True,'icon':'lock','fold':False},
@@ -13816,9 +13821,9 @@ def _fm483_render_main_menu(self):
         {'title':'Wissenszentrale','cmd':lambda: self.open_knowledge_base(),'fixed':None,'lock':False,'icon':'knowledge','fold':False},
     ]
     middle_tiles = [
-        {'title':'Tools - Hauptbuch','cmd':lambda: self.show_page('data_prep','Tools - Hauptbuch',True),'fixed':None,'lock':False,'icon':'pdf_xls','fold':False},
-        {'title':'Tools - Debitoren','cmd':lambda: self.show_page('debitoren_tools','Tools - Debitoren',True),'fixed':None,'lock':False,'icon':'modules','fold':False},
-        {'title':'Dateiausgabe','cmd':lambda: self.show_page('file_output','Dateiausgabe',True),'fixed':None,'lock':False,'icon':'doc_file','fold':False},
+        {'title':'Tools - Hauptbuch','cmd':lambda: self.show_page('data_prep','Tools - Hauptbuch',True),'fixed':None,'lock':False,'icon':'fibu_data_prep','fold':False},
+        {'title':'Tools - Debitoren','cmd':lambda: self.show_page('debitoren_tools','Tools - Debitoren',True),'fixed':None,'lock':False,'icon':'fibu_data_prep','fold':False},
+        {'title':'Dateiausgabe','cmd':lambda: self.show_page('file_output','Dateiausgabe',True),'fixed':None,'lock':False,'icon':'file_explorer','fold':False},
     ]
     mini_tiles = [
         {'title':'In Entwicklung','cmd':self.try_open_in_dev,'fixed':GREY_TILE,'lock':True,'icon':'lock','fold':False},
@@ -14200,9 +14205,9 @@ def _fm484_render_main_menu(self):
         {'title':'Wissenszentrale','cmd':lambda: self.open_knowledge_base(),'fixed':None,'lock':False,'icon':'knowledge','fold':False},
     ]
     middle_tiles = [
-        {'title':'Tools - Hauptbuch','cmd':lambda: self.show_page('data_prep','Tools - Hauptbuch',True),'fixed':None,'lock':False,'icon':'pdf_xls','fold':False},
-        {'title':'Tools - Debitoren','cmd':lambda: self.show_page('debitoren_tools','Tools - Debitoren',True),'fixed':None,'lock':False,'icon':'modules','fold':False},
-        {'title':'Dateiausgabe','cmd':lambda: self.show_page('file_output','Dateiausgabe',True),'fixed':None,'lock':False,'icon':'doc_file','fold':False},
+        {'title':'Tools - Hauptbuch','cmd':lambda: self.show_page('data_prep','Tools - Hauptbuch',True),'fixed':None,'lock':False,'icon':'fibu_data_prep','fold':False},
+        {'title':'Tools - Debitoren','cmd':lambda: self.show_page('debitoren_tools','Tools - Debitoren',True),'fixed':None,'lock':False,'icon':'fibu_data_prep','fold':False},
+        {'title':'Dateiausgabe','cmd':lambda: self.show_page('file_output','Dateiausgabe',True),'fixed':None,'lock':False,'icon':'file_explorer','fold':False},
     ]
     mini_tiles = [
         {'title':'In Entwicklung','cmd':self.try_open_in_dev,'fixed':GREY_TILE,'lock':True,'icon':'lock','fold':False},
@@ -14562,9 +14567,9 @@ def _fm485_render_main_menu(self):
         {'title':'Wissenszentrale','cmd':lambda: self.open_knowledge_base(),'fixed':None,'lock':False,'icon':'knowledge','fold':False},
     ]
     middle_tiles = [
-        {'title':'Tools - Hauptbuch','cmd':lambda: self.show_page('data_prep','Tools - Hauptbuch',True),'fixed':None,'lock':False,'icon':'pdf_xls','fold':False},
-        {'title':'Tools - Debitoren','cmd':lambda: self.show_page('debitoren_tools','Tools - Debitoren',True),'fixed':None,'lock':False,'icon':'modules','fold':False},
-        {'title':'Dateiausgabe','cmd':lambda: self.show_page('file_output','Dateiausgabe',True),'fixed':None,'lock':False,'icon':'doc_file','fold':False},
+        {'title':'Tools - Hauptbuch','cmd':lambda: self.show_page('data_prep','Tools - Hauptbuch',True),'fixed':None,'lock':False,'icon':'fibu_data_prep','fold':False},
+        {'title':'Tools - Debitoren','cmd':lambda: self.show_page('debitoren_tools','Tools - Debitoren',True),'fixed':None,'lock':False,'icon':'fibu_data_prep','fold':False},
+        {'title':'Dateiausgabe','cmd':lambda: self.show_page('file_output','Dateiausgabe',True),'fixed':None,'lock':False,'icon':'file_explorer','fold':False},
     ]
     mini_tiles = [
         {'title':'In Entwicklung','cmd':self.try_open_in_dev,'fixed':GREY_TILE,'lock':True,'icon':'lock','fold':False},
@@ -14641,9 +14646,9 @@ def _fm486_render_main_menu(self):
         {'title':'Wissenszentrale','cmd':lambda: self.open_knowledge_base(),'fixed':None,'lock':False,'icon':'knowledge','fold':False},
     ]
     middle_tiles = [
-        {'title':'Tools - Hauptbuch','cmd':lambda: self.show_page('data_prep','Tools - Hauptbuch',True),'fixed':None,'lock':False,'icon':'pdf_xls','fold':False},
-        {'title':'Tools - Debitoren','cmd':lambda: self.show_page('debitoren_tools','Tools - Debitoren',True),'fixed':None,'lock':False,'icon':'modules','fold':False},
-        {'title':'Dateiausgabe','cmd':lambda: self.show_page('file_output','Dateiausgabe',True),'fixed':None,'lock':False,'icon':'doc_file','fold':False},
+        {'title':'Tools - Hauptbuch','cmd':lambda: self.show_page('data_prep','Tools - Hauptbuch',True),'fixed':None,'lock':False,'icon':'fibu_data_prep','fold':False},
+        {'title':'Tools - Debitoren','cmd':lambda: self.show_page('debitoren_tools','Tools - Debitoren',True),'fixed':None,'lock':False,'icon':'fibu_data_prep','fold':False},
+        {'title':'Dateiausgabe','cmd':lambda: self.show_page('file_output','Dateiausgabe',True),'fixed':None,'lock':False,'icon':'file_explorer','fold':False},
     ]
     mini_tiles = [
         {'title':'In Entwicklung','cmd':self.try_open_in_dev,'fixed':GREY_TILE,'lock':True,'icon':'lock','fold':False},
@@ -15566,10 +15571,24 @@ def _fm488_prompt_password_dialog(self, display_name):
         win.destroy()
     tk.Button(row, text="Anmelden", command=ok, bg=BLUE, fg=WHITE, font=body_font(10, "bold"), relief="solid", bd=0, padx=18, pady=6).pack(side="right", padx=(8, 0))
     tk.Button(row, text="Abbrechen", command=win.destroy, bg=WHITE, fg=TEXT, font=body_font(10), relief="solid", bd=1, padx=18, pady=6).pack(side="right")
-    ent.focus_set()
+    def _pw_focus():
+        try:
+            win.lift(); win.focus_force(); ent.focus_force(); ent.icursor("end")
+        except Exception:
+            try: ent.focus_set()
+            except Exception: pass
+    try:
+        win.bind("<Map>", lambda e: win.after(20, _pw_focus), add="+")
+        win.after_idle(_pw_focus); win.after(60, _pw_focus); win.after(150, _pw_focus); win.after(350, _pw_focus)
+    except Exception:
+        try: ent.focus_set()
+        except Exception: pass
     try:
         win.bind("<Return>", lambda e: ok())
         _fm488_center_popup(self, win, 430, 190)
+        try: win.wait_visibility()
+        except Exception: pass
+        _pw_focus()
         self.root.wait_window(win)
     except Exception:
         pass
@@ -16615,6 +16634,3298 @@ try:
 except Exception:
     pass
 
+
+
+
+# ------------------------------------------------------------------
+# FIBU_MATE_KONTENAUSWERTUNG_V0501
+# Datum: 2026-07-13
+# Zweck:
+# - Neues Tool "Kontenauswertung" unter Tools -> Tools - Treasury.
+# - Import von SFIRM-Excel-Exporten mit Entgeltabschluss-Aufschlüsselung.
+# - SQLite-Datenbank für Monatsabschlüsse, Gebührenpositionen, Stückkosten und Entwicklung.
+# - Auswertung mit Monatsübersicht, Detailpositionen, Kosten-/Mengen-/Stückkostenentwicklung, Plausibilitätsprüfung und Excel-Export.
+# - Hauptmenü: Tools - Treasury ergänzt; Dateiausgabe in unterste Modulleiste rechts neben Einstellungen verschoben.
+# ------------------------------------------------------------------
+FIBU_MATE_KONTENAUSWERTUNG_VERSION = "0.501"
+
+
+def _fm501_konto_db_path():
+    for base in (
+        os.path.join(NETWORK_ROOT, "Fibu_Mate_Doc", "Database"),
+        os.path.join(SCRIPT_DIR, "bin", "Fibu_Mate_Doc", "Database"),
+        os.path.join(SCRIPT_DIR, "Database"),
+    ):
+        try:
+            os.makedirs(base, exist_ok=True)
+            return os.path.join(base, "kontenauswertung.sqlite3")
+        except Exception:
+            continue
+    return os.path.join(os.getcwd(), "kontenauswertung.sqlite3")
+
+
+def _fm501_sqlite():
+    import sqlite3
+    return sqlite3
+
+
+def _fm501_db_connect():
+    sqlite3 = _fm501_sqlite()
+    con = sqlite3.connect(_fm501_konto_db_path())
+    con.row_factory = sqlite3.Row
+    return con
+
+
+def _fm501_db_init():
+    con = _fm501_db_connect()
+    try:
+        cur = con.cursor()
+        cur.execute('''CREATE TABLE IF NOT EXISTS imports (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            filename TEXT NOT NULL,
+            file_mtime TEXT,
+            imported_at TEXT NOT NULL,
+            imported_by TEXT,
+            row_count INTEGER DEFAULT 0,
+            closing_count INTEGER DEFAULT 0,
+            detail_count INTEGER DEFAULT 0,
+            file_hash TEXT,
+            UNIQUE(filename, file_hash)
+        )''')
+        cur.execute('''CREATE TABLE IF NOT EXISTS closings (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            import_id INTEGER,
+            source_file TEXT,
+            source_row INTEGER,
+            buchungsdatum TEXT,
+            wertstellungsdatum TEXT,
+            abschlussdatum TEXT,
+            monat_key TEXT,
+            zeitraum_von TEXT,
+            zeitraum_bis TEXT,
+            rechnungsnummer TEXT,
+            betrag_brutto REAL,
+            betrag_netto REAL,
+            ust REAL,
+            waehrung TEXT,
+            gvc TEXT,
+            btc TEXT,
+            raw_text TEXT,
+            created_at TEXT NOT NULL,
+            UNIQUE(rechnungsnummer, abschlussdatum)
+        )''')
+        cur.execute('''CREATE TABLE IF NOT EXISTS fee_items (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            closing_id INTEGER NOT NULL,
+            abschlussdatum TEXT,
+            monat_key TEXT,
+            geschaeftsvorfall TEXT,
+            positionstyp TEXT,
+            anzahl INTEGER,
+            stueckkosten REAL,
+            gesamtbetrag REAL,
+            berechneter_betrag REAL,
+            abweichung REAL,
+            plausibel INTEGER,
+            sort_order INTEGER,
+            raw_line TEXT,
+            UNIQUE(closing_id, geschaeftsvorfall, positionstyp, sort_order)
+        )''')
+        con.commit()
+    finally:
+        con.close()
+
+
+def _fm501_de_float(value):
+    if value is None:
+        return None
+    if isinstance(value, (int, float)):
+        return float(value)
+    s = str(value).strip()
+    if not s:
+        return None
+    neg = s.endswith('-') or s.startswith('-')
+    s = s.strip('-').replace('EUR', '').replace('€', '').strip()
+    s = s.replace('.', '').replace(',', '.')
+    try:
+        val = float(s)
+        return -val if neg and False else val
+    except Exception:
+        return None
+
+
+def _fm501_date_iso(value):
+    if not value:
+        return ""
+    try:
+        if hasattr(value, 'date'):
+            return value.date().isoformat()
+    except Exception:
+        pass
+    text = str(value).strip()
+    for fmt in ("%d.%m.%Y", "%Y-%m-%d"):
+        try:
+            return datetime.strptime(text, fmt).date().isoformat()
+        except Exception:
+            pass
+    return text
+
+
+def _fm501_date_de_to_iso(text):
+    if not text:
+        return ""
+    try:
+        return datetime.strptime(str(text).strip(), "%d.%m.%Y").date().isoformat()
+    except Exception:
+        return str(text).strip()
+
+
+def _fm501_month_key_from_iso(iso_date):
+    try:
+        d = datetime.strptime(str(iso_date), "%Y-%m-%d")
+        return d.strftime("%m/%y")
+    except Exception:
+        return str(iso_date or "")[:7]
+
+
+def _fm501_hash_file(path):
+    try:
+        h = hashlib.sha256()
+        with open(path, 'rb') as f:
+            for chunk in iter(lambda: f.read(1024 * 1024), b''):
+                h.update(chunk)
+        return h.hexdigest()
+    except Exception:
+        return ""
+
+
+def _fm501_parse_entgelt_text(text):
+    import re as _re
+    text = str(text or "")
+    result = {
+        'abschlussdatum': '', 'zeitraum_von': '', 'zeitraum_bis': '', 'betrag_netto': None,
+        'ust': None, 'betrag_brutto_text': None, 'rechnungsnummer': '', 'items': []
+    }
+    m = _re.search(r'Abrechnung\s+(\d{2}\.\d{2}\.\d{4})', text)
+    if m:
+        result['abschlussdatum'] = _fm501_date_de_to_iso(m.group(1))
+    m = _re.search(r'Entgelte\s+vom\s+(\d{2}\.\d{2}\.\d{4})\s+bis\s+(\d{2}\.\d{2}\.\d{4})\s+([\d\.]+,\d{2})-', text)
+    if m:
+        result['zeitraum_von'] = _fm501_date_de_to_iso(m.group(1))
+        result['zeitraum_bis'] = _fm501_date_de_to_iso(m.group(2))
+        result['betrag_netto'] = _fm501_de_float(m.group(3))
+    m = _re.search(r'USt:\s*([\d\.]+,\d{2})-', text)
+    if m:
+        result['ust'] = _fm501_de_float(m.group(1))
+    m = _re.search(r'Abrechnung\s+\d{2}\.\d{2}\.\d{4}\s+([\d\.]+,\d{2})-', text.split('Rechnungsnummer')[0])
+    if m:
+        result['betrag_brutto_text'] = _fm501_de_float(m.group(1))
+    m = _re.search(r'Rechnungsnummer:\s*(\S+)', text)
+    if m:
+        result['rechnungsnummer'] = m.group(1).strip()
+
+    gf_pattern = _re.compile(r'(?P<label>[^\n]+)\n\s*Geschäftsvorfälle\s+(?P<count>[\d\.]+)\s*x\s*(?P<unit>\d+,\d{2})\s+(?P<total>\d+,\d{2})-', _re.M)
+    occupied = []
+    order = 0
+    for g in gf_pattern.finditer(text):
+        order += 1
+        label = g.group('label').strip()
+        count = int(g.group('count').replace('.', ''))
+        unit = _fm501_de_float(g.group('unit'))
+        total = _fm501_de_float(g.group('total'))
+        calc = round((count or 0) * (unit or 0), 2)
+        diff = round((total or 0) - calc, 2)
+        result['items'].append({
+            'geschaeftsvorfall': label, 'positionstyp': 'Geschäftsvorfälle', 'anzahl': count,
+            'stueckkosten': unit, 'gesamtbetrag': total, 'berechneter_betrag': calc,
+            'abweichung': diff, 'plausibel': 1 if abs(diff) < 0.011 else 0,
+            'sort_order': order, 'raw_line': g.group(0).strip()
+        })
+        occupied.append((g.start(), g.end()))
+
+    # Weitere entgeltrelevante Zeilen wie "Kontoauszug signiert 22 x 1,10 24,20-".
+    other_pattern = _re.compile(r'(?P<label>[^\n\d][^\n]*?)\s+(?P<count>[\d\.]+)\s*x\s*(?P<unit>\d+,\d{2})\s+(?P<total>\d+,\d{2})-', _re.M)
+    for g in other_pattern.finditer(text):
+        if any(g.start() >= a and g.start() < b for a, b in occupied):
+            continue
+        label = g.group('label').strip()
+        if not label or 'Geschäftsvorfälle' in label:
+            continue
+        order += 1
+        count = int(g.group('count').replace('.', ''))
+        unit = _fm501_de_float(g.group('unit'))
+        total = _fm501_de_float(g.group('total'))
+        calc = round((count or 0) * (unit or 0), 2)
+        diff = round((total or 0) - calc, 2)
+        result['items'].append({
+            'geschaeftsvorfall': label, 'positionstyp': 'Sonstige Entgeltposition', 'anzahl': count,
+            'stueckkosten': unit, 'gesamtbetrag': total, 'berechneter_betrag': calc,
+            'abweichung': diff, 'plausibel': 1 if abs(diff) < 0.011 else 0,
+            'sort_order': order, 'raw_line': g.group(0).strip()
+        })
+
+    m = _re.search(r'Mindestbetrag\s+([\d\.]+,\d{2})', text)
+    if m:
+        order += 1
+        amount = _fm501_de_float(m.group(1))
+        result['items'].append({
+            'geschaeftsvorfall': 'Mindestbetrag', 'positionstyp': 'Mindestbetrag', 'anzahl': None,
+            'stueckkosten': None, 'gesamtbetrag': amount, 'berechneter_betrag': amount,
+            'abweichung': 0.0, 'plausibel': 1, 'sort_order': order, 'raw_line': m.group(0).strip()
+        })
+    return result
+
+
+def _fm501_import_excel(path, app=None):
+    from openpyxl import load_workbook
+    _fm501_db_init()
+    wb = load_workbook(path, data_only=True, read_only=False)
+    ws = wb.active
+    headers = [ws.cell(row=1, column=c).value for c in range(1, ws.max_column + 1)]
+    h = {str(v).strip(): i + 1 for i, v in enumerate(headers) if v is not None}
+    required = ['Buchung', 'Wertstellung', 'Buchungstext', 'Verwendungszweck', 'Betrag']
+    missing = [x for x in required if x not in h]
+    if missing:
+        raise ValueError('Fehlende Spalten: ' + ', '.join(missing))
+    file_hash = _fm501_hash_file(path)
+    filename = os.path.basename(path)
+    user = getattr(app, 'current_user_display', '') or getattr(app, 'current_user_key', '') or ''
+    now = datetime.now().isoformat(timespec='seconds')
+    con = _fm501_db_connect()
+    closing_count = 0; detail_count = 0; skipped = 0
+    try:
+        cur = con.cursor()
+        cur.execute('INSERT OR IGNORE INTO imports(filename,file_mtime,imported_at,imported_by,row_count,closing_count,detail_count,file_hash) VALUES(?,?,?,?,?,?,?,?)',
+                    (filename, str(os.path.getmtime(path)) if os.path.exists(path) else '', now, user, ws.max_row - 1, 0, 0, file_hash))
+        con.commit()
+        cur.execute('SELECT id FROM imports WHERE filename=? AND file_hash=?', (filename, file_hash))
+        import_id = cur.fetchone()[0]
+        for r in range(2, ws.max_row + 1):
+            bt = ws.cell(r, h['Buchungstext']).value
+            if not (bt and 'ENTGELTABSCHLUSS' in str(bt).upper()):
+                continue
+            vz = str(ws.cell(r, h.get('Verwendungszweck')).value or '')
+            if 'Verwendungszweck 2' in h and ws.cell(r, h['Verwendungszweck 2']).value:
+                # VZ 2 ist bei SFIRM oft nur Restfragment, wird beim Rawtext aber mitgesichert.
+                raw_text = vz + '\n' + str(ws.cell(r, h['Verwendungszweck 2']).value or '')
+            else:
+                raw_text = vz
+            parsed = _fm501_parse_entgelt_text(vz)
+            buchungsdatum = _fm501_date_iso(ws.cell(r, h['Buchung']).value)
+            wertstellung = _fm501_date_iso(ws.cell(r, h['Wertstellung']).value)
+            abschluss = parsed.get('abschlussdatum') or wertstellung or buchungsdatum
+            monat_key = _fm501_month_key_from_iso(abschluss)
+            betrag = ws.cell(r, h['Betrag']).value
+            brutto = abs(float(betrag)) if isinstance(betrag, (int, float)) else _fm501_de_float(betrag)
+            rechnung = parsed.get('rechnungsnummer') or f'{filename}:row:{r}'
+            cur.execute('''INSERT OR IGNORE INTO closings(import_id,source_file,source_row,buchungsdatum,wertstellungsdatum,abschlussdatum,monat_key,zeitraum_von,zeitraum_bis,rechnungsnummer,betrag_brutto,betrag_netto,ust,waehrung,gvc,btc,raw_text,created_at)
+                           VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)''',
+                        (import_id, filename, r, buchungsdatum, wertstellung, abschluss, monat_key, parsed.get('zeitraum_von',''), parsed.get('zeitraum_bis',''), rechnung,
+                         brutto, parsed.get('betrag_netto'), parsed.get('ust'), ws.cell(r, h.get('Währung', h['Betrag'])).value if 'Währung' in h else 'EUR',
+                         ws.cell(r, h['GVC']).value if 'GVC' in h else '', ws.cell(r, h['BTC']).value if 'BTC' in h else '', raw_text, now))
+            cur.execute('SELECT id FROM closings WHERE rechnungsnummer=? AND abschlussdatum=?', (rechnung, abschluss))
+            row = cur.fetchone()
+            if not row:
+                skipped += 1; continue
+            closing_id = row[0]
+            closing_count += 1
+            # Bei Reimport alte Positionen ersetzen, Kopf bleibt eindeutig.
+            cur.execute('DELETE FROM fee_items WHERE closing_id=?', (closing_id,))
+            for item in parsed.get('items', []):
+                cur.execute('''INSERT OR IGNORE INTO fee_items(closing_id,abschlussdatum,monat_key,geschaeftsvorfall,positionstyp,anzahl,stueckkosten,gesamtbetrag,berechneter_betrag,abweichung,plausibel,sort_order,raw_line)
+                               VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)''',
+                            (closing_id, abschluss, monat_key, item.get('geschaeftsvorfall'), item.get('positionstyp'), item.get('anzahl'), item.get('stueckkosten'), item.get('gesamtbetrag'), item.get('berechneter_betrag'), item.get('abweichung'), item.get('plausibel'), item.get('sort_order'), item.get('raw_line')))
+                detail_count += 1
+        cur.execute('UPDATE imports SET closing_count=?, detail_count=? WHERE id=?', (closing_count, detail_count, import_id))
+        con.commit()
+    finally:
+        con.close()
+    return {'filename': filename, 'closings': closing_count, 'details': detail_count, 'skipped': skipped, 'db': _fm501_konto_db_path()}
+
+
+def _fm501_fetch_closings():
+    _fm501_db_init()
+    con = _fm501_db_connect()
+    try:
+        return [dict(r) for r in con.execute('SELECT * FROM closings ORDER BY abschlussdatum DESC, id DESC').fetchall()]
+    finally:
+        con.close()
+
+
+def _fm501_fetch_items(closing_id=None):
+    _fm501_db_init()
+    con = _fm501_db_connect()
+    try:
+        if closing_id:
+            return [dict(r) for r in con.execute('SELECT * FROM fee_items WHERE closing_id=? ORDER BY sort_order, id', (closing_id,)).fetchall()]
+        return [dict(r) for r in con.execute('SELECT * FROM fee_items ORDER BY abschlussdatum, geschaeftsvorfall').fetchall()]
+    finally:
+        con.close()
+
+
+def _fm501_summary_stats():
+    _fm501_db_init()
+    con = _fm501_db_connect()
+    try:
+        row = con.execute('SELECT COUNT(*) c, SUM(betrag_brutto) brutto, SUM(betrag_netto) netto, SUM(ust) ust FROM closings').fetchone()
+        detail = con.execute('SELECT COUNT(*) c, SUM(gesamtbetrag) gesamt FROM fee_items').fetchone()
+        months = con.execute('SELECT monat_key, betrag_brutto FROM closings ORDER BY abschlussdatum').fetchall()
+        top = con.execute('SELECT geschaeftsvorfall, SUM(gesamtbetrag) gesamt, SUM(COALESCE(anzahl,0)) anzahl, AVG(stueckkosten) avg_unit FROM fee_items GROUP BY geschaeftsvorfall ORDER BY gesamt DESC LIMIT 8').fetchall()
+        return {'closings': row['c'] or 0, 'brutto': row['brutto'] or 0, 'netto': row['netto'] or 0, 'ust': row['ust'] or 0, 'details': detail['c'] or 0, 'detail_sum': detail['gesamt'] or 0, 'months': [dict(x) for x in months], 'top': [dict(x) for x in top]}
+    finally:
+        con.close()
+
+
+def _fm501_fmt_eur(v):
+    try:
+        return f"{float(v):,.2f} €".replace(',', 'X').replace('.', ',').replace('X', '.')
+    except Exception:
+        return "-"
+
+
+def _fm501_fmt_num(v):
+    try:
+        return f"{float(v):,.0f}".replace(',', '.')
+    except Exception:
+        return "-"
+
+
+def _fm501_export_analysis_excel(app=None):
+    try:
+        from tkinter import filedialog
+        from openpyxl import Workbook
+        from openpyxl.styles import Font, PatternFill, Border, Side, Alignment
+        from openpyxl.chart import BarChart, LineChart, Reference
+        path = filedialog.asksaveasfilename(title='Kontenauswertung exportieren', defaultextension='.xlsx', initialfile='Kontenauswertung_Export_' + datetime.now().strftime('%Y_%m_%d') + '.xlsx', filetypes=[('Excel-Dateien','*.xlsx')])
+        if not path:
+            return None
+        closings = _fm501_fetch_closings(); items = _fm501_fetch_items()
+        wb = Workbook(); ws = wb.active; ws.title = 'Entgeltabschluesse'
+        header_fill = PatternFill('solid', fgColor='D9EAF7'); sub_fill = PatternFill('solid', fgColor='EAF7EF')
+        thin = Side(style='thin', color='A6B7C8')
+        border = Border(bottom=thin)
+        headers = ['Monat','Abschlussdatum','Buchungsdatum','Wertstellung','Rechnungsnummer','Brutto','Netto','USt','Quelle','Zeile']
+        ws.append(headers)
+        for c in ws[1]: c.font = Font(bold=True); c.fill = header_fill; c.border = border
+        for c in closings:
+            ws.append([c.get('monat_key'), c.get('abschlussdatum'), c.get('buchungsdatum'), c.get('wertstellungsdatum'), c.get('rechnungsnummer'), c.get('betrag_brutto'), c.get('betrag_netto'), c.get('ust'), c.get('source_file'), c.get('source_row')])
+        for row in ws.iter_rows(min_row=2, min_col=6, max_col=8):
+            for cell in row: cell.number_format = '#,##0.00 €'
+        for col, width in {'A':12,'B':14,'C':14,'D':14,'E':34,'F':14,'G':14,'H':14,'I':34,'J':10}.items(): ws.column_dimensions[col].width = width
+        ws2 = wb.create_sheet('Einzelpositionen')
+        headers2 = ['Monat','Abschlussdatum','Geschäftsvorfall','Positionstyp','Anzahl','Stückkosten','Gesamtbetrag','Berechnet','Abweichung','Plausibel']
+        ws2.append(headers2)
+        for c in ws2[1]: c.font = Font(bold=True); c.fill = sub_fill; c.border = border
+        for i in items:
+            ws2.append([i.get('monat_key'), i.get('abschlussdatum'), i.get('geschaeftsvorfall'), i.get('positionstyp'), i.get('anzahl'), i.get('stueckkosten'), i.get('gesamtbetrag'), i.get('berechneter_betrag'), i.get('abweichung'), 'Ja' if i.get('plausibel') else 'Nein'])
+        for row in ws2.iter_rows(min_row=2, min_col=6, max_col=9):
+            for cell in row: cell.number_format = '#,##0.00 €'
+        for col, width in {'A':12,'B':14,'C':32,'D':24,'E':12,'F':14,'G':14,'H':14,'I':14,'J':12}.items(): ws2.column_dimensions[col].width = width
+        ws3 = wb.create_sheet('Pivot Geschäftsvorfälle')
+        ws3.append(['Geschäftsvorfall','Gesamtkosten','Anzahl gesamt','Ø Stückkosten'])
+        for c in ws3[1]: c.font = Font(bold=True); c.fill = header_fill; c.border = border
+        stats = _fm501_summary_stats()
+        for t in stats.get('top', []):
+            ws3.append([t.get('geschaeftsvorfall'), t.get('gesamt'), t.get('anzahl'), t.get('avg_unit')])
+        for row in ws3.iter_rows(min_row=2, min_col=2, max_col=4):
+            for cell in row: cell.number_format = '#,##0.00 €' if cell.column in (2,4) else '#,##0'
+        ws3.column_dimensions['A'].width = 32; ws3.column_dimensions['B'].width = 16; ws3.column_dimensions['C'].width = 14; ws3.column_dimensions['D'].width = 16
+        if ws3.max_row >= 2:
+            chart = BarChart(); chart.title = 'Top Gebührenpositionen'; chart.y_axis.title = 'EUR'; chart.x_axis.title = 'Geschäftsvorfall'
+            data = Reference(ws3, min_col=2, min_row=1, max_row=ws3.max_row)
+            cats = Reference(ws3, min_col=1, min_row=2, max_row=ws3.max_row)
+            chart.add_data(data, titles_from_data=True); chart.set_categories(cats); chart.height = 8; chart.width = 18
+            ws3.add_chart(chart, 'F2')
+        wb.save(path)
+        try: messagebox.showinfo('Kontenauswertung', 'Excel-Export erstellt:\n' + path)
+        except Exception: pass
+        return path
+    except Exception as exc:
+        try: messagebox.showerror('Kontenauswertung', 'Excel-Export fehlgeschlagen:\n' + str(exc))
+        except Exception: pass
+        return None
+
+
+def _fm501_draw_bar_chart(canvas, x, y, w, h, data, title, value_key, label_key):
+    canvas.create_rectangle(x, y, x+w, y+h, fill=WHITE, outline=LINE)
+    canvas.create_text(x+14, y+14, text=title, fill=BLUE, font=body_font(12, 'bold'), anchor='w')
+    if not data:
+        canvas.create_text(x+w/2, y+h/2, text='Noch keine Daten vorhanden.', fill=TEXT2, font=body_font(10))
+        return
+    max_v = max(float(d.get(value_key) or 0) for d in data) or 1
+    left = x + 16; bottom = y + h - 34; top = y + 42; bar_area_h = max(20, bottom-top)
+    n = len(data); gap = 8; bw = max(16, int((w - 40 - (n-1)*gap) / max(1,n)))
+    for i, d in enumerate(data):
+        val = float(d.get(value_key) or 0)
+        bh = int(bar_area_h * val / max_v)
+        bx = left + i * (bw + gap)
+        canvas.create_rectangle(bx, bottom-bh, bx+bw, bottom, fill=blend(BLUE, WHITE, 0.25), outline=BLUE)
+        label = str(d.get(label_key) or '')[:8]
+        canvas.create_text(bx+bw/2, bottom+13, text=label, fill=TEXT2, font=body_font(8))
+        canvas.create_text(bx+bw/2, bottom-bh-8, text=_fm501_fmt_eur(val), fill=TEXT, font=body_font(8))
+
+
+def _fm501_draw_top_list(parent, top):
+    for child in parent.winfo_children(): child.destroy()
+    tk.Label(parent, text='Top-Kostentreiber', bg=WHITE, fg=BLUE, font=body_font(12,'bold')).pack(anchor='w', padx=10, pady=(8,4))
+    if not top:
+        tk.Label(parent, text='Noch keine Detailpositionen importiert.', bg=WHITE, fg=TEXT2, font=body_font(10)).pack(anchor='w', padx=10, pady=8)
+        return
+    for row in top:
+        txt = f"{row.get('geschaeftsvorfall','')}  |  {_fm501_fmt_eur(row.get('gesamt'))}  |  Anzahl {_fm501_fmt_num(row.get('anzahl'))}  |  Ø {_fm501_fmt_eur(row.get('avg_unit'))}"
+        tk.Label(parent, text=txt, bg=WHITE, fg=TEXT, font=body_font(9), anchor='w', justify='left').pack(fill='x', padx=10, pady=1)
+
+
+def _fm501_render_treasury_tools_menu(self):
+    items = [
+        ('Kontenauswertung', 'account_analysis'),
+    ]
+    self.render_center_menu(items, title='Tools - Treasury')
+    self.draw_bottom_logo()
+
+
+def _fm501_render_account_analysis_tool(self):
+    _fm501_db_init()
+    w, h = self.canvas.winfo_width(), self.canvas.winfo_height()
+    top_y = 132
+    frame = tk.Frame(self.root, bg=BG)
+    self.widget_items.append(frame)
+    self.canvas.create_window(0, top_y, window=frame, anchor='nw', width=w, height=max(400, h-top_y-55))
+    header = tk.Frame(frame, bg=WHITE, highlightbackground=LINE, highlightthickness=1)
+    header.pack(fill='x', padx=20, pady=(12,8))
+    tk.Label(header, text='Kontenauswertung', bg=WHITE, fg=BLUE, font=body_font(18,'bold')).pack(side='left', padx=14, pady=12)
+    tk.Label(header, text='SFIRM-Excel-Import für Entgeltabschlüsse, Gebührenentwicklung, Mengen und Stückkosten', bg=WHITE, fg=TEXT2, font=body_font(10)).pack(side='left', padx=(10,0))
+
+    status_var = tk.StringVar(value='Datenbank: ' + _fm501_konto_db_path())
+    selected_closing_id = {'id': None}
+    content = tk.Frame(frame, bg=BG)
+    content.pack(fill='both', expand=True, padx=20, pady=(0,10))
+    controls = tk.Frame(content, bg=BG); controls.pack(fill='x', pady=(0,8))
+
+    def refresh_all():
+        stats = _fm501_summary_stats()
+        kpi_var.set(f"Entgeltabschlüsse: {stats['closings']}   |   Detailpositionen: {stats['details']}   |   Brutto gesamt: {_fm501_fmt_eur(stats['brutto'])}   |   Netto gesamt: {_fm501_fmt_eur(stats['netto'])}   |   USt: {_fm501_fmt_eur(stats['ust'])}")
+        closing_tree.delete(*closing_tree.get_children())
+        for c in _fm501_fetch_closings():
+            closing_tree.insert('', 'end', iid=str(c['id']), values=(c.get('monat_key'), c.get('abschlussdatum'), c.get('buchungsdatum'), _fm501_fmt_eur(c.get('betrag_brutto')), _fm501_fmt_eur(c.get('betrag_netto')), _fm501_fmt_eur(c.get('ust')), c.get('rechnungsnummer'), c.get('source_file')))
+        item_tree.delete(*item_tree.get_children())
+        cid = selected_closing_id.get('id')
+        for i in _fm501_fetch_items(cid):
+            item_tree.insert('', 'end', values=(i.get('monat_key'), i.get('geschaeftsvorfall'), i.get('positionstyp'), _fm501_fmt_num(i.get('anzahl')) if i.get('anzahl') is not None else '', _fm501_fmt_eur(i.get('stueckkosten')) if i.get('stueckkosten') is not None else '', _fm501_fmt_eur(i.get('gesamtbetrag')), _fm501_fmt_eur(i.get('abweichung')), 'Ja' if i.get('plausibel') else 'Nein'))
+        charts.delete('all')
+        _fm501_draw_bar_chart(charts, 8, 8, max(420, int(w*0.48)), 205, stats.get('months', [])[-12:], 'Brutto-Entgelte je Abschlussmonat', 'betrag_brutto', 'monat_key')
+        _fm501_draw_bar_chart(charts, max(440, int(w*0.50)), 8, max(420, int(w*0.45)), 205, stats.get('top', []), 'Top Gebührenpositionen', 'gesamt', 'geschaeftsvorfall')
+        _fm501_draw_top_list(top_frame, stats.get('top', []))
+
+    def import_file():
+        try:
+            from tkinter import filedialog
+            path = filedialog.askopenfilename(title='SFIRM-Excel-Export auswählen', filetypes=[('Excel-Dateien','*.xlsx *.xlsm *.xltx *.xltm'), ('Alle Dateien','*.*')])
+            if not path: return
+            res = _fm501_import_excel(path, self)
+            status_var.set(f"Import abgeschlossen: {res['closings']} Entgeltabschlüsse, {res['details']} Detailpositionen. DB: {res['db']}")
+            try: messagebox.showinfo('Kontenauswertung', f"Import abgeschlossen.\n\nEntgeltabschlüsse: {res['closings']}\nDetailpositionen: {res['details']}\nDatenbank:\n{res['db']}")
+            except Exception: pass
+            refresh_all()
+        except Exception as exc:
+            try: messagebox.showerror('Kontenauswertung', 'Import fehlgeschlagen:\n' + str(exc))
+            except Exception: pass
+
+    tk.Button(controls, text='Excel importieren', command=import_file, bg='#CFEAD6', fg=TEXT, font=body_font(10,'bold'), relief='solid', bd=1, padx=14, pady=6).pack(side='left', padx=(0,8))
+    tk.Button(controls, text='Aktualisieren', command=refresh_all, bg=WHITE, fg=TEXT, font=body_font(10), relief='solid', bd=1, padx=14, pady=6).pack(side='left', padx=(0,8))
+    tk.Button(controls, text='Excel-Auswertung exportieren', command=lambda: _fm501_export_analysis_excel(self), bg=WHITE, fg=BLUE, font=body_font(10), relief='solid', bd=1, padx=14, pady=6).pack(side='left', padx=(0,8))
+    tk.Label(controls, textvariable=status_var, bg=BG, fg=TEXT2, font=body_font(8)).pack(side='right')
+
+    kpi_var = tk.StringVar(value='')
+    tk.Label(content, textvariable=kpi_var, bg=WHITE, fg=TEXT, font=body_font(10,'bold'), anchor='w', padx=12, pady=8, relief='solid', bd=1).pack(fill='x', pady=(0,8))
+
+    charts = tk.Canvas(content, bg=BG, height=225, highlightthickness=0)
+    charts.pack(fill='x', pady=(0,8))
+
+    split = tk.Frame(content, bg=BG); split.pack(fill='both', expand=True)
+    left = tk.Frame(split, bg=WHITE, highlightbackground=LINE, highlightthickness=1); left.pack(side='left', fill='both', expand=True, padx=(0,8))
+    right = tk.Frame(split, bg=WHITE, highlightbackground=LINE, highlightthickness=1); right.pack(side='left', fill='both', expand=True, padx=(8,0))
+    tk.Label(left, text='Entgeltabschlüsse', bg=WHITE, fg=BLUE, font=body_font(12,'bold')).pack(anchor='w', padx=10, pady=(8,4))
+    cols = ('monat','abschluss','buchung','brutto','netto','ust','rechnung','quelle')
+    closing_tree = ttk.Treeview(left, columns=cols, show='headings', height=10)
+    for col, label, width_col in [('monat','Monat',70),('abschluss','Abschluss',90),('buchung','Buchung',90),('brutto','Brutto',90),('netto','Netto',90),('ust','USt',80),('rechnung','Rechnung',220),('quelle','Quelle',200)]:
+        closing_tree.heading(col, text=label); closing_tree.column(col, width=width_col, stretch=(col in ('rechnung','quelle')))
+    ys1 = ttk.Scrollbar(left, orient='vertical', command=closing_tree.yview); closing_tree.configure(yscrollcommand=ys1.set)
+    closing_tree.pack(side='left', fill='both', expand=True, padx=(10,0), pady=(0,10)); ys1.pack(side='right', fill='y', pady=(0,10), padx=(0,10))
+
+    def on_select(_event=None):
+        sel = closing_tree.selection()
+        selected_closing_id['id'] = int(sel[0]) if sel else None
+        refresh_all()
+    closing_tree.bind('<<TreeviewSelect>>', on_select)
+
+    tk.Label(right, text='Einzelpositionen / Stückkosten', bg=WHITE, fg=BLUE, font=body_font(12,'bold')).pack(anchor='w', padx=10, pady=(8,4))
+    cols2 = ('monat','gv','typ','anzahl','stk','gesamt','abw','ok')
+    item_tree = ttk.Treeview(right, columns=cols2, show='headings', height=10)
+    for col, label, width_col in [('monat','Monat',60),('gv','Geschäftsvorfall',190),('typ','Typ',140),('anzahl','Anzahl',70),('stk','Stückkosten',90),('gesamt','Gesamt',90),('abw','Abw.',70),('ok','OK',50)]:
+        item_tree.heading(col, text=label); item_tree.column(col, width=width_col, stretch=(col in ('gv','typ')))
+    ys2 = ttk.Scrollbar(right, orient='vertical', command=item_tree.yview); item_tree.configure(yscrollcommand=ys2.set)
+    item_tree.pack(side='left', fill='both', expand=True, padx=(10,0), pady=(0,10)); ys2.pack(side='right', fill='y', pady=(0,10), padx=(0,10))
+
+    top_frame = tk.Frame(content, bg=WHITE, highlightbackground=LINE, highlightthickness=1)
+    top_frame.pack(fill='x', pady=(8,0))
+    refresh_all()
+
+
+def _fm501_render_main_menu(self):
+    top_tiles = [
+        {'title':'Abschlusskalender','cmd':lambda: self.show_page('closing_calendar','Abschlusskalender',True),'fixed':None,'lock':False,'icon':'calendar','fold':False},
+        {'title':'Wissenszentrale','cmd':lambda: self.open_knowledge_base(),'fixed':None,'lock':False,'icon':'knowledge','fold':False},
+    ]
+    middle_tiles = [
+        {'title':'Tools - Hauptbuch','cmd':lambda: self.show_page('data_prep','Tools - Hauptbuch',True),'fixed':None,'lock':False,'icon':'fibu_data_prep','fold':False},
+        {'title':'Tools - Debitoren','cmd':lambda: self.show_page('debitoren_tools','Tools - Debitoren',True),'fixed':None,'lock':False,'icon':'fibu_data_prep','fold':False},
+        {'title':'Tools - Treasury','cmd':lambda: self.show_page('treasury_tools','Tools - Treasury',True),'fixed':None,'lock':False,'icon':'modules','fold':False},
+    ]
+    mini_tiles = [
+        {'title':'In Entwicklung','cmd':self.try_open_in_dev,'fixed':GREY_TILE,'lock':True,'icon':'lock','fold':False},
+        {'title':'Informationen','cmd':lambda: self.show_page('information','Informationen',True),'fixed':None,'lock':False,'icon':'info','fold':True},
+        {'title':'Einstellungen','cmd':lambda: self.show_page('settings','Einstellungen',True),'fixed':None,'lock':False,'icon':'gear','fold':True},
+        {'title':'Dateiausgabe','cmd':lambda: self.show_page('file_output','Dateiausgabe',True),'fixed':None,'lock':False,'icon':'file_explorer','fold':False},
+    ]
+    w, h = self.canvas.winfo_width(), self.canvas.winfo_height()
+    tw = max(240, min(330, int(w*0.165))); th = max(125, min(170, int(h*0.155)))
+    gap_x = max(38, int(w*0.04)); line_x1 = x_pct(w, 9.5); line_x2 = x_pct(w, 92)
+    def create_tile_row(items, left_edge, y, id_prefix, tile_w, tile_h):
+        for i, item in enumerate(items):
+            tile = Tile(self.root, self, f'{id_prefix}_{i}', item['title'], item['cmd'], favorite_enabled=False, fixed_color=item['fixed'], lock_tile=item['lock'], icon_type=item['icon'], corner_fold=item['fold'])
+            tile.resize_tile(tile_w, tile_h)
+            self.widget_items.append(tile); self.focusable_tiles.append(tile)
+            self.canvas.create_window(left_edge + i*(tile_w+gap_x), y, window=tile, anchor='nw')
+    top_tile_w = max(250, int(tw*1.05)); top_tile_h = max(130, int(th*1.05))
+    tool_tile_w = max(200, int(tw*0.82)); tool_tile_h = max(100, int(th*0.82))
+    mini_tw = int(tw*0.68); mini_th = int(th*0.68)
+    y_modules = y_pct(h, 55); y_tools = y_pct(h, 35); mini_y = y_pct(h, 15)
+    self.draw_continuous_relief_line(self.canvas, y_modules-22, line_x1, line_x2)
+    self.draw_section_label('Module', line_x1, y_modules-38)
+    create_tile_row(top_tiles, line_x1, y_modules, 'main_module', top_tile_w, top_tile_h)
+    self.draw_continuous_relief_line(self.canvas, y_tools-20, line_x1, line_x2)
+    self.draw_section_label('Tools', line_x1, y_tools-36)
+    create_tile_row(middle_tiles, line_x1, y_tools, 'main_tools', tool_tile_w, tool_tile_h)
+    self.draw_continuous_relief_line(self.canvas, mini_y-18, line_x1, line_x2)
+    create_tile_row(mini_tiles, line_x1, mini_y, 'main_mini', mini_tw, mini_th)
+    self.draw_bottom_logo()
+
+try:
+    _fm501_prev_render_page = FiBuMateApp.render_page
+except Exception:
+    _fm501_prev_render_page = None
+
+
+def _fm501_render_page(self):
+    if self.current_page in ('treasury_tools', 'account_analysis'):
+        self.clear_widgets()
+        self.draw_background()
+        self.draw_header(self.current_title)
+        self.draw_controls()
+        self.draw_path_bar()
+        self.draw_favorites_bar()
+        if self.current_page == 'treasury_tools':
+            self.render_treasury_tools_menu()
+        elif self.current_page == 'account_analysis':
+            self.render_account_analysis_tool()
+        if self.focusable_tiles:
+            self.focus_index = 0
+            self.focusable_tiles[0].focus_set()
+        return
+    if _fm501_prev_render_page:
+        return _fm501_prev_render_page(self)
+
+try:
+    FiBuMateApp.render_treasury_tools_menu = _fm501_render_treasury_tools_menu
+    FiBuMateApp.render_account_analysis_tool = _fm501_render_account_analysis_tool
+    FiBuMateApp.render_main_menu = _fm501_render_main_menu
+    FiBuMateApp.render_page = _fm501_render_page
+except Exception:
+    pass
+
+
+
+
+# ------------------------------------------------------------------
+# FIBU_MATE_MAINMENU_KONTENAUSWERTUNG_FIX_V0502
+# Datum: 2026-07-13
+# Zweck:
+# - Hauptmenue nach v0.501 wieder sichtbar machen.
+# - Ursache: v0.501 rief self.draw_section_label auf, obwohl diese Methode nicht final an FiBuMateApp gebunden war.
+# - Schreibweise "Hauptmenü" beim Login wieder korrigieren.
+# - Tools - Treasury bleibt in der Tools-Zeile, Dateiausgabe bleibt rechts neben Einstellungen in der unteren Modulleiste.
+# ------------------------------------------------------------------
+FIBU_MATE_MAINMENU_KONTENAUSWERTUNG_FIX_VERSION = "0.502"
+
+
+def _fm502_draw_section_label_safe(self, text, x, y):
+    try:
+        if '_fm484_draw_section_label' in globals():
+            return _fm484_draw_section_label(self, text, x, y)
+    except Exception:
+        pass
+    try:
+        self.canvas.create_text(x, y, text=text, fill=blend(TEXT2, BLUE, 0.30), font=body_font(9, 'bold'), anchor='w')
+    except Exception:
+        pass
+
+
+def _fm502_render_main_menu(self):
+    top_tiles = [
+        {'title':'Abschlusskalender','cmd':lambda: self.show_page('closing_calendar','Abschlusskalender',True),'fixed':None,'lock':False,'icon':'calendar','fold':False},
+        {'title':'Wissenszentrale','cmd':lambda: self.open_knowledge_base(),'fixed':None,'lock':False,'icon':'knowledge','fold':False},
+    ]
+    middle_tiles = [
+        {'title':'Tools - Hauptbuch','cmd':lambda: self.show_page('data_prep','Tools - Hauptbuch',True),'fixed':None,'lock':False,'icon':'fibu_data_prep','fold':False},
+        {'title':'Tools - Debitoren','cmd':lambda: self.show_page('debitoren_tools','Tools - Debitoren',True),'fixed':None,'lock':False,'icon':'fibu_data_prep','fold':False},
+        {'title':'Tools - Treasury','cmd':lambda: self.show_page('treasury_tools','Tools - Treasury',True),'fixed':None,'lock':False,'icon':'modules','fold':False},
+    ]
+    mini_tiles = [
+        {'title':'In Entwicklung','cmd':self.try_open_in_dev,'fixed':GREY_TILE,'lock':True,'icon':'lock','fold':False},
+        {'title':'Informationen','cmd':lambda: self.show_page('information','Informationen',True),'fixed':None,'lock':False,'icon':'info','fold':True},
+        {'title':'Einstellungen','cmd':lambda: self.show_page('settings','Einstellungen',True),'fixed':None,'lock':False,'icon':'gear','fold':True},
+        {'title':'Dateiausgabe','cmd':lambda: self.show_page('file_output','Dateiausgabe',True),'fixed':None,'lock':False,'icon':'file_explorer','fold':False},
+    ]
+    w, h = self.canvas.winfo_width(), self.canvas.winfo_height()
+    tw = max(240, min(330, int(w*0.165)))
+    th = max(125, min(170, int(h*0.155)))
+    gap_x = max(38, int(w*0.04))
+    line_x1 = x_pct(w, 9.5)
+    line_x2 = x_pct(w, 92)
+    header_line_y = FM_HEADER_H if 'FM_HEADER_H' in globals() else ui_s(96)
+
+    def create_tile_row(items, visible_left_edge, canvas_top, id_prefix, tile_w, tile_h):
+        canvas_left = visible_left_edge - ui_s(8)
+        canvas_h = tile_h + ui_s(16)
+        for i, item in enumerate(items):
+            tile = Tile(self.root, self, f'{id_prefix}_{i}', item['title'], item['cmd'], favorite_enabled=False, fixed_color=item['fixed'], lock_tile=item['lock'], icon_type=item['icon'], corner_fold=item['fold'])
+            tile.resize_tile(tile_w, tile_h)
+            self.widget_items.append(tile)
+            self.focusable_tiles.append(tile)
+            cx = canvas_left + (tile_w + ui_s(16)) / 2 + i*(tile_w+gap_x)
+            cy = canvas_top + canvas_h / 2
+            self.canvas.create_window(cx, cy, window=tile, anchor='center')
+
+    def centered_x_positions(count, tile_w, gap=gap_x):
+        total_width = count*tile_w + (count-1)*gap
+        start_x = (w-total_width)/2 + tile_w/2
+        return [start_x+i*(tile_w+gap) for i in range(count)]
+
+    def create_centered_row(items, y, id_prefix, tile_w, tile_h):
+        xs = centered_x_positions(len(items), tile_w)
+        for i,item in enumerate(items):
+            tile = Tile(self.root, self, f'{id_prefix}_{i}', item['title'], item['cmd'], favorite_enabled=False, fixed_color=item['fixed'], lock_tile=item['lock'], icon_type=item['icon'], corner_fold=item['fold'])
+            tile.resize_tile(tile_w,tile_h)
+            self.widget_items.append(tile)
+            self.focusable_tiles.append(tile)
+            self.canvas.create_window(xs[i], y, window=tile, anchor='center')
+
+    top_tile_w=max(250,int(tw*1.05))
+    top_tile_h=max(130,int(th*1.05))
+    tool_tile_w=max(200,int(tw*0.86*0.95))
+    tool_tile_h=max(100,int(th*0.86*0.95))
+    mini_tw=int(tw*0.72)
+    mini_th=int(th*0.72)
+
+    gap_below_line = ui_s(5)
+    top_canvas_top = header_line_y + gap_below_line
+    top_canvas_bottom = top_canvas_top + top_tile_h + ui_s(16)
+    first_sep_y = top_canvas_bottom + ui_s(18)
+    tools_canvas_top = first_sep_y + gap_below_line
+    mini_center_y = y_pct(h,16.5) + th/2 - mini_th/2
+    mini_top = mini_center_y - mini_th/2
+    label_x = ui_s(8)
+
+    _fm502_draw_section_label_safe(self, 'Module', label_x, header_line_y + ui_s(42))
+    create_tile_row(top_tiles, line_x1, top_canvas_top, 'main_menuzeile_1', top_tile_w, top_tile_h)
+    self.draw_continuous_relief_line(self.canvas, first_sep_y, line_x1, line_x2)
+
+    _fm502_draw_section_label_safe(self, 'Tools', label_x, first_sep_y + ui_s(28))
+    create_tile_row(middle_tiles, line_x1, tools_canvas_top, 'main_menuzeile_2', tool_tile_w, tool_tile_h)
+
+    self.draw_continuous_relief_line(self.canvas, mini_top-ui_s(13), line_x1, line_x2)
+    create_centered_row(mini_tiles, mini_center_y, 'main_mini_menuezeile', mini_tw, mini_th)
+    self.draw_bottom_logo()
+
+
+# Login-Finalisierung korrigieren: Hauptmenü mit Umlaut anzeigen.
+try:
+    _fm502_prev_finalize_login = _fm488_finalize_login
+except Exception:
+    _fm502_prev_finalize_login = None
+
+
+def _fm502_finalize_login(self, key, username):
+    if _fm502_prev_finalize_login:
+        _fm502_prev_finalize_login(self, key, username)
+        try:
+            if getattr(self, 'current_page', '') == 'main':
+                self.current_title = 'Hauptmenü'
+                self.breadcrumb = [('main', 'Hauptmenü')]
+        except Exception:
+            pass
+        return
+    try:
+        self.show_page('main', 'Hauptmenü', add_to_history=False)
+    except Exception:
+        pass
+
+try:
+    FiBuMateApp.draw_section_label = _fm502_draw_section_label_safe
+    FiBuMateApp.render_main_menu = _fm502_render_main_menu
+    _fm488_finalize_login = _fm502_finalize_login
+    FiBuMateApp.finalize_login = _fm502_finalize_login
+except Exception:
+    pass
+
+
+
+
+# ------------------------------------------------------------------
+# FIBU_MATE_TREASURY_OPEN_FIX_V0503
+# Datum: 2026-07-13
+# Zweck:
+# - Klick auf "Tools - Treasury" robust machen.
+# - Direkter Öffner fuer Treasury-Menue statt ausschliesslich verschachteltem lambda/show_page-Pfad.
+# - show_page und render_page fangen treasury_tools/account_analysis final ab.
+# - Kontenauswertung bleibt unter Tools -> Tools - Treasury erreichbar.
+# ------------------------------------------------------------------
+FIBU_MATE_TREASURY_OPEN_FIX_VERSION = "0.503"
+
+
+def _fm503_render_special_page(self, page_name, title):
+    try:
+        self.clear_widgets()
+        self.draw_background()
+        self.draw_header(title or self.current_title or '')
+        self.draw_controls()
+        self.draw_path_bar()
+        self.draw_favorites_bar()
+        if page_name == 'treasury_tools':
+            self.render_treasury_tools_menu()
+        elif page_name == 'account_analysis':
+            self.render_account_analysis_tool()
+        if self.focusable_tiles:
+            self.focus_index = 0
+            try: self.focusable_tiles[0].focus_set()
+            except Exception: pass
+        return True
+    except Exception as exc:
+        try:
+            messagebox.showerror('FiBu Mate', 'Seite konnte nicht geöffnet werden:\n' + str(exc))
+        except Exception:
+            pass
+        return True
+
+
+def _fm503_open_treasury_tools_menu(self):
+    try:
+        if not self.confirm_unsaved_changes():
+            return
+    except Exception:
+        pass
+    try:
+        if getattr(self, 'current_page', None):
+            self.page_history.append((self.current_page, self.current_title))
+    except Exception:
+        pass
+    self.current_page = 'treasury_tools'
+    self.current_title = 'Tools - Treasury'
+    try:
+        self.update_breadcrumb('treasury_tools', 'Tools - Treasury')
+    except Exception:
+        self.breadcrumb = [('main', 'Hauptmenü'), ('treasury_tools', 'Tools - Treasury')]
+    _fm503_render_special_page(self, 'treasury_tools', 'Tools - Treasury')
+
+
+def _fm503_open_account_analysis_tool(self):
+    try:
+        if not self.confirm_unsaved_changes():
+            return
+    except Exception:
+        pass
+    try:
+        if getattr(self, 'current_page', None):
+            self.page_history.append((self.current_page, self.current_title))
+    except Exception:
+        pass
+    self.current_page = 'account_analysis'
+    self.current_title = 'Kontenauswertung'
+    try:
+        self.update_breadcrumb('account_analysis', 'Kontenauswertung')
+    except Exception:
+        self.breadcrumb = [('main', 'Hauptmenü'), ('treasury_tools', 'Tools - Treasury'), ('account_analysis', 'Kontenauswertung')]
+    _fm503_render_special_page(self, 'account_analysis', 'Kontenauswertung')
+
+try:
+    _fm503_prev_show_page = FiBuMateApp.show_page
+except Exception:
+    _fm503_prev_show_page = None
+
+
+def _fm503_show_page(self, page_name, title='', add_to_history=True):
+    if page_name == 'treasury_tools':
+        return _fm503_open_treasury_tools_menu(self)
+    if page_name == 'account_analysis':
+        return _fm503_open_account_analysis_tool(self)
+    if _fm503_prev_show_page:
+        return _fm503_prev_show_page(self, page_name, title, add_to_history)
+
+try:
+    _fm503_prev_render_page = FiBuMateApp.render_page
+except Exception:
+    _fm503_prev_render_page = None
+
+
+def _fm503_render_page(self):
+    page = getattr(self, 'current_page', '')
+    if page in ('treasury_tools', 'account_analysis'):
+        return _fm503_render_special_page(self, page, getattr(self, 'current_title', '') or ('Tools - Treasury' if page == 'treasury_tools' else 'Kontenauswertung'))
+    if _fm503_prev_render_page:
+        return _fm503_prev_render_page(self)
+
+
+def _fm503_render_treasury_tools_menu(self):
+    # Eigene Kachel statt render_center_menu, damit der Klick sicher ueber den direkten Öffner laeuft.
+    w, h = self.canvas.winfo_width(), self.canvas.winfo_height()
+    tile_w = int(max(280, min(380, w * 0.21)))
+    tile_h = int(max(120, min(170, h * 0.15)))
+    x = x_pct(w, 50)
+    y = y_pct(h, 55)
+    tile = Tile(self.root, self, 'treasury_kontenauswertung', 'Kontenauswertung', command=lambda: _fm503_open_account_analysis_tool(self), favorite_enabled=False, center_text=True, icon_type='modules')
+    tile.resize_tile(tile_w, tile_h)
+    self.widget_items.append(tile)
+    self.focusable_tiles.append(tile)
+    self.canvas.create_window(x, y, window=tile, anchor='center')
+    self.draw_bottom_logo()
+
+
+def _fm503_render_main_menu(self):
+    top_tiles = [
+        {'title':'Abschlusskalender','cmd':lambda: self.show_page('closing_calendar','Abschlusskalender',True),'fixed':None,'lock':False,'icon':'calendar','fold':False},
+        {'title':'Wissenszentrale','cmd':lambda: self.open_knowledge_base(),'fixed':None,'lock':False,'icon':'knowledge','fold':False},
+    ]
+    middle_tiles = [
+        {'title':'Tools - Hauptbuch','cmd':lambda: self.show_page('data_prep','Tools - Hauptbuch',True),'fixed':None,'lock':False,'icon':'fibu_data_prep','fold':False},
+        {'title':'Tools - Debitoren','cmd':lambda: self.show_page('debitoren_tools','Tools - Debitoren',True),'fixed':None,'lock':False,'icon':'fibu_data_prep','fold':False},
+        {'title':'Tools - Treasury','cmd':lambda: _fm503_open_treasury_tools_menu(self),'fixed':None,'lock':False,'icon':'modules','fold':False},
+    ]
+    mini_tiles = [
+        {'title':'In Entwicklung','cmd':self.try_open_in_dev,'fixed':GREY_TILE,'lock':True,'icon':'lock','fold':False},
+        {'title':'Informationen','cmd':lambda: self.show_page('information','Informationen',True),'fixed':None,'lock':False,'icon':'info','fold':True},
+        {'title':'Einstellungen','cmd':lambda: self.show_page('settings','Einstellungen',True),'fixed':None,'lock':False,'icon':'gear','fold':True},
+        {'title':'Dateiausgabe','cmd':lambda: self.show_page('file_output','Dateiausgabe',True),'fixed':None,'lock':False,'icon':'file_explorer','fold':False},
+    ]
+    w, h = self.canvas.winfo_width(), self.canvas.winfo_height()
+    tw = max(240, min(330, int(w*0.165)))
+    th = max(125, min(170, int(h*0.155)))
+    gap_x = max(38, int(w*0.04))
+    line_x1 = x_pct(w, 9.5)
+    line_x2 = x_pct(w, 92)
+    header_line_y = FM_HEADER_H if 'FM_HEADER_H' in globals() else ui_s(96)
+
+    def create_tile_row(items, visible_left_edge, canvas_top, id_prefix, tile_w, tile_h):
+        canvas_left = visible_left_edge - ui_s(8)
+        canvas_h = tile_h + ui_s(16)
+        for i, item in enumerate(items):
+            tile = Tile(self.root, self, f'{id_prefix}_{i}', item['title'], item['cmd'], favorite_enabled=False, fixed_color=item['fixed'], lock_tile=item['lock'], icon_type=item['icon'], corner_fold=item['fold'])
+            tile.resize_tile(tile_w, tile_h)
+            self.widget_items.append(tile)
+            self.focusable_tiles.append(tile)
+            cx = canvas_left + (tile_w + ui_s(16)) / 2 + i*(tile_w+gap_x)
+            cy = canvas_top + canvas_h / 2
+            self.canvas.create_window(cx, cy, window=tile, anchor='center')
+
+    def centered_x_positions(count, tile_w, gap=gap_x):
+        total_width = count*tile_w + (count-1)*gap
+        start_x = (w-total_width)/2 + tile_w/2
+        return [start_x+i*(tile_w+gap) for i in range(count)]
+
+    def create_centered_row(items, y, id_prefix, tile_w, tile_h):
+        xs = centered_x_positions(len(items), tile_w)
+        for i,item in enumerate(items):
+            tile = Tile(self.root, self, f'{id_prefix}_{i}', item['title'], item['cmd'], favorite_enabled=False, fixed_color=item['fixed'], lock_tile=item['lock'], icon_type=item['icon'], corner_fold=item['fold'])
+            tile.resize_tile(tile_w,tile_h)
+            self.widget_items.append(tile)
+            self.focusable_tiles.append(tile)
+            self.canvas.create_window(xs[i], y, window=tile, anchor='center')
+
+    top_tile_w=max(250,int(tw*1.05)); top_tile_h=max(130,int(th*1.05))
+    tool_tile_w=max(200,int(tw*0.86*0.95)); tool_tile_h=max(100,int(th*0.86*0.95))
+    mini_tw=int(tw*0.72); mini_th=int(th*0.72)
+    gap_below_line = ui_s(5)
+    top_canvas_top = header_line_y + gap_below_line
+    top_canvas_bottom = top_canvas_top + top_tile_h + ui_s(16)
+    first_sep_y = top_canvas_bottom + ui_s(18)
+    tools_canvas_top = first_sep_y + gap_below_line
+    mini_center_y = y_pct(h,16.5) + th/2 - mini_th/2
+    mini_top = mini_center_y - mini_th/2
+    label_x = ui_s(8)
+    try:
+        _fm502_draw_section_label_safe(self, 'Module', label_x, header_line_y + ui_s(42))
+    except Exception:
+        self.canvas.create_text(label_x, header_line_y + ui_s(42), text='Module', fill=TEXT2, font=body_font(9,'bold'), anchor='w')
+    create_tile_row(top_tiles, line_x1, top_canvas_top, 'main_menuzeile_1', top_tile_w, top_tile_h)
+    self.draw_continuous_relief_line(self.canvas, first_sep_y, line_x1, line_x2)
+    try:
+        _fm502_draw_section_label_safe(self, 'Tools', label_x, first_sep_y + ui_s(28))
+    except Exception:
+        self.canvas.create_text(label_x, first_sep_y + ui_s(28), text='Tools', fill=TEXT2, font=body_font(9,'bold'), anchor='w')
+    create_tile_row(middle_tiles, line_x1, tools_canvas_top, 'main_menuzeile_2', tool_tile_w, tool_tile_h)
+    self.draw_continuous_relief_line(self.canvas, mini_top-ui_s(13), line_x1, line_x2)
+    create_centered_row(mini_tiles, mini_center_y, 'main_mini_menuezeile', mini_tw, mini_th)
+    self.draw_bottom_logo()
+
+try:
+    FiBuMateApp.open_treasury_tools_menu = _fm503_open_treasury_tools_menu
+    FiBuMateApp.open_account_analysis_tool = _fm503_open_account_analysis_tool
+    FiBuMateApp.show_page = _fm503_show_page
+    FiBuMateApp.render_page = _fm503_render_page
+    FiBuMateApp.render_treasury_tools_menu = _fm503_render_treasury_tools_menu
+    FiBuMateApp.render_main_menu = _fm503_render_main_menu
+except Exception:
+    pass
+
+
+
+
+# ------------------------------------------------------------------
+# FIBU_MATE_KONTENAUSWERTUNG_STABIL_V0504
+# Datum: 2026-07-13
+# Zweck: clear_widgets-Fehler aus v0.503 korrigieren und Treasury/Kontenauswertung stabil oeffnen.
+# ------------------------------------------------------------------
+FIBU_MATE_KONTENAUSWERTUNG_STABIL_VERSION = "0.504"
+
+
+def _fm504_clear_widgets_compat(self):
+    try:
+        return self.clear_content()
+    except Exception:
+        try:
+            for wdg in list(getattr(self, 'widget_items', []) or []):
+                try: wdg.destroy()
+                except Exception: pass
+            self.widget_items = []
+            self.focusable_tiles = []
+        except Exception:
+            pass
+
+
+def _fm504_render_special_page(self, page_name, title):
+    try:
+        self.clear_content()
+        self.draw_background()
+        self.draw_header(title or getattr(self, 'current_title', '') or '')
+        self.draw_controls()
+        self.draw_path_bar()
+        self.draw_favorites_bar()
+        if page_name == 'treasury_tools':
+            self.render_treasury_tools_menu()
+        elif page_name == 'account_analysis':
+            self.render_account_analysis_tool()
+        else:
+            return False
+        if getattr(self, 'focusable_tiles', None):
+            self.focus_index = 0
+            try: self.focusable_tiles[0].focus_set()
+            except Exception: pass
+        return True
+    except Exception as exc:
+        try: messagebox.showerror('FiBu Mate', 'Seite konnte nicht geöffnet werden:\n' + str(exc))
+        except Exception: pass
+        return True
+
+
+def _fm504_open_page_direct(self, page_name, title):
+    try:
+        if page_name != getattr(self, 'current_page', '') and not self.confirm_unsaved_changes():
+            return
+    except Exception:
+        pass
+    try:
+        if getattr(self, 'current_page', None) and getattr(self, 'current_page', None) != page_name:
+            self.page_history.append((self.current_page, self.current_title))
+    except Exception:
+        pass
+    self.current_page = page_name
+    self.current_title = title
+    try: self.update_breadcrumb(page_name, title)
+    except Exception:
+        self.breadcrumb = [('main', 'Hauptmenü'), (page_name, title)]
+    return _fm504_render_special_page(self, page_name, title)
+
+
+def _fm504_open_treasury_tools_menu(self):
+    return _fm504_open_page_direct(self, 'treasury_tools', 'Tools - Treasury')
+
+
+def _fm504_open_account_analysis_tool(self):
+    return _fm504_open_page_direct(self, 'account_analysis', 'Kontenauswertung')
+
+try:
+    _fm504_prev_show_page = FiBuMateApp.show_page
+except Exception:
+    _fm504_prev_show_page = None
+
+
+def _fm504_show_page(self, page_name, title='', add_to_history=True):
+    if page_name == 'treasury_tools':
+        return _fm504_open_treasury_tools_menu(self)
+    if page_name == 'account_analysis':
+        return _fm504_open_account_analysis_tool(self)
+    if _fm504_prev_show_page:
+        return _fm504_prev_show_page(self, page_name, title, add_to_history)
+
+try:
+    _fm504_prev_render_page = FiBuMateApp.render_page
+except Exception:
+    _fm504_prev_render_page = None
+
+
+def _fm504_render_page(self):
+    page = getattr(self, 'current_page', '')
+    if page in ('treasury_tools', 'account_analysis'):
+        return _fm504_render_special_page(self, page, getattr(self, 'current_title', '') or ('Tools - Treasury' if page == 'treasury_tools' else 'Kontenauswertung'))
+    if _fm504_prev_render_page:
+        return _fm504_prev_render_page(self)
+
+
+def _fm504_render_treasury_tools_menu(self):
+    w, h = self.canvas.winfo_width(), self.canvas.winfo_height()
+    tile = Tile(self.root, self, 'treasury_kontenauswertung', 'Kontenauswertung', command=lambda: _fm504_open_account_analysis_tool(self), favorite_enabled=False, center_text=True, icon_type='modules')
+    tile.resize_tile(int(max(280, min(380, w * 0.21))), int(max(120, min(170, h * 0.15))))
+    self.widget_items.append(tile)
+    self.focusable_tiles.append(tile)
+    self.canvas.create_window(x_pct(w, 50), y_pct(h, 55), window=tile, anchor='center')
+    self.draw_bottom_logo()
+
+
+def _fm504_render_main_menu(self):
+    top_tiles = [
+        {'title':'Abschlusskalender','cmd':lambda: self.show_page('closing_calendar','Abschlusskalender',True),'fixed':None,'lock':False,'icon':'calendar','fold':False},
+        {'title':'Wissenszentrale','cmd':lambda: self.open_knowledge_base(),'fixed':None,'lock':False,'icon':'knowledge','fold':False},
+    ]
+    middle_tiles = [
+        {'title':'Tools - Hauptbuch','cmd':lambda: self.show_page('data_prep','Tools - Hauptbuch',True),'fixed':None,'lock':False,'icon':'fibu_data_prep','fold':False},
+        {'title':'Tools - Debitoren','cmd':lambda: self.show_page('debitoren_tools','Tools - Debitoren',True),'fixed':None,'lock':False,'icon':'fibu_data_prep','fold':False},
+        {'title':'Tools - Treasury','cmd':lambda: _fm504_open_treasury_tools_menu(self),'fixed':None,'lock':False,'icon':'fibu_treasury','fold':False},
+    ]
+    mini_tiles = [
+        {'title':'In Entwicklung','cmd':self.try_open_in_dev,'fixed':GREY_TILE,'lock':True,'icon':'lock','fold':False},
+        {'title':'Informationen','cmd':lambda: self.show_page('information','Informationen',True),'fixed':None,'lock':False,'icon':'info','fold':True},
+        {'title':'Einstellungen','cmd':lambda: self.show_page('settings','Einstellungen',True),'fixed':None,'lock':False,'icon':'gear','fold':True},
+        {'title':'Dateiausgabe','cmd':lambda: self.show_page('file_output','Dateiausgabe',True),'fixed':None,'lock':False,'icon':'file_explorer','fold':False},
+    ]
+    w, h = self.canvas.winfo_width(), self.canvas.winfo_height()
+    tw = max(240, min(330, int(w*0.165))); th = max(125, min(170, int(h*0.155)))
+    gap_x = max(38, int(w*0.04)); line_x1 = x_pct(w, 9.5); line_x2 = x_pct(w, 92)
+    header_line_y = FM_HEADER_H if 'FM_HEADER_H' in globals() else ui_s(96)
+    def create_tile_row(items, visible_left_edge, canvas_top, id_prefix, tile_w, tile_h):
+        canvas_left=visible_left_edge-ui_s(8); canvas_h=tile_h+ui_s(16)
+        for i,item in enumerate(items):
+            tile=Tile(self.root,self,f'{id_prefix}_{i}',item['title'],item['cmd'],favorite_enabled=False,fixed_color=item['fixed'],lock_tile=item['lock'],icon_type=item['icon'],corner_fold=item['fold'])
+            tile.resize_tile(tile_w,tile_h); self.widget_items.append(tile); self.focusable_tiles.append(tile)
+            self.canvas.create_window(canvas_left+(tile_w+ui_s(16))/2+i*(tile_w+gap_x), canvas_top+canvas_h/2, window=tile, anchor='center')
+    def centered_x_positions(count, tile_w, gap=gap_x):
+        total_width=count*tile_w+(count-1)*gap; start_x=(w-total_width)/2+tile_w/2
+        return [start_x+i*(tile_w+gap) for i in range(count)]
+    def create_centered_row(items,y,id_prefix,tile_w,tile_h):
+        xs=centered_x_positions(len(items),tile_w)
+        for i,item in enumerate(items):
+            tile=Tile(self.root,self,f'{id_prefix}_{i}',item['title'],item['cmd'],favorite_enabled=False,fixed_color=item['fixed'],lock_tile=item['lock'],icon_type=item['icon'],corner_fold=item['fold'])
+            tile.resize_tile(tile_w,tile_h); self.widget_items.append(tile); self.focusable_tiles.append(tile); self.canvas.create_window(xs[i],y,window=tile,anchor='center')
+    top_tile_w=max(250,int(tw*1.05)); top_tile_h=max(130,int(th*1.05)); tool_tile_w=max(200,int(tw*0.86*0.95)); tool_tile_h=max(100,int(th*0.86*0.95)); mini_tw=int(tw*0.72); mini_th=int(th*0.72)
+    top_canvas_top=header_line_y+ui_s(5); top_canvas_bottom=top_canvas_top+top_tile_h+ui_s(16); first_sep_y=top_canvas_bottom+ui_s(18); tools_canvas_top=first_sep_y+ui_s(5); mini_center_y=y_pct(h,16.5)+th/2-mini_th/2; mini_top=mini_center_y-mini_th/2; label_x=ui_s(8)
+    try: _fm502_draw_section_label_safe(self,'Module',label_x,header_line_y+ui_s(42))
+    except Exception: self.canvas.create_text(label_x,header_line_y+ui_s(42),text='Module',fill=TEXT2,font=body_font(9,'bold'),anchor='w')
+    create_tile_row(top_tiles,line_x1,top_canvas_top,'main_menuzeile_1',top_tile_w,top_tile_h)
+    self.draw_continuous_relief_line(self.canvas,first_sep_y,line_x1,line_x2)
+    try: _fm502_draw_section_label_safe(self,'Tools',label_x,first_sep_y+ui_s(28))
+    except Exception: self.canvas.create_text(label_x,first_sep_y+ui_s(28),text='Tools',fill=TEXT2,font=body_font(9,'bold'),anchor='w')
+    create_tile_row(middle_tiles,line_x1,tools_canvas_top,'main_menuzeile_2',tool_tile_w,tool_tile_h)
+    self.draw_continuous_relief_line(self.canvas,mini_top-ui_s(13),line_x1,line_x2)
+    create_centered_row(mini_tiles,mini_center_y,'main_mini_menuezeile',mini_tw,mini_th)
+    self.draw_bottom_logo()
+
+try:
+    FiBuMateApp.clear_widgets = _fm504_clear_widgets_compat
+    FiBuMateApp.open_treasury_tools_menu = _fm504_open_treasury_tools_menu
+    FiBuMateApp.open_account_analysis_tool = _fm504_open_account_analysis_tool
+    FiBuMateApp.show_page = _fm504_show_page
+    FiBuMateApp.render_page = _fm504_render_page
+    FiBuMateApp.render_treasury_tools_menu = _fm504_render_treasury_tools_menu
+    FiBuMateApp.render_main_menu = _fm504_render_main_menu
+except Exception:
+    pass
+
+
+
+
+# ------------------------------------------------------------------
+# FIBU_MATE_KONTENAUSWERTUNG_AUSBAU_V0505
+# Datum: 2026-07-13
+# Zweck:
+# - Kopfbereich in Kontenauswertung entfernen, Arbeitsbereich nach oben ziehen.
+# - Button "Excel-Daten aufnehmen" statt "Excel importieren".
+# - Importe nach Bank/Konto erfassen, Doppelimporte erkennen und importierte Datensätze löschen können.
+# - Entgeltabschlüsse, Einzelpositionen/Stückkosten und Kostentreiber filterbar + sortierbar.
+# - Top-Kostentreiber als scrollbar formatierte Tabelle.
+# - Schaubilder personalisierbar/filterbar und erst nach Button-Klick aktualisieren.
+# - Bank-/Konto-Auswertungen inkl. Ø Stückkosten und Stückkostenentwicklung je Geschäftsvorfall pro Bank.
+# ------------------------------------------------------------------
+FIBU_MATE_KONTENAUSWERTUNG_AUSBAU_VERSION = "0.505"
+
+
+def _fm505_db_columns(con, table):
+    try:
+        return {str(r['name']) for r in con.execute(f'PRAGMA table_info({table})').fetchall()}
+    except Exception:
+        return set()
+
+
+def _fm505_add_col(con, table, name, spec):
+    cols = _fm505_db_columns(con, table)
+    if name not in cols:
+        con.execute(f'ALTER TABLE {table} ADD COLUMN {name} {spec}')
+
+
+def _fm505_db_init():
+    _fm501_db_init()
+    con = _fm501_db_connect()
+    try:
+        _fm505_add_col(con, 'imports', 'bank', 'TEXT')
+        _fm505_add_col(con, 'imports', 'konto', 'TEXT')
+        _fm505_add_col(con, 'imports', 'deleted', 'INTEGER DEFAULT 0')
+        _fm505_add_col(con, 'imports', 'deleted_at', 'TEXT')
+        _fm505_add_col(con, 'imports', 'deleted_by', 'TEXT')
+        _fm505_add_col(con, 'closings', 'bank', 'TEXT')
+        _fm505_add_col(con, 'closings', 'konto', 'TEXT')
+        _fm505_add_col(con, 'fee_items', 'bank', 'TEXT')
+        _fm505_add_col(con, 'fee_items', 'konto', 'TEXT')
+        con.commit()
+    finally:
+        con.close()
+
+
+def _fm505_distinct_values(table, col):
+    _fm505_db_init()
+    con = _fm501_db_connect()
+    try:
+        rows = con.execute(f"SELECT DISTINCT COALESCE({col},'') v FROM {table} WHERE COALESCE({col},'')<>'' ORDER BY v").fetchall()
+        return [r['v'] for r in rows]
+    finally:
+        con.close()
+
+
+def _fm505_guess_konto_from_filename(path):
+    try:
+        base = os.path.basename(str(path or ''))
+        m = re.search(r'(\d{4,12})(?=\D*(?:\.xlsx|\.xlsm|\.xls|$))', base)
+        if m:
+            return m.group(1)
+    except Exception:
+        pass
+    return ''
+
+
+def _fm505_ask_bank_konto(app, path):
+    default_konto = _fm505_guess_konto_from_filename(path)
+    result = {'ok': False, 'bank': '', 'konto': default_konto}
+    try:
+        win = tk.Toplevel(app.root)
+        win.title('Bank und Konto zum Import')
+        win.configure(bg=WHITE)
+        win.transient(app.root)
+        win.grab_set()
+        tk.Label(win, text='Excel-Daten aufnehmen', bg=WHITE, fg=BLUE, font=body_font(14, 'bold')).grid(row=0, column=0, columnspan=2, sticky='w', padx=18, pady=(14,6))
+        tk.Label(win, text='Bitte Bank und Konto für diesen SFIRM-Export angeben. Das Konto wird aus dem Dateinamen vorgeschlagen und kann überschrieben werden.', bg=WHITE, fg=TEXT2, font=body_font(9), wraplength=480, justify='left').grid(row=1, column=0, columnspan=2, sticky='w', padx=18, pady=(0,12))
+        bank_var = tk.StringVar(value='')
+        konto_var = tk.StringVar(value=default_konto)
+        bank_values = _fm505_distinct_values('imports', 'bank')
+        tk.Label(win, text='Bank', bg=WHITE, fg=TEXT, font=body_font(10, 'bold')).grid(row=2, column=0, sticky='w', padx=18, pady=(0,3))
+        cb = ttk.Combobox(win, textvariable=bank_var, values=bank_values, state='normal', font=body_font(10), width=34)
+        cb.grid(row=3, column=0, sticky='ew', padx=18, pady=(0,10))
+        tk.Label(win, text='Konto', bg=WHITE, fg=TEXT, font=body_font(10, 'bold')).grid(row=2, column=1, sticky='w', padx=(8,18), pady=(0,3))
+        ent = tk.Entry(win, textvariable=konto_var, bg=WHITE, fg=TEXT, font=body_font(10), relief='solid', bd=1)
+        ent.grid(row=3, column=1, sticky='ew', padx=(8,18), pady=(0,10), ipady=4)
+        win.grid_columnconfigure(0, weight=1); win.grid_columnconfigure(1, weight=1)
+        def ok():
+            if not bank_var.get().strip():
+                try: messagebox.showwarning('Kontenauswertung', 'Bitte eine Bank eingeben oder auswählen.')
+                except Exception: pass
+                return
+            if not konto_var.get().strip():
+                try: messagebox.showwarning('Kontenauswertung', 'Bitte ein Konto eingeben.')
+                except Exception: pass
+                return
+            result.update({'ok': True, 'bank': bank_var.get().strip(), 'konto': konto_var.get().strip()})
+            win.destroy()
+        def cancel():
+            win.destroy()
+        btns = tk.Frame(win, bg=WHITE); btns.grid(row=4, column=0, columnspan=2, sticky='e', padx=18, pady=(2,14))
+        tk.Button(btns, text='Übernehmen', command=ok, bg='#CFEAD6', fg=TEXT, font=body_font(10,'bold'), relief='solid', bd=1, padx=14, pady=5).pack(side='left', padx=(0,8))
+        tk.Button(btns, text='Abbrechen', command=cancel, bg=WHITE, fg=TEXT, font=body_font(10), relief='solid', bd=1, padx=14, pady=5).pack(side='left')
+        try: win.wait_window()
+        except Exception: pass
+    except Exception:
+        # Nicht-UI/Testumgebung: Pflichtwerte leerlassen; Aufrufer darf explizit übergeben.
+        pass
+    return result if result.get('ok') else None
+
+
+
+def _fm505b_normalize_header(value):
+    import unicodedata as _ud
+    text=_ud.normalize('NFKC',str(value or ''))
+    text=text.replace('\ufeff','').replace('\u200b','').replace('\xa0',' ')
+    text=re.sub(r'\s+',' ',text).strip().casefold()
+    return re.sub(r'[^a-z0-9äöüß]+','',text)
+
+
+def _fm505b_find_header(workbook):
+    aliases={
+        'Buchung': {'buchung','buchungsdatum','buchungstag'},
+        'Wertstellung': {'wertstellung','wertstellungsdatum','valuta','valutadatum'},
+        'Buchungstext': {'buchungstext','buchungsart','umsatzart'},
+        'Verwendungszweck': {'verwendungszweck','verwendungszweck1','vz','zahlungsreferenz'},
+        'Verwendungszweck 2': {'verwendungszweck2','verwendungszweckii','vz2'},
+        'Betrag': {'betrag','umsatz','umsatzbetrag','betragwaehrung'},
+        'Währung': {'währung','waehrung','currency'},
+        'GVC': {'gvc'}, 'BTC': {'btc'},
+    }
+    alias_norm={k:{_fm505b_normalize_header(x) for x in vals} for k,vals in aliases.items()}
+    required={'Buchung','Wertstellung','Buchungstext','Verwendungszweck','Betrag'}
+    best=None
+    for ws in workbook.worksheets:
+        for row_idx in range(1,min(max(1,int(ws.max_row or 1)),50)+1):
+            mapping={}; raw=[]
+            for col_idx in range(1,min(max(1,int(ws.max_column or 1)),100)+1):
+                value=ws.cell(row=row_idx,column=col_idx).value
+                if value is None or str(value).strip()=='': continue
+                raw.append(str(value).strip())
+                norm=_fm505b_normalize_header(value)
+                for canonical,variants in alias_norm.items():
+                    if norm in variants and canonical not in mapping:
+                        mapping[canonical]=col_idx; break
+            score=len(required.intersection(mapping))
+            if best is None or score>best[0]: best=(score,ws,row_idx,mapping,raw)
+            if required.issubset(mapping): return ws,row_idx,mapping
+    score,ws,row_idx,mapping,raw=best or (0,workbook.active,1,{},[])
+    missing=sorted(required.difference(mapping))
+    raise ValueError('Die SFIRM-Kopfzeile konnte nicht vollständig erkannt werden. Fehlende Spalten: '+', '.join(missing)+f'\n\nBestes Ergebnis: Tabellenblatt "{ws.title}", Zeile {row_idx}. Gefundene Spalten: '+(', '.join(raw[:20]) if raw else 'keine'))
+
+def _fm505_import_excel(path, app=None, bank=None, konto=None, replace_existing=False):
+    from openpyxl import load_workbook
+    _fm505_db_init()
+    if not bank or not konto:
+        if app is not None:
+            sel = _fm505_ask_bank_konto(app, path)
+            if not sel:
+                return {'filename': os.path.basename(path), 'closings': 0, 'details': 0, 'skipped': 0, 'duplicate': False, 'cancelled': True, 'db': _fm501_konto_db_path()}
+            bank, konto = sel['bank'], sel['konto']
+        else:
+            bank = bank or 'Unbekannte Bank'
+            konto = konto or _fm505_guess_konto_from_filename(path) or 'Unbekanntes Konto'
+    bank = str(bank).strip()
+    konto = str(konto).strip()
+    wb = load_workbook(path, data_only=True, read_only=False)
+    ws, header_row, h = _fm505b_find_header(wb)
+    file_hash = _fm501_hash_file(path)
+    filename = os.path.basename(path)
+    user = getattr(app, 'current_user_display', '') or getattr(app, 'current_user_key', '') or ''
+    now = datetime.now().isoformat(timespec='seconds')
+    con = _fm501_db_connect()
+    closing_count = 0; detail_count = 0; skipped = 0
+    duplicate = False
+    try:
+        cur = con.cursor()
+        # Doppelimport global über Dateiinhalt erkennen: Die Datenbank hat UNIQUE(filename,file_hash).
+        # Wenn der Nutzer das Ersetzen bestätigt, werden die bestehenden Detaildaten gelöscht
+        # und derselbe Import-Datensatz neu aufgebaut. Dadurch bleibt filename+file_hash eindeutig.
+        existing = cur.execute("SELECT id, COALESCE(bank,'') bank, COALESCE(konto,'') konto FROM imports WHERE filename=? AND file_hash=?", (filename, file_hash)).fetchone()
+        if existing and not replace_existing:
+            return {'filename': filename, 'closings': 0, 'details': 0, 'skipped': 0, 'duplicate': True, 'cancelled': False, 'db': _fm501_konto_db_path(), 'bank': bank, 'konto': konto, 'existing_bank': existing['bank'], 'existing_konto': existing['konto'], 'existing_import_id': int(existing['id'])}
+        if existing and replace_existing:
+            import_id = int(existing['id'])
+            old_closing_ids = cur.execute('SELECT id FROM closings WHERE import_id=?', (import_id,)).fetchall()
+            for old in old_closing_ids:
+                old_id = old['id'] if hasattr(old, 'keys') else old[0]
+                cur.execute('DELETE FROM fee_items WHERE closing_id=?', (old_id,))
+            cur.execute('DELETE FROM closings WHERE import_id=?', (import_id,))
+            cur.execute('UPDATE imports SET file_mtime=?, imported_at=?, imported_by=?, row_count=?, closing_count=0, detail_count=0, bank=?, konto=?, deleted=0, deleted_at=NULL, deleted_by=NULL WHERE id=?',
+                        (str(os.path.getmtime(path)) if os.path.exists(path) else '', now, user, max(0, ws.max_row - header_row), bank, konto, import_id))
+        else:
+            cur.execute('INSERT INTO imports(filename,file_mtime,imported_at,imported_by,row_count,closing_count,detail_count,file_hash,bank,konto,deleted) VALUES(?,?,?,?,?,?,?,?,?,?,0)',
+                        (filename, str(os.path.getmtime(path)) if os.path.exists(path) else '', now, user, max(0, ws.max_row - header_row), 0, 0, file_hash, bank, konto))
+            import_id = cur.lastrowid
+        for r in range(header_row + 1, ws.max_row + 1):
+            bt = ws.cell(r, h['Buchungstext']).value
+            if not (bt and 'ENTGELTABSCHLUSS' in str(bt).upper()):
+                continue
+            vz = str(ws.cell(r, h.get('Verwendungszweck')).value or '')
+            raw_text = vz
+            if 'Verwendungszweck 2' in h and ws.cell(r, h['Verwendungszweck 2']).value:
+                raw_text = vz + '\n' + str(ws.cell(r, h['Verwendungszweck 2']).value or '')
+            parsed = _fm501_parse_entgelt_text(vz)
+            buchungsdatum = _fm501_date_iso(ws.cell(r, h['Buchung']).value)
+            wertstellung = _fm501_date_iso(ws.cell(r, h['Wertstellung']).value)
+            abschluss = parsed.get('abschlussdatum') or wertstellung or buchungsdatum
+            monat_key = _fm501_month_key_from_iso(abschluss)
+            betrag = ws.cell(r, h['Betrag']).value
+            brutto = abs(float(betrag)) if isinstance(betrag, (int, float)) else _fm501_de_float(betrag)
+            base_rechnung = parsed.get('rechnungsnummer') or f'{filename}:row:{r}'
+            rechnung = f'{bank}|{konto}|{base_rechnung}'
+            cur.execute('''INSERT OR IGNORE INTO closings(import_id,source_file,source_row,buchungsdatum,wertstellungsdatum,abschlussdatum,monat_key,zeitraum_von,zeitraum_bis,rechnungsnummer,betrag_brutto,betrag_netto,ust,waehrung,gvc,btc,raw_text,created_at,bank,konto)
+                           VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)''',
+                        (import_id, filename, r, buchungsdatum, wertstellung, abschluss, monat_key, parsed.get('zeitraum_von',''), parsed.get('zeitraum_bis',''), rechnung,
+                         brutto, parsed.get('betrag_netto'), parsed.get('ust'), ws.cell(r, h.get('Währung', h['Betrag'])).value if 'Währung' in h else 'EUR',
+                         ws.cell(r, h['GVC']).value if 'GVC' in h else '', ws.cell(r, h['BTC']).value if 'BTC' in h else '', raw_text, now, bank, konto))
+            row = cur.execute('SELECT id FROM closings WHERE rechnungsnummer=? AND abschlussdatum=?', (rechnung, abschluss)).fetchone()
+            if not row:
+                skipped += 1; continue
+            closing_id = row[0]
+            closing_count += 1
+            cur.execute('DELETE FROM fee_items WHERE closing_id=?', (closing_id,))
+            for item in parsed.get('items', []):
+                cur.execute('''INSERT OR IGNORE INTO fee_items(closing_id,abschlussdatum,monat_key,geschaeftsvorfall,positionstyp,anzahl,stueckkosten,gesamtbetrag,berechneter_betrag,abweichung,plausibel,sort_order,raw_line,bank,konto)
+                               VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)''',
+                            (closing_id, abschluss, monat_key, item.get('geschaeftsvorfall'), item.get('positionstyp'), item.get('anzahl'), item.get('stueckkosten'), item.get('gesamtbetrag'), item.get('berechneter_betrag'), item.get('abweichung'), item.get('plausibel'), item.get('sort_order'), item.get('raw_line'), bank, konto))
+                detail_count += 1
+        cur.execute('UPDATE imports SET closing_count=?, detail_count=? WHERE id=?', (closing_count, detail_count, import_id))
+        con.commit()
+    finally:
+        con.close()
+    return {'filename': filename, 'closings': closing_count, 'details': detail_count, 'skipped': skipped, 'duplicate': duplicate, 'cancelled': False, 'db': _fm501_konto_db_path(), 'bank': bank, 'konto': konto}
+
+
+def _fm505_filter_match(row, filters):
+    if not filters:
+        return True
+    def get(k): return str(row.get(k, '') if row.get(k, '') is not None else '')
+    if filters.get('bank') and get('bank') != filters['bank']:
+        return False
+    if filters.get('konto') and get('konto') != filters['konto']:
+        return False
+    if filters.get('monat') and filters['monat'].lower() not in get('monat_key').lower():
+        return False
+    if filters.get('von') and get('abschlussdatum') and get('abschlussdatum') < filters['von']:
+        return False
+    if filters.get('bis') and get('abschlussdatum') and get('abschlussdatum') > filters['bis']:
+        return False
+    if filters.get('gv') and filters['gv'].lower() not in get('geschaeftsvorfall').lower():
+        return False
+    if filters.get('typ') and get('positionstyp') != filters['typ']:
+        return False
+    if filters.get('plausibel') in ('Ja','Nein'):
+        want = 1 if filters['plausibel']=='Ja' else 0
+        if int(row.get('plausibel') or 0) != want:
+            return False
+    if filters.get('mindest') in ('Ja','Nein'):
+        is_min = 'mindestbetrag' in get('positionstyp').lower() or 'mindestbetrag' in get('geschaeftsvorfall').lower()
+        if (filters['mindest']=='Ja') != is_min:
+            return False
+    q = str(filters.get('q') or '').strip().lower()
+    if q:
+        blob = ' '.join(str(v or '') for v in row.values()).lower()
+        if q not in blob:
+            return False
+    return True
+
+
+def _fm505_fetch_imports(filters=None):
+    _fm505_db_init()
+    con = _fm501_db_connect()
+    try:
+        rows=[dict(r) for r in con.execute("SELECT * FROM imports WHERE COALESCE(deleted,0)=0 ORDER BY imported_at DESC, id DESC").fetchall()]
+        if filters:
+            rows=[r for r in rows if _fm505_filter_match(r, filters)]
+        return rows
+    finally:
+        con.close()
+
+
+def _fm505_fetch_closings(filters=None):
+    _fm505_db_init()
+    con = _fm501_db_connect()
+    try:
+        rows=[dict(r) for r in con.execute('SELECT * FROM closings WHERE import_id NOT IN (SELECT id FROM imports WHERE COALESCE(deleted,0)=1) ORDER BY abschlussdatum DESC, id DESC').fetchall()]
+        if filters:
+            rows=[r for r in rows if _fm505_filter_match(r, filters)]
+        return rows
+    finally:
+        con.close()
+
+
+def _fm505_fetch_items(filters=None, closing_id=None):
+    _fm505_db_init()
+    con = _fm501_db_connect()
+    try:
+        if closing_id:
+            rows=[dict(r) for r in con.execute('SELECT * FROM fee_items WHERE closing_id=? ORDER BY sort_order, id', (closing_id,)).fetchall()]
+        else:
+            rows=[dict(r) for r in con.execute('SELECT * FROM fee_items WHERE closing_id NOT IN (SELECT id FROM closings WHERE import_id IN (SELECT id FROM imports WHERE COALESCE(deleted,0)=1)) ORDER BY abschlussdatum DESC, geschaeftsvorfall').fetchall()]
+        if filters:
+            rows=[r for r in rows if _fm505_filter_match(r, filters)]
+        return rows
+    finally:
+        con.close()
+
+
+def _fm505_summary_stats(filters=None):
+    closings = _fm505_fetch_closings(filters)
+    items = _fm505_fetch_items(filters)
+    brutto=sum(float(r.get('betrag_brutto') or 0) for r in closings)
+    netto=sum(float(r.get('betrag_netto') or 0) for r in closings)
+    ust=sum(float(r.get('ust') or 0) for r in closings)
+    months=[]
+    by_month={}
+    for r in closings:
+        mk=r.get('monat_key') or r.get('abschlussdatum') or ''
+        by_month[mk]=by_month.get(mk,0)+float(r.get('betrag_brutto') or 0)
+    for mk,val in sorted(by_month.items()):
+        months.append({'monat_key':mk,'betrag_brutto':val})
+    top_map={}
+    for i in items:
+        key=i.get('geschaeftsvorfall') or ''
+        rec=top_map.setdefault(key, {'geschaeftsvorfall':key,'gesamt':0.0,'anzahl':0.0,'weighted_unit_num':0.0,'unit_values':[]})
+        ges=float(i.get('gesamtbetrag') or 0); anz=float(i.get('anzahl') or 0); stk=i.get('stueckkosten')
+        rec['gesamt']+=ges; rec['anzahl']+=anz
+        if anz and stk is not None:
+            rec['weighted_unit_num']+=float(stk)*anz
+            rec['unit_values'].append(float(stk))
+    top=[]
+    for rec in top_map.values():
+        rec['avg_unit']=(rec['weighted_unit_num']/rec['anzahl']) if rec.get('anzahl') else (sum(rec['unit_values'])/len(rec['unit_values']) if rec['unit_values'] else 0)
+        top.append(rec)
+    top.sort(key=lambda x:x.get('gesamt') or 0, reverse=True)
+    return {'closings':len(closings),'details':len(items),'brutto':brutto,'netto':netto,'ust':ust,'months':months,'top':top[:30]}
+
+
+def _fm505_delete_import(import_id, app=None):
+    _fm505_db_init()
+    user = getattr(app, 'current_user_display', '') or getattr(app, 'current_user_key', '') or ''
+    now = datetime.now().isoformat(timespec='seconds')
+    con = _fm501_db_connect()
+    try:
+        con.execute('UPDATE imports SET deleted=1, deleted_at=?, deleted_by=? WHERE id=?', (now,user,import_id))
+        con.commit()
+        return True
+    finally:
+        con.close()
+
+
+def _fm505_tree_sort(tree, col, descending=False, numeric=False):
+    items=[]
+    for iid in tree.get_children(''):
+        val=tree.set(iid, col)
+        if numeric:
+            try:
+                key=float(str(val).replace('€','').replace('.','').replace(',','.').strip())
+            except Exception:
+                key=0.0
+        else:
+            key=str(val).lower()
+        items.append((key,iid))
+    items.sort(reverse=descending)
+    for idx, (_, iid) in enumerate(items):
+        tree.move(iid,'',idx)
+    tree.heading(col, command=lambda: _fm505_tree_sort(tree, col, not descending, numeric))
+
+
+def _fm505_draw_line_chart(canvas, x, y, w, h, data, title, value_key, label_key):
+    canvas.create_rectangle(x,y,x+w,y+h,fill=WHITE,outline=LINE)
+    canvas.create_text(x+14,y+14,text=title,fill=BLUE,font=body_font(12,'bold'),anchor='w')
+    if not data:
+        canvas.create_text(x+w/2,y+h/2,text='Keine Daten für die gewählten Filter.',fill=TEXT2,font=body_font(10))
+        return
+    vals=[float(d.get(value_key) or 0) for d in data]
+    max_v=max(vals) or 1
+    min_v=min(vals) if vals else 0
+    if max_v==min_v: min_v=0
+    left=x+35; right=x+w-20; top=y+42; bottom=y+h-34
+    canvas.create_line(left,bottom,right,bottom,fill=LINE)
+    canvas.create_line(left,top,left,bottom,fill=LINE)
+    n=len(data)
+    points=[]
+    for i,d in enumerate(data):
+        xx=left+(right-left)*(i/(max(1,n-1)))
+        yy=bottom-(bottom-top)*((float(d.get(value_key) or 0)-min_v)/(max_v-min_v if max_v!=min_v else 1))
+        points.append((xx,yy,d))
+    for i in range(len(points)-1):
+        canvas.create_line(points[i][0],points[i][1],points[i+1][0],points[i+1][1],fill=BLUE,width=2)
+    for xx,yy,d in points:
+        canvas.create_oval(xx-3,yy-3,xx+3,yy+3,fill=RED,outline=RED)
+        canvas.create_text(xx,bottom+12,text=str(d.get(label_key) or '')[:8],fill=TEXT2,font=body_font(8))
+
+
+def _fm505_chart_data(filters, metric='brutto', chart_type='months'):
+    items=_fm505_fetch_items(filters)
+    closings=_fm505_fetch_closings(filters)
+    if chart_type=='top':
+        return _fm505_summary_stats(filters).get('top',[])[:10], 'gesamt', 'geschaeftsvorfall'
+    if chart_type=='unit_dev':
+        gv=str(filters.get('gv') or '').strip()
+        data_map={}
+        for i in items:
+            if gv and gv.lower() not in str(i.get('geschaeftsvorfall') or '').lower():
+                continue
+            mk=i.get('monat_key') or ''
+            anz=float(i.get('anzahl') or 0); ges=float(i.get('gesamtbetrag') or 0)
+            rec=data_map.setdefault(mk, {'monat_key':mk,'gesamt':0.0,'anzahl':0.0})
+            rec['gesamt']+=ges; rec['anzahl']+=anz
+        out=[]
+        for mk,rec in sorted(data_map.items()):
+            out.append({'monat_key':mk,'avg_unit':(rec['gesamt']/rec['anzahl']) if rec['anzahl'] else 0})
+        return out, 'avg_unit', 'monat_key'
+    by={}
+    for c in closings:
+        mk=c.get('monat_key') or ''
+        if metric=='netto': val=float(c.get('betrag_netto') or 0)
+        elif metric=='ust': val=float(c.get('ust') or 0)
+        else: val=float(c.get('betrag_brutto') or 0)
+        by[mk]=by.get(mk,0)+val
+    return [{'monat_key':mk,'value':val} for mk,val in sorted(by.items())], 'value', 'monat_key'
+
+
+def _fm505_render_account_analysis_tool(self):
+    _fm505_db_init()
+    w,h=self.canvas.winfo_width(),self.canvas.winfo_height()
+    top_y=112
+    outer=tk.Frame(self.root,bg=BG)
+    self.widget_items.append(outer)
+    self.canvas.create_window(0,top_y,window=outer,anchor='nw',width=w,height=max(460,h-top_y-55))
+    main=tk.Frame(outer,bg=BG)
+    main.pack(fill='both',expand=True,padx=16,pady=(6,8))
+    status_var=tk.StringVar(value='Datenbank: '+_fm501_konto_db_path())
+    kpi_var=tk.StringVar(value='')
+    selected={'closing_id':None,'import_id':None}
+    sort_state={}
+    filters={'bank':'','konto':'','monat':'','von':'','bis':'','gv':'','typ':'','mindest':'','plausibel':'','q':''}
+
+    controls=tk.Frame(main,bg=BG); controls.pack(fill='x',pady=(0,6))
+    def make_combo(parent,var,values,width=14):
+        cb=ttk.Combobox(parent,textvariable=var,values=values,state='normal',font=body_font(9),width=width)
+        return cb
+    def current_filters():
+        for k,v in filter_vars.items(): filters[k]=v.get().strip()
+        return dict(filters)
+    def current_chart_filters():
+        f=dict(current_filters())
+        f.update({
+            'bank': chart_bank.get().strip(), 'konto': chart_konto.get().strip(), 'von': chart_von.get().strip(), 'bis': chart_bis.get().strip(), 'gv': chart_gv.get().strip(), '_window_offset': chart_window_offset.get() if 'chart_window_offset' in locals() else 0
+        })
+        return f
+
+    def refresh_filter_values():
+        banks=['']+_fm506_distinct_values_fast('imports','bank')
+        konten=['']+_fm506_distinct_values_fast('imports','konto')
+        dates=['']+_fm506_distinct_values_fast('closings','abschlussdatum')
+        for cb in [bank_cb, chart_bank_cb]: cb.configure(values=banks)
+        for cb in [konto_cb, chart_konto_cb]: cb.configure(values=konten)
+        for cb in [filter_von_cb, filter_bis_cb, chart_von_cb, chart_bis_cb]: cb.configure(values=dates)
+        gvs=['']+_fm506_distinct_values_fast('fee_items','geschaeftsvorfall')
+        types=['']+_fm506_distinct_values_fast('fee_items','positionstyp')
+        gv_cb.configure(values=gvs); typ_cb.configure(values=types)
+        try:
+            chart_gv_values[:] = [x for x in gvs if x]
+            chart_gv_btn.configure(text=('Geschäftsvorfälle: ' + (chart_gv.get()[:60] if chart_gv.get() else 'auswählen')))
+        except Exception:
+            pass
+
+    def fill_tree(tree, rows, cols, formatter):
+        tree.delete(*tree.get_children())
+        for row in rows:
+            iid=str(row.get('_iid') or row.get('id') or '')
+            try: tree.insert('', 'end', iid=iid if iid else None, values=formatter(row))
+            except Exception: tree.insert('', 'end', values=formatter(row))
+
+    def refresh_tables():
+        f=current_filters()
+        imports=_fm505_fetch_imports(f)
+        closings=_fm505_fetch_closings(f)
+        items=_fm505_fetch_items(f, selected.get('closing_id')) if selected.get('closing_id') else _fm505_fetch_items(f)
+        stats=_fm505_summary_stats(f)
+        kpi_var.set(f"Entgeltabschlüsse: {stats['closings']}   |   Einzelpositionen: {stats['details']}   |   Brutto: {_fm501_fmt_eur(stats['brutto'])}   |   Netto: {_fm501_fmt_eur(stats['netto'])}   |   USt: {_fm501_fmt_eur(stats['ust'])}")
+        fill_tree(import_tree, imports, None, lambda r:(r.get('bank') or '', r.get('konto') or '', r.get('filename') or '', r.get('imported_at') or '', r.get('closing_count') or 0, r.get('detail_count') or 0))
+        fill_tree(closing_tree, closings, None, lambda r:(r.get('bank') or '', r.get('konto') or '', r.get('monat_key') or '', r.get('abschlussdatum') or '', r.get('buchungsdatum') or '', _fm501_fmt_eur(r.get('betrag_brutto')), _fm501_fmt_eur(r.get('betrag_netto')), _fm501_fmt_eur(r.get('ust')), str(r.get('rechnungsnummer') or '').split('|')[-1], r.get('source_file') or ''))
+        fill_tree(item_tree, items, None, lambda r:(r.get('bank') or '', r.get('konto') or '', r.get('monat_key') or '', r.get('geschaeftsvorfall') or '', r.get('positionstyp') or '', _fm501_fmt_num(r.get('anzahl')) if r.get('anzahl') is not None else '', _fm501_fmt_eur(r.get('stueckkosten')) if r.get('stueckkosten') is not None else '', _fm501_fmt_eur(r.get('gesamtbetrag')), _fm501_fmt_eur(r.get('abweichung')), 'Ja' if r.get('plausibel') else 'Nein'))
+        top=_fm505_summary_stats(f).get('top',[])
+        fill_tree(top_tree, top, None, lambda r:(r.get('geschaeftsvorfall') or '', _fm501_fmt_eur(r.get('gesamt')), _fm501_fmt_num(r.get('anzahl')), _fm501_fmt_eur(r.get('avg_unit'))))
+        status_var.set(f"Datenbank: {_fm501_konto_db_path()}   |   Sichtbare Importe: {len(imports)}")
+
+    def draw_charts():
+        # Tk meldet vor dem ersten Layoutdurchlauf Breite 1. Erst Layout abschließen,
+        # dann zwei gleich breite Diagrammflächen mit festen Außen-/Innenabständen berechnen.
+        try: charts.update_idletasks()
+        except Exception: pass
+        charts.delete('all')
+        f=current_chart_filters()
+        metric=chart_metric.get()
+        measured=int(charts.winfo_width() or 0)
+        available=max(900, measured, int(w)-32)
+        outer=12; gap=18
+        each=max(420, int((available-(2*outer)-gap)/2))
+        chart_h=244
+        d1,key1,label1=_fm505_chart_data(f, metric, 'months')
+        d2,key2,label2=_fm505_chart_data(f, metric, 'unit_dev' if chart_kind.get()=='Stückkostenentwicklung' else 'top')
+        off=int(f.get('_window_offset') or 0)
+        if chart_kind.get()=='Stückkostenentwicklung':
+            def _slice12(rows):
+                if isinstance(rows, dict) and 'months' in rows:
+                    months=list(rows.get('months') or []); end=max(0,len(months)-off); start=max(0,end-12)
+                    rows=dict(rows); rows['months']=months[start:end]; return rows
+                rows=list(rows or []); end=max(0,len(rows)-off); start=max(0,end-12); return rows[start:end]
+            d1=_slice12(d1); d2=_slice12(d2)
+        _fm501_draw_bar_chart(charts, outer, 6, each, chart_h, d1, 'Entwicklung nach Monat', key1, label1)
+        second_x=outer+each+gap
+        if chart_kind.get()=='Stückkostenentwicklung':
+            _fm505_draw_line_chart(charts, second_x, 6, each, chart_h, d2, 'Ø Stückkosten je Geschäftsvorfall pro Bank', key2, label2)
+        else:
+            _fm501_draw_bar_chart(charts, second_x, 6, each, chart_h, d2, 'Top Gebührenpositionen', key2, label2)
+        charts.configure(scrollregion=(0,0,second_x+each+outer,chart_h+12))
+
+    def refresh_all():
+        refresh_filter_values(); refresh_tables()
+
+    def import_file():
+        try:
+            from tkinter import filedialog
+            path=filedialog.askopenfilename(title='SFIRM-Excel-Export auswählen', filetypes=[('Excel-Dateien','*.xlsx *.xlsm *.xltx *.xltm'),('Alle Dateien','*.*')])
+            if not path: return
+            res=_fm505_import_excel(path,self)
+            if res.get('cancelled'): return
+            if res.get('duplicate'):
+                replace=False
+                try:
+                    replace=messagebox.askyesno(
+                        'Kontenauswertung',
+                        f"Diese Excel-Datei wurde bereits verarbeitet.\n\nBisher: {res.get('existing_bank') or '-'} / {res.get('existing_konto') or '-'}\nNeu: {res.get('bank') or '-'} / {res.get('konto') or '-'}\n\nBestehende Daten durch den aktuellen Import ersetzen?"
+                    )
+                except Exception:
+                    replace=False
+                if replace:
+                    res=_fm505_import_excel(path,self,bank=res.get('bank'),konto=res.get('konto'),replace_existing=True)
+                    try: messagebox.showinfo('Kontenauswertung', f"Daten ersetzt.\n\nBank: {res.get('bank')}\nKonto: {res.get('konto')}\nEntgeltabschlüsse: {res['closings']}\nDetailpositionen: {res['details']}")
+                    except Exception: pass
+                else:
+                    try: messagebox.showinfo('Kontenauswertung','Bestehende Daten wurden nicht verändert.')
+                    except Exception: pass
+            else:
+                try: messagebox.showinfo('Kontenauswertung', f"Daten aufgenommen.\n\nBank: {res.get('bank')}\nKonto: {res.get('konto')}\nEntgeltabschlüsse: {res['closings']}\nDetailpositionen: {res['details']}")
+                except Exception: pass
+            refresh_all()
+        except Exception as exc:
+            try: messagebox.showerror('Kontenauswertung','Aufnahme fehlgeschlagen:\n'+str(exc))
+            except Exception: pass
+
+    def delete_selected_import():
+        sel=import_tree.selection()
+        if not sel:
+            try: messagebox.showwarning('Kontenauswertung','Bitte zuerst einen Importdatensatz auswählen.')
+            except Exception: pass
+            return
+        iid=int(sel[0])
+        ok=True
+        try: ok=messagebox.askyesno('Kontenauswertung','Ausgewählten Importdatensatz inklusive Entgeltabschlüssen und Einzelpositionen aus der aktiven Auswertung entfernen?')
+        except Exception: ok=True
+        if ok:
+            _fm505_delete_import(iid,self); selected['import_id']=None; selected['closing_id']=None; refresh_all(); draw_charts()
+
+    def on_closing_select(_=None):
+        sel=closing_tree.selection(); selected['closing_id']=int(sel[0]) if sel else None; refresh_tables()
+    def on_import_select(_=None):
+        sel=import_tree.selection(); selected['import_id']=int(sel[0]) if sel else None
+
+    tk.Button(controls,text='Excel-Daten aufnehmen',command=import_file,bg='#CFEAD6',fg=TEXT,font=body_font(10,'bold'),relief='solid',bd=1,padx=12,pady=5).pack(side='left',padx=(0,8))
+    tk.Button(controls,text='Aktualisieren',command=refresh_all,bg=WHITE,fg=TEXT,font=body_font(10),relief='solid',bd=1,padx=12,pady=5).pack(side='left',padx=(0,8))
+    tk.Button(controls,text='Import löschen',command=delete_selected_import,bg='#FDDDDD',fg=TEXT,font=body_font(10),relief='solid',bd=1,padx=12,pady=5).pack(side='left',padx=(0,8))
+    tk.Button(controls,text='Excel-Auswertung exportieren',command=lambda:_fm501_export_analysis_excel(self),bg=WHITE,fg=BLUE,font=body_font(10),relief='solid',bd=1,padx=12,pady=5).pack(side='left',padx=(0,8))
+    tk.Label(controls,textvariable=status_var,bg=BG,fg=TEXT2,font=body_font(8)).pack(side='right')
+
+    filter_box=tk.Frame(main,bg=WHITE,highlightbackground=LINE,highlightthickness=1); filter_box.pack(fill='x',pady=(0,6))
+    filter_vars={k:tk.StringVar(value='') for k in ['bank','konto','monat','von','bis','gv','typ','mindest','plausibel','q']}
+    tk.Label(filter_box,text='Tabellenfilter',bg=WHITE,fg=BLUE,font=body_font(10,'bold')).grid(row=0,column=0,sticky='w',padx=8,pady=(5,1))
+    bank_cb=make_combo(filter_box,filter_vars['bank'],[''],12); konto_cb=make_combo(filter_box,filter_vars['konto'],[''],10); gv_cb=make_combo(filter_box,filter_vars['gv'],[''],18); typ_cb=make_combo(filter_box,filter_vars['typ'],[''],18)
+    filter_von_cb=ttk.Combobox(filter_box,textvariable=filter_vars['von'],values=[''],state='readonly',font=body_font(9),width=10)
+    filter_bis_cb=ttk.Combobox(filter_box,textvariable=filter_vars['bis'],values=[''],state='readonly',font=body_font(9),width=10)
+    widgets=[('Bank',bank_cb),('Konto',konto_cb),('Monat',tk.Entry(filter_box,textvariable=filter_vars['monat'],font=body_font(9),width=7)),('Von',filter_von_cb),('Bis',filter_bis_cb),('Geschäftsvorfall',gv_cb),('Typ',typ_cb),('Mindestbetrag',ttk.Combobox(filter_box,textvariable=filter_vars['mindest'],values=['','Ja','Nein'],state='readonly',width=8,font=body_font(9))),('Plausibel',ttk.Combobox(filter_box,textvariable=filter_vars['plausibel'],values=['','Ja','Nein'],state='readonly',width=8,font=body_font(9))),('Suche',tk.Entry(filter_box,textvariable=filter_vars['q'],font=body_font(9),width=18))]
+    for idx,(lab,wdg) in enumerate(widgets):
+        tk.Label(filter_box,text=lab,bg=WHITE,fg=TEXT2,font=body_font(8)).grid(row=1,column=idx,sticky='w',padx=(8,2),pady=(0,1))
+        wdg.grid(row=2,column=idx,sticky='ew',padx=(8,2),pady=(0,6))
+    tk.Button(filter_box,text='Tabellen filtern',command=refresh_tables,bg=WHITE,fg=TEXT,font=body_font(9),relief='solid',bd=1).grid(row=2,column=len(widgets),padx=8,pady=(0,6),sticky='e')
+    for c in range(len(widgets)): filter_box.grid_columnconfigure(c,weight=1)
+
+    tk.Label(main,textvariable=kpi_var,bg=WHITE,fg=TEXT,font=body_font(10,'bold'),anchor='w',padx=10,pady=6,relief='solid',bd=1).pack(fill='x',pady=(0,6))
+
+    chart_config_visible=tk.BooleanVar(value=False); chart_window_offset=tk.IntVar(value=0)
+    chart_config_bar=tk.Frame(main,bg=BG); chart_config_bar.pack(fill='x',pady=(0,4))
+    chart_filter=tk.Frame(main,bg=WHITE,highlightbackground=LINE,highlightthickness=1); chart_filter.pack(fill='x',pady=(0,6))
+    tk.Label(chart_filter,text='Schaubilder filtern',bg=WHITE,fg=BLUE,font=body_font(10,'bold')).grid(row=0,column=0,sticky='w',padx=8,pady=(5,1))
+    chart_bank=tk.StringVar(value=''); chart_konto=tk.StringVar(value=''); chart_von=tk.StringVar(value=''); chart_bis=tk.StringVar(value=''); chart_gv=tk.StringVar(value=''); chart_metric=tk.StringVar(value='brutto'); chart_kind=tk.StringVar(value='Top-Kostentreiber')
+    chart_gv_values=[]
+    chart_bank_cb=make_combo(chart_filter,chart_bank,[''],12); chart_konto_cb=make_combo(chart_filter,chart_konto,[''],10)
+    chart_von_cb=ttk.Combobox(chart_filter,textvariable=chart_von,values=[''],state='readonly',font=body_font(9),width=10)
+    chart_bis_cb=ttk.Combobox(chart_filter,textvariable=chart_bis,values=[''],state='readonly',font=body_font(9),width=10)
+    def open_chart_gv_selector():
+        win=tk.Toplevel(self.root); win.title('Geschäftsvorfälle auswählen'); win.configure(bg=WHITE); win.transient(self.root); win.grab_set()
+        tk.Label(win,text='Mehrfachauswahl Geschäftsvorfälle',bg=WHITE,fg=BLUE,font=body_font(12,'bold')).pack(anchor='w',padx=14,pady=(12,6))
+        tk.Label(win,text='Mehrere Einträge können gleichzeitig für Stückkostenentwicklungen als Linien angezeigt werden.',bg=WHITE,fg=TEXT2,font=body_font(9),wraplength=520,justify='left').pack(anchor='w',padx=14,pady=(0,8))
+        frame=tk.Frame(win,bg=WHITE); frame.pack(fill='both',expand=True,padx=14,pady=(0,8))
+        lb=tk.Listbox(frame,selectmode='multiple',height=16,width=72,font=body_font(9),exportselection=False)
+        ys=ttk.Scrollbar(frame,orient='vertical',command=lb.yview); lb.configure(yscrollcommand=ys.set)
+        lb.grid(row=0,column=0,sticky='nsew'); ys.grid(row=0,column=1,sticky='ns'); frame.grid_rowconfigure(0,weight=1); frame.grid_columnconfigure(0,weight=1)
+        selected_now=[x.strip() for x in re.split(r'[;,]\s*|\n+', chart_gv.get() or '') if x.strip()]
+        for val in chart_gv_values:
+            lb.insert('end',val)
+            if val in selected_now: lb.selection_set(lb.size()-1)
+        def apply():
+            vals=[lb.get(i) for i in lb.curselection()]
+            chart_gv.set('; '.join(vals))
+            chart_gv_btn.configure(text='Geschäftsvorfälle: ' + (chart_gv.get()[:60] if chart_gv.get() else 'auswählen'))
+            win.destroy(); draw_charts()
+        btns=tk.Frame(win,bg=WHITE); btns.pack(fill='x',padx=14,pady=(0,12))
+        tk.Button(btns,text='Übernehmen',command=apply,bg='#CFEAD6',fg=TEXT,font=body_font(10,'bold'),relief='solid',bd=1,padx=12,pady=4).pack(side='left',padx=(0,8))
+        tk.Button(btns,text='Auswahl leeren',command=lambda:(chart_gv.set(''),chart_gv_btn.configure(text='Geschäftsvorfälle: auswählen'),win.destroy(),draw_charts()),bg=WHITE,fg=TEXT,font=body_font(10),relief='solid',bd=1,padx=12,pady=4).pack(side='left',padx=(0,8))
+        tk.Button(btns,text='Abbrechen',command=win.destroy,bg=WHITE,fg=TEXT,font=body_font(10),relief='solid',bd=1,padx=12,pady=4).pack(side='left')
+    chart_gv_btn=tk.Button(chart_filter,text='Geschäftsvorfälle: auswählen',command=open_chart_gv_selector,bg=WHITE,fg=BLUE,font=body_font(9),relief='solid',bd=1,padx=8,pady=3)
+    cw=[('Bank',chart_bank_cb),('Konto',chart_konto_cb),('Von',chart_von_cb),('Bis',chart_bis_cb),('Kennzahl',ttk.Combobox(chart_filter,textvariable=chart_metric,values=['brutto','netto','ust'],state='readonly',font=body_font(9),width=10)),('Geschäftsvorfall',chart_gv_btn),('Diagramm 2',ttk.Combobox(chart_filter,textvariable=chart_kind,values=['Top-Kostentreiber','Stückkostenentwicklung'],state='readonly',font=body_font(9),width=18))]
+    for idx,(lab,wdg) in enumerate(cw):
+        tk.Label(chart_filter,text=lab,bg=WHITE,fg=TEXT2,font=body_font(8)).grid(row=1,column=idx,sticky='w',padx=(8,2),pady=(0,1))
+        wdg.grid(row=2,column=idx,sticky='ew',padx=(8,2),pady=(0,6))
+    tk.Button(chart_filter,text='Schaubilder aktualisieren',command=draw_charts,bg=WHITE,fg=BLUE,font=body_font(9,'bold'),relief='solid',bd=1).grid(row=2,column=len(cw),padx=8,pady=(0,6),sticky='e')
+    def toggle_chart_config():
+        if chart_config_visible.get():
+            chart_filter.pack_forget(); chart_config_visible.set(False)
+        else:
+            chart_filter.pack(fill='x',pady=(0,6),after=chart_config_bar); chart_config_visible.set(True)
+    tk.Button(chart_config_bar,text='Schaubild konfigurieren',command=toggle_chart_config,bg=WHITE,fg=BLUE,font=body_font(9,'bold'),relief='solid',bd=1,padx=10,pady=4).pack(side='left',padx=(0,8))
+    def older_months(): chart_window_offset.set(chart_window_offset.get()+1); draw_charts()
+    def newer_months(): chart_window_offset.set(max(0,chart_window_offset.get()-1)); draw_charts()
+    tk.Button(chart_config_bar,text='◀ ältere 12 Monate',command=older_months,bg=WHITE,fg=TEXT,font=body_font(9),relief='solid',bd=1,padx=10,pady=4).pack(side='left',padx=(0,8))
+    tk.Button(chart_config_bar,text='neuere 12 Monate ▶',command=newer_months,bg=WHITE,fg=TEXT,font=body_font(9),relief='solid',bd=1,padx=10,pady=4).pack(side='left',padx=(0,8))
+    chart_filter.pack_forget()
+    charts_visible=tk.BooleanVar(value=True)
+    def toggle_charts():
+        if charts_visible.get(): charts.pack_forget(); charts_visible.set(False)
+        else: charts.pack(fill='x',pady=(0,8),after=chart_filter if chart_config_visible.get() else chart_config_bar); charts_visible.set(True); draw_charts()
+    tk.Button(chart_config_bar,text='Schaubilder ein-/ausklappen',command=toggle_charts,bg=WHITE,fg=TEXT,font=body_font(9),relief='solid',bd=1,padx=10,pady=4).pack(side='left',padx=(0,8))
+    charts=tk.Canvas(main,bg=BG,height=262,highlightthickness=0); charts.pack(fill='x',pady=(0,8))
+
+    table_toggle_bar=tk.Frame(main,bg=BG); table_toggle_bar.pack(fill='x',pady=(0,4))
+    split=tk.Frame(main,bg=BG); split.pack(fill='both',expand=True)
+    left=tk.Frame(split,bg=WHITE,highlightbackground=LINE,highlightthickness=1); left.pack(side='left',fill='both',expand=True,padx=(0,6))
+    right=tk.Frame(split,bg=WHITE,highlightbackground=LINE,highlightthickness=1); right.pack(side='left',fill='both',expand=True,padx=(6,0))
+    bottom=tk.Frame(main,bg=WHITE,highlightbackground=LINE,highlightthickness=1); bottom.pack(fill='both',expand=True,pady=(6,0))
+    def _toggle_panel(frame, var, pack_opts):
+        if var.get(): frame.pack_forget(); var.set(False)
+        else: frame.pack(**pack_opts); var.set(True)
+    left_vis=tk.BooleanVar(value=True); right_vis=tk.BooleanVar(value=True); bottom_vis=tk.BooleanVar(value=True)
+    tk.Button(table_toggle_bar,text='Importe/Abschlüsse ein-/ausklappen',command=lambda:_toggle_panel(left,left_vis,{'side':'left','fill':'both','expand':True,'padx':(0,6)}),bg=WHITE,fg=TEXT,font=body_font(9),relief='solid',bd=1,padx=10,pady=4).pack(side='left',padx=(0,8))
+    tk.Button(table_toggle_bar,text='Einzelpositionen ein-/ausklappen',command=lambda:_toggle_panel(right,right_vis,{'side':'left','fill':'both','expand':True,'padx':(6,0)}),bg=WHITE,fg=TEXT,font=body_font(9),relief='solid',bd=1,padx=10,pady=4).pack(side='left',padx=(0,8))
+    tk.Button(table_toggle_bar,text='Top-Kostentreiber ein-/ausklappen',command=lambda:_toggle_panel(bottom,bottom_vis,{'fill':'both','expand':True,'pady':(6,0)}),bg=WHITE,fg=TEXT,font=body_font(9),relief='solid',bd=1,padx=10,pady=4).pack(side='left',padx=(0,8))
+
+    def build_tree(parent,title,cols,defs,height=7):
+        tk.Label(parent,text=title,bg=WHITE,fg=BLUE,font=body_font(11,'bold')).pack(anchor='w',padx=8,pady=(6,2))
+        wrap=tk.Frame(parent,bg=WHITE); wrap.pack(fill='both',expand=True,padx=8,pady=(0,8))
+        tree=ttk.Treeview(wrap,columns=cols,show='headings',height=height)
+        ysb=ttk.Scrollbar(wrap,orient='vertical',command=tree.yview); xsb=ttk.Scrollbar(wrap,orient='horizontal',command=tree.xview)
+        tree.configure(yscrollcommand=ysb.set,xscrollcommand=xsb.set)
+        for col,label,width_col,num in defs:
+            tree.heading(col,text=label,command=lambda c=col,n=num:_fm505_tree_sort(tree,c,False,n))
+            tree.column(col,width=width_col,stretch=True)
+        tree.grid(row=0,column=0,sticky='nsew'); ysb.grid(row=0,column=1,sticky='ns'); xsb.grid(row=1,column=0,sticky='ew')
+        wrap.grid_rowconfigure(0,weight=1); wrap.grid_columnconfigure(0,weight=1)
+        return tree
+
+    import_tree=build_tree(left,'Importierte Datensätze',('bank','konto','datei','zeit','abschl','pos'),[('bank','Bank',90,False),('konto','Konto',80,False),('datei','Datei',180,False),('zeit','Importiert',140,False),('abschl','Abschl.',60,True),('pos','Pos.',60,True)],height=4)
+    closing_tree=build_tree(left,'Entgeltabschlüsse',('bank','konto','monat','abschluss','buchung','brutto','netto','ust','rechnung','quelle'),[('bank','Bank',80,False),('konto','Konto',80,False),('monat','Monat',60,False),('abschluss','Abschluss',90,False),('buchung','Buchung',90,False),('brutto','Brutto',90,True),('netto','Netto',90,True),('ust','USt',80,True),('rechnung','Rechnung',150,False),('quelle','Quelle',160,False)],height=7)
+    item_tree=build_tree(right,'Einzelpositionen / Stückkosten',('bank','konto','monat','gv','typ','anzahl','stk','gesamt','abw','ok'),[('bank','Bank',75,False),('konto','Konto',75,False),('monat','Monat',60,False),('gv','Geschäftsvorfall',180,False),('typ','Typ',140,False),('anzahl','Anzahl',70,True),('stk','Stückkosten',90,True),('gesamt','Gesamt',90,True),('abw','Abw.',70,True),('ok','OK',50,False)],height=14)
+    top_tree=build_tree(bottom,'Top-Kostentreiber',('gv','gesamt','anzahl','avg'),[('gv','Geschäftsvorfall',260,False),('gesamt','Gesamtkosten',120,True),('anzahl','Anzahl gesamt',110,True),('avg','Ø Stückkosten gewichtet',150,True)],height=6)
+    closing_tree.bind('<<TreeviewSelect>>',on_closing_select); import_tree.bind('<<TreeviewSelect>>',on_import_select)
+    refresh_all()
+    try: self.root.after_idle(draw_charts)
+    except Exception: draw_charts()
+
+# Finale v0.505-Zuweisungen.
+try:
+    FiBuMateApp.render_account_analysis_tool = _fm505_render_account_analysis_tool
+except Exception:
+    pass
+
+
+# FIBU_MATE_V0505_FIX_HEADER_ROW_UND_SCHAUBILD_LAYOUT
+# Datum: 2026-07-13
+# Behebt NameError header_row und negative Diagrammbreiten vor dem ersten Tk-Layout.
+
+
+# FIBU_MATE_V0505_FIX_UNIQUE_IMPORT_UND_PASSWORTFOKUS_FINAL
+# Datum: 2026-07-13
+# Keine Layoutänderung: nur Doppelimport-Fehler und Passwort-Fokus korrigiert.
+
+# FIBU_MATE_V0505_HOTFIX_UNIQUE_IMPORT_DELETED_ROWS
+# Datum: 2026-07-13
+# Doppelimport wird nun auch dann vor INSERT erkannt, wenn ein gleiches filename+file_hash bereits als gelöscht markiert ist.
+
+# FIBU_MATE_V0505_REPLACE_EXISTING_IMPORT_FINAL
+# Datum: 2026-07-13
+# Doppelimport: bestehende Importdaten können nach Abfrage durch aktuellen Import ersetzt werden.
+
+
+# ------------------------------------------------------------------
+# FiBu Mate 0.506 - Treasury-Stammdaten + Schaubild-/Tabellen-Collapse
+# Datum: 2026-07-13
+# Zweck:
+# - Neues Treasury-Modul Banken- und Kontenstammdaten.
+# - Synchronisation Stammdaten <-> Kontenauswertung.
+# - Importdialog darf neue Bank/Konto-Kombinationen in Stammdaten übernehmen.
+# - Vorhandene Werte aus Kontenauswertung werden automatisch in Stammdaten übernommen.
+# - Schaubildkonfiguration hinter Button versteckt.
+# - Schaubildbereich und Tabellenbereiche einklappbar.
+# - Stückkostenentwicklung unterstützt mehrere Geschäftsvorfälle als Linien und 12-Monats-Fenster.
+# ------------------------------------------------------------------
+
+FM506_VERSION = "0.506"
+
+try:
+    _FM506_PREV_DB_INIT = _fm505_db_init
+except Exception:
+    _FM506_PREV_DB_INIT = _fm501_db_init
+
+
+def _fm506_role_rank(app):
+    try:
+        key = getattr(app, 'current_user_key', '') or ''
+        user = (getattr(app, 'user_data', {}) or {}).get('users', {}).get(key, {}) or {}
+        role = user.get('permission') or user.get('role') or ''
+        if str(key).lower() == SUPERUSER_KEY or 'admin' in str(key).lower():
+            return 4
+        return int(ROLE_RANK.get(role, ROLE_RANK.get(str(role), 1)) or 1)
+    except Exception:
+        return 1
+
+
+def _fm506_can_edit_master(app):
+    return _fm506_role_rank(app) >= 3
+
+
+def _fm506_db_init():
+    _FM506_PREV_DB_INIT()
+    con = _fm501_db_connect()
+    try:
+        cur = con.cursor()
+        cur.execute('''CREATE TABLE IF NOT EXISTS treasury_banks (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            bankname TEXT NOT NULL,
+            kurzname TEXT,
+            bic TEXT,
+            blz TEXT,
+            kommentar TEXT,
+            active INTEGER DEFAULT 1,
+            created_at TEXT,
+            updated_at TEXT,
+            UNIQUE(bankname)
+        )''')
+        cur.execute('''CREATE TABLE IF NOT EXISTS treasury_accounts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            bank_id INTEGER NOT NULL,
+            account_name TEXT NOT NULL,
+            kontonummer TEXT,
+            iban TEXT,
+            waehrung TEXT DEFAULT 'EUR',
+            sap_konto TEXT,
+            kommentar TEXT,
+            active INTEGER DEFAULT 1,
+            created_at TEXT,
+            updated_at TEXT,
+            UNIQUE(bank_id, account_name)
+        )''')
+        con.commit()
+    finally:
+        con.close()
+    try:
+        _fm506_seed_master_from_imports()
+    except Exception:
+        pass
+
+
+# Ab 0.506 nutzt auch die Kontenauswertung die erweiterte Initialisierung.
+_fm505_db_init = _fm506_db_init
+
+
+def _fm506_now():
+    return datetime.now().isoformat(timespec='seconds')
+
+
+def _fm506_norm(value):
+    return ' '.join(str(value or '').strip().split())
+
+
+def _fm506_find_or_create_bank(bankname, kurzname='', bic='', blz='', kommentar='', active=1):
+    bankname = _fm506_norm(bankname)
+    if not bankname:
+        return None
+    con = _fm501_db_connect()
+    try:
+        cur = con.cursor(); now = _fm506_now()
+        row = cur.execute('SELECT id FROM treasury_banks WHERE bankname=?', (bankname,)).fetchone()
+        if row:
+            bid = row['id'] if hasattr(row, 'keys') else row[0]
+            cur.execute('UPDATE treasury_banks SET kurzname=COALESCE(NULLIF(?,\'\'),kurzname), bic=COALESCE(NULLIF(?,\'\'),bic), blz=COALESCE(NULLIF(?,\'\'),blz), kommentar=COALESCE(NULLIF(?,\'\'),kommentar), active=?, updated_at=? WHERE id=?', (kurzname, bic, blz, kommentar, active, now, bid))
+        else:
+            cur.execute('INSERT INTO treasury_banks(bankname,kurzname,bic,blz,kommentar,active,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?)', (bankname, kurzname, bic, blz, kommentar, active, now, now))
+            bid = cur.lastrowid
+        con.commit(); return bid
+    finally:
+        con.close()
+
+
+def _fm506_find_or_create_account(bankname, account_name, kontonummer='', iban='', waehrung='EUR', sap_konto='', kommentar='', active=1):
+    bankname = _fm506_norm(bankname); account_name = _fm506_norm(account_name)
+    if not bankname or not account_name:
+        return None
+    bid = _fm506_find_or_create_bank(bankname)
+    con = _fm501_db_connect()
+    try:
+        cur = con.cursor(); now = _fm506_now()
+        row = cur.execute('SELECT id FROM treasury_accounts WHERE bank_id=? AND account_name=?', (bid, account_name)).fetchone()
+        if row:
+            aid = row['id'] if hasattr(row, 'keys') else row[0]
+            cur.execute('UPDATE treasury_accounts SET kontonummer=COALESCE(NULLIF(?,\'\'),kontonummer), iban=COALESCE(NULLIF(?,\'\'),iban), waehrung=COALESCE(NULLIF(?,\'\'),waehrung), sap_konto=COALESCE(NULLIF(?,\'\'),sap_konto), kommentar=COALESCE(NULLIF(?,\'\'),kommentar), active=?, updated_at=? WHERE id=?', (kontonummer, iban, waehrung or 'EUR', sap_konto, kommentar, active, now, aid))
+        else:
+            cur.execute('INSERT INTO treasury_accounts(bank_id,account_name,kontonummer,iban,waehrung,sap_konto,kommentar,active,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?)', (bid, account_name, kontonummer, iban, waehrung or 'EUR', sap_konto, kommentar, active, now, now))
+            aid = cur.lastrowid
+        con.commit(); return aid
+    finally:
+        con.close()
+
+
+def _fm506_seed_master_from_imports():
+    con = _fm501_db_connect()
+    try:
+        rows = con.execute("SELECT DISTINCT COALESCE(bank,'') bank, COALESCE(konto,'') konto FROM imports WHERE COALESCE(bank,'')<>'' OR COALESCE(konto,'')<>''").fetchall()
+    finally:
+        con.close()
+    for r in rows:
+        bank = _fm506_norm(r['bank'] if hasattr(r, 'keys') else r[0])
+        konto = _fm506_norm(r['konto'] if hasattr(r, 'keys') else r[1])
+        if bank:
+            _fm506_find_or_create_bank(bank)
+            if konto:
+                _fm506_find_or_create_account(bank, konto, kontonummer=konto)
+
+
+def _fm506_banks(active_only=True):
+    _fm506_db_init()
+    con = _fm501_db_connect()
+    try:
+        q = 'SELECT * FROM treasury_banks ' + ('WHERE COALESCE(active,1)=1 ' if active_only else '') + 'ORDER BY bankname'
+        return [dict(r) for r in con.execute(q).fetchall()]
+    finally:
+        con.close()
+
+
+def _fm506_accounts(bankname=None, active_only=True):
+    _fm506_db_init()
+    con = _fm501_db_connect()
+    try:
+        sql = '''SELECT a.*, b.bankname FROM treasury_accounts a JOIN treasury_banks b ON b.id=a.bank_id WHERE 1=1'''
+        params = []
+        if active_only:
+            sql += ' AND COALESCE(a.active,1)=1 AND COALESCE(b.active,1)=1'
+        if bankname:
+            sql += ' AND b.bankname=?'; params.append(bankname)
+        sql += ' ORDER BY b.bankname, a.account_name'
+        return [dict(r) for r in con.execute(sql, params).fetchall()]
+    finally:
+        con.close()
+
+
+def _fm506_distinct_master_banks():
+    return [r.get('bankname') or '' for r in _fm506_banks(True) if r.get('bankname')]
+
+
+def _fm506_distinct_master_accounts(bankname=None):
+    return [r.get('account_name') or '' for r in _fm506_accounts(bankname, True) if r.get('account_name')]
+
+
+def _fm506_ask_bank_konto(app, path):
+    default_konto = _fm505_guess_konto_from_filename(path)
+    result = {'ok': False, 'bank': '', 'konto': default_konto}
+    try:
+        win = tk.Toplevel(app.root)
+        win.title('Bank und Konto zum Import')
+        win.configure(bg=WHITE)
+        win.transient(app.root); win.grab_set()
+        tk.Label(win, text='Excel-Daten aufnehmen', bg=WHITE, fg=BLUE, font=body_font(14, 'bold')).grid(row=0, column=0, columnspan=2, sticky='w', padx=18, pady=(14,6))
+        tk.Label(win, text='Bank und Konto können aus den Treasury-Stammdaten gewählt oder direkt neu angelegt werden.', bg=WHITE, fg=TEXT2, font=body_font(9), wraplength=520, justify='left').grid(row=1, column=0, columnspan=2, sticky='w', padx=18, pady=(0,12))
+        bank_var = tk.StringVar(value=''); konto_var = tk.StringVar(value=default_konto); add_var = tk.BooleanVar(value=True)
+        banks = _fm506_distinct_master_banks()
+        tk.Label(win, text='Bank', bg=WHITE, fg=TEXT, font=body_font(10, 'bold')).grid(row=2, column=0, sticky='w', padx=18, pady=(0,3))
+        bank_cb = ttk.Combobox(win, textvariable=bank_var, values=banks, state='normal', font=body_font(10), width=34)
+        bank_cb.grid(row=3, column=0, sticky='ew', padx=18, pady=(0,10))
+        tk.Label(win, text='Konto', bg=WHITE, fg=TEXT, font=body_font(10, 'bold')).grid(row=2, column=1, sticky='w', padx=(8,18), pady=(0,3))
+        konto_cb = ttk.Combobox(win, textvariable=konto_var, values=[], state='normal', font=body_font(10), width=24)
+        konto_cb.grid(row=3, column=1, sticky='ew', padx=(8,18), pady=(0,10))
+        def refresh_accounts(_=None):
+            konto_cb.configure(values=_fm506_distinct_master_accounts(bank_var.get().strip()))
+        bank_cb.bind('<<ComboboxSelected>>', refresh_accounts); bank_cb.bind('<KeyRelease>', refresh_accounts)
+        tk.Checkbutton(win, text='Neue Bank/Konto-Kombination in Stammdaten übernehmen', variable=add_var, bg=WHITE, fg=TEXT, font=body_font(9), anchor='w').grid(row=4, column=0, columnspan=2, sticky='w', padx=18, pady=(0,8))
+        win.grid_columnconfigure(0, weight=1); win.grid_columnconfigure(1, weight=1)
+        def ok():
+            b = bank_var.get().strip(); k = konto_var.get().strip()
+            if not b:
+                try: messagebox.showwarning('Kontenauswertung', 'Bitte eine Bank eingeben oder auswählen.')
+                except Exception: pass
+                return
+            if not k:
+                try: messagebox.showwarning('Kontenauswertung', 'Bitte ein Konto eingeben.')
+                except Exception: pass
+                return
+            if add_var.get():
+                _fm506_find_or_create_account(b, k, kontonummer=k)
+            result.update({'ok': True, 'bank': b, 'konto': k}); win.destroy()
+        btns = tk.Frame(win, bg=WHITE); btns.grid(row=5, column=0, columnspan=2, sticky='e', padx=18, pady=(2,14))
+        tk.Button(btns, text='Übernehmen', command=ok, bg='#CFEAD6', fg=TEXT, font=body_font(10,'bold'), relief='solid', bd=1, padx=14, pady=5).pack(side='left', padx=(0,8))
+        tk.Button(btns, text='Abbrechen', command=win.destroy, bg=WHITE, fg=TEXT, font=body_font(10), relief='solid', bd=1, padx=14, pady=5).pack(side='left')
+        try: win.wait_window()
+        except Exception: pass
+    except Exception:
+        pass
+    return result if result.get('ok') else None
+
+_fm505_ask_bank_konto = _fm506_ask_bank_konto
+
+
+def _fm506_open_treasury_master_tool(self):
+    try: self.clear_widgets()
+    except Exception: pass
+    self.current_page = 'treasury_master_data'; self.current_title = 'Banken- und Kontenstammdaten'
+    try: self.update_breadcrumb('treasury_master_data', 'Banken- und Kontenstammdaten')
+    except Exception: pass
+    return _fm506_render_special_page(self, 'treasury_master_data', 'Banken- und Kontenstammdaten')
+
+
+def _fm506_render_treasury_tools_menu(self):
+    w, h = self.canvas.winfo_width(), self.canvas.winfo_height()
+    tile_w = int(max(280, min(380, w * 0.21))); tile_h = int(max(120, min(170, h * 0.15)))
+    t1 = Tile(self.root, self, 'treasury_kontenauswertung', 'Kontenauswertung', command=lambda: _fm504_open_account_analysis_tool(self), favorite_enabled=False, center_text=True, icon_type='modules')
+    t2 = Tile(self.root, self, 'treasury_master_data', 'Banken- und Kontenstammdaten', command=lambda: _fm506_open_treasury_master_tool(self), favorite_enabled=False, center_text=True, icon_type='modules')
+    for t in (t1, t2):
+        t.resize_tile(tile_w, tile_h); self.widget_items.append(t); self.focusable_tiles.append(t)
+    self.canvas.create_window(x_pct(w, 39), y_pct(h, 55), window=t1, anchor='center')
+    self.canvas.create_window(x_pct(w, 61), y_pct(h, 55), window=t2, anchor='center')
+    self.draw_bottom_logo()
+
+
+def _fm506_render_special_page(self, page_name, title=''):
+    try: self.clear_widgets()
+    except Exception: pass
+    try: self.draw_background(); self.draw_header(title or getattr(self, 'current_title', '') or APP_NAME, show_back=True)
+    except Exception: pass
+    if page_name == 'treasury_tools': return _fm506_render_treasury_tools_menu(self)
+    if page_name == 'account_analysis': return _fm505_render_account_analysis_tool(self)
+    if page_name == 'treasury_master_data': return _fm506_render_treasury_master_tool(self)
+
+
+def _fm506_render_page(self):
+    page = getattr(self, 'current_page', '')
+    if page in ('treasury_tools', 'account_analysis', 'treasury_master_data'):
+        return _fm506_render_special_page(self, page, getattr(self, 'current_title', '') or '')
+    return _FM506_PREV_RENDER_PAGE(self)
+
+
+def _fm506_show_page(self, page_name, title=None, add_to_history=True):
+    if page_name == 'treasury_master_data':
+        return _fm506_open_treasury_master_tool(self)
+    if page_name == 'treasury_tools':
+        return _fm504_open_treasury_tools_menu(self)
+    return _FM506_PREV_SHOW_PAGE(self, page_name, title, add_to_history)
+
+
+def _fm506_render_treasury_master_tool(self):
+    _fm506_db_init()
+    editable = _fm506_can_edit_master(self)
+    w,h=self.canvas.winfo_width(), self.canvas.winfo_height(); top_y=112
+    outer=tk.Frame(self.root,bg=BG); self.widget_items.append(outer)
+    self.canvas.create_window(0,top_y,window=outer,anchor='nw',width=w,height=max(460,h-top_y-55))
+    main=tk.Frame(outer,bg=BG); main.pack(fill='both',expand=True,padx=16,pady=(6,8))
+    info = 'Bearbeitung: E3/E4' if editable else 'Nur Lesen: Bearbeitung nur für E3/E4'
+    tk.Label(main,text=info,bg=BG,fg=TEXT2,font=body_font(9)).pack(anchor='w',pady=(0,6))
+    selected={'bank_id':None,'account_id':None}
+    panels=tk.Frame(main,bg=BG); panels.pack(fill='both',expand=True)
+    left=tk.Frame(panels,bg=WHITE,highlightbackground=LINE,highlightthickness=1); left.pack(side='left',fill='both',expand=True,padx=(0,6))
+    right=tk.Frame(panels,bg=WHITE,highlightbackground=LINE,highlightthickness=1); right.pack(side='left',fill='both',expand=True,padx=(6,0))
+    # Bank form
+    bank_vars={k:tk.StringVar(value='') for k in ['bankname','kurzname','bic','blz','kommentar']}; bank_active=tk.BooleanVar(value=True)
+    form=tk.Frame(left,bg=WHITE); form.pack(fill='x',padx=10,pady=(8,4))
+    tk.Label(form,text='Banken',bg=WHITE,fg=BLUE,font=body_font(12,'bold')).grid(row=0,column=0,columnspan=4,sticky='w')
+    fields=[('Bankname','bankname'),('Kurzname','kurzname'),('BIC','bic'),('Bankleitzahl','blz'),('Kommentar','kommentar')]
+    for i,(lab,key) in enumerate(fields):
+        tk.Label(form,text=lab,bg=WHITE,fg=TEXT2,font=body_font(8)).grid(row=1+i//2*2,column=(i%2)*2,sticky='w',padx=(0,6),pady=(4,0))
+        tk.Entry(form,textvariable=bank_vars[key],font=body_font(9),state='normal' if editable else 'readonly').grid(row=2+i//2*2,column=(i%2)*2,sticky='ew',padx=(0,10),pady=(0,3))
+    tk.Checkbutton(form,text='Aktiv',variable=bank_active,bg=WHITE,state='normal' if editable else 'disabled').grid(row=7,column=0,sticky='w')
+    form.grid_columnconfigure(0,weight=1); form.grid_columnconfigure(2,weight=1)
+    # Account form
+    acc_vars={k:tk.StringVar(value='') for k in ['account_name','kontonummer','iban','waehrung','sap_konto','kommentar']}; acc_active=tk.BooleanVar(value=True)
+    aform=tk.Frame(right,bg=WHITE); aform.pack(fill='x',padx=10,pady=(8,4))
+    tk.Label(aform,text='Konten',bg=WHITE,fg=BLUE,font=body_font(12,'bold')).grid(row=0,column=0,columnspan=4,sticky='w')
+    afields=[('Bankkonto Name','account_name'),('Kontonummer','kontonummer'),('IBAN','iban'),('Währung','waehrung'),('SAP Konto optional','sap_konto'),('Kommentar','kommentar')]
+    for i,(lab,key) in enumerate(afields):
+        tk.Label(aform,text=lab,bg=WHITE,fg=TEXT2,font=body_font(8)).grid(row=1+i//2*2,column=(i%2)*2,sticky='w',padx=(0,6),pady=(4,0))
+        tk.Entry(aform,textvariable=acc_vars[key],font=body_font(9),state='normal' if editable else 'readonly').grid(row=2+i//2*2,column=(i%2)*2,sticky='ew',padx=(0,10),pady=(0,3))
+    tk.Checkbutton(aform,text='Aktiv',variable=acc_active,bg=WHITE,state='normal' if editable else 'disabled').grid(row=7,column=0,sticky='w')
+    aform.grid_columnconfigure(0,weight=1); aform.grid_columnconfigure(2,weight=1)
+    # Trees
+    def mk_tree(parent, cols, defs):
+        wrap=tk.Frame(parent,bg=WHITE); wrap.pack(fill='both',expand=True,padx=10,pady=(4,10))
+        tr=ttk.Treeview(wrap,columns=cols,show='headings')
+        ys=ttk.Scrollbar(wrap,orient='vertical',command=tr.yview); tr.configure(yscrollcommand=ys.set)
+        for c,l,wid in defs: tr.heading(c,text=l); tr.column(c,width=wid,stretch=True)
+        tr.grid(row=0,column=0,sticky='nsew'); ys.grid(row=0,column=1,sticky='ns')
+        wrap.grid_rowconfigure(0,weight=1); wrap.grid_columnconfigure(0,weight=1)
+        return tr
+    bank_tree=mk_tree(left,('bankname','kurz','bic','blz','aktiv'),[('bankname','Bankname',170),('kurz','Kurzname',90),('bic','BIC',100),('blz','BLZ',80),('aktiv','Aktiv',60)])
+    acc_tree=mk_tree(right,('bank','name','konto','iban','waehrung','aktiv'),[('bank','Bank',120),('name','Name',120),('konto','Kontonummer',100),('iban','IBAN',180),('waehrung','Währung',70),('aktiv','Aktiv',60)])
+    def refresh():
+        bank_tree.delete(*bank_tree.get_children()); acc_tree.delete(*acc_tree.get_children())
+        for b in _fm506_banks(False): bank_tree.insert('', 'end', iid=str(b['id']), values=(b.get('bankname',''),b.get('kurzname',''),b.get('bic',''),b.get('blz',''),'Ja' if b.get('active') else 'Nein'))
+        bname = None
+        if selected.get('bank_id'):
+            try: bname = next((b['bankname'] for b in _fm506_banks(False) if int(b['id'])==int(selected['bank_id'])), None)
+            except Exception: bname=None
+        for a in _fm506_accounts(bname if bname else None, False): acc_tree.insert('', 'end', iid=str(a['id']), values=(a.get('bankname',''),a.get('account_name',''),a.get('kontonummer',''),a.get('iban',''),a.get('waehrung',''),'Ja' if a.get('active') else 'Nein'))
+    def select_bank(_=None):
+        sel=bank_tree.selection(); selected['bank_id']=int(sel[0]) if sel else None
+        if selected['bank_id']:
+            b=next((x for x in _fm506_banks(False) if int(x['id'])==selected['bank_id']),{})
+            for k in bank_vars: bank_vars[k].set(b.get(k,'') or '')
+            bank_active.set(bool(b.get('active',1)))
+        refresh()
+    def select_acc(_=None):
+        sel=acc_tree.selection(); selected['account_id']=int(sel[0]) if sel else None
+        if selected['account_id']:
+            a=next((x for x in _fm506_accounts(None, False) if int(x['id'])==selected['account_id']),{})
+            for k in acc_vars: acc_vars[k].set(a.get(k,'') or '')
+            acc_active.set(bool(a.get('active',1)))
+    bank_tree.bind('<<TreeviewSelect>>',select_bank); acc_tree.bind('<<TreeviewSelect>>',select_acc)
+    def save_bank():
+        if not editable: return
+        _fm506_find_or_create_bank(bank_vars['bankname'].get(), bank_vars['kurzname'].get(), bank_vars['bic'].get(), bank_vars['blz'].get(), bank_vars['kommentar'].get(), 1 if bank_active.get() else 0); refresh()
+    def save_acc():
+        if not editable: return
+        bname=bank_vars['bankname'].get().strip()
+        if not bname:
+            try: messagebox.showwarning('Treasury-Stammdaten','Bitte zuerst eine Bank auswählen oder speichern.')
+            except Exception: pass
+            return
+        _fm506_find_or_create_account(bname, acc_vars['account_name'].get(), acc_vars['kontonummer'].get(), acc_vars['iban'].get(), acc_vars['waehrung'].get() or 'EUR', acc_vars['sap_konto'].get(), acc_vars['kommentar'].get(), 1 if acc_active.get() else 0); refresh()
+    btns=tk.Frame(main,bg=BG); btns.pack(fill='x',pady=(6,0))
+    tk.Button(btns,text='Bank speichern',command=save_bank,bg='#CFEAD6' if editable else WHITE,fg=TEXT,font=body_font(10,'bold'),relief='solid',bd=1,state='normal' if editable else 'disabled').pack(side='left',padx=(0,8))
+    tk.Button(btns,text='Konto speichern',command=save_acc,bg='#CFEAD6' if editable else WHITE,fg=TEXT,font=body_font(10,'bold'),relief='solid',bd=1,state='normal' if editable else 'disabled').pack(side='left',padx=(0,8))
+    tk.Button(btns,text='Aktualisieren',command=refresh,bg=WHITE,fg=TEXT,font=body_font(10),relief='solid',bd=1).pack(side='left')
+    refresh()
+
+# Schaubild-/Tabellen-Collapse und 12-Monats-Fenster werden per Quellpatch auf die bestehende v0.505-Funktion gelegt.
+
+try:
+    _FM506_PREV_RENDER_PAGE = FiBuMateApp.render_page
+    _FM506_PREV_SHOW_PAGE = FiBuMateApp.show_page
+except Exception:
+    pass
+try:
+    FiBuMateApp.render_page = _fm506_render_page
+    FiBuMateApp.show_page = _fm506_show_page
+    FiBuMateApp.render_treasury_tools_menu = _fm506_render_treasury_tools_menu
+    FiBuMateApp.render_treasury_master_tool = _fm506_render_treasury_master_tool
+except Exception:
+    pass
+
+
+
+# FiBu Mate 0.506 Ergänzung: Mehrlinien-Stückkostenentwicklung.
+_FM506_PREV_CHART_DATA = _fm505_chart_data
+_FM506_PREV_LINE_CHART = _fm505_draw_line_chart
+
+def _fm506_split_gv_selection(text):
+    raw = str(text or '').strip()
+    if not raw:
+        return []
+    parts = re.split(r'[;,]\s*|\n+', raw)
+    return [p.strip() for p in parts if p.strip()]
+
+
+def _fm506_chart_data(filters, metric='brutto', chart_type='months'):
+    if chart_type != 'unit_dev':
+        return _FM506_PREV_CHART_DATA(filters, metric, chart_type)
+    items = _fm505_fetch_items(filters)
+    selected = _fm506_split_gv_selection(filters.get('gv'))
+    if not selected:
+        selected = ['Alle ausgewählten Kosten']
+    series_map = {name: {} for name in selected}
+    all_months = set()
+    for item in items:
+        gv = str(item.get('geschaeftsvorfall') or '')
+        monat = item.get('monat_key') or ''
+        if not monat:
+            continue
+        for name in selected:
+            if name != 'Alle ausgewählten Kosten' and name.lower() not in gv.lower():
+                continue
+            anz = float(item.get('anzahl') or 0)
+            ges = float(item.get('gesamtbetrag') or 0)
+            rec = series_map.setdefault(name, {}).setdefault(monat, {'gesamt': 0.0, 'anzahl': 0.0})
+            rec['gesamt'] += ges; rec['anzahl'] += anz; all_months.add(monat)
+    months = sorted(all_months)
+    out_series = []
+    for name, month_map in series_map.items():
+        values = {}
+        for m, rec in month_map.items():
+            values[m] = (rec['gesamt'] / rec['anzahl']) if rec.get('anzahl') else 0
+        if values:
+            out_series.append({'name': name, 'values': values})
+    return {'months': months, 'series': out_series}, 'avg_unit', 'monat_key'
+
+
+def _fm506_draw_line_chart(canvas, x, y, w, h, data, title, value_key, label_key):
+    if not (isinstance(data, dict) and data.get('series') is not None):
+        return _FM506_PREV_LINE_CHART(canvas, x, y, w, h, data, title, value_key, label_key)
+    canvas.create_rectangle(x, y, x+w, y+h, fill=WHITE, outline=LINE)
+    canvas.create_text(x+14, y+14, text=title, fill=BLUE, font=body_font(12,'bold'), anchor='w')
+    months = list(data.get('months') or [])
+    series = list(data.get('series') or [])
+    if not months or not series:
+        canvas.create_text(x+w/2, y+h/2, text='Keine Daten für die gewählten Kostenarten.', fill=TEXT2, font=body_font(10))
+        return
+    vals=[]
+    for srec in series:
+        vals.extend([float(srec.get('values', {}).get(m) or 0) for m in months])
+    max_v=max(vals) if vals else 1; min_v=min(vals) if vals else 0
+    if max_v == min_v: min_v = 0
+    left=x+42; right=x+w-28; top=y+46; bottom=y+h-42
+    canvas.create_line(left,bottom,right,bottom,fill=LINE)
+    canvas.create_line(left,top,left,bottom,fill=LINE)
+    colors=[BLUE, RED, '#2E7D32', '#7B1FA2', '#EF6C00', '#00695C', '#5D4037']
+    n=len(months)
+    for si,srec in enumerate(series):
+        pts=[]; values=srec.get('values', {})
+        for i,m in enumerate(months):
+            val=float(values.get(m) or 0)
+            xx=left+(right-left)*(i/(max(1,n-1)))
+            yy=bottom-(bottom-top)*((val-min_v)/(max_v-min_v if max_v!=min_v else 1))
+            pts.append((xx,yy,m,val))
+        color=colors[si % len(colors)]
+        for a,b in zip(pts, pts[1:]): canvas.create_line(a[0],a[1],b[0],b[1],fill=color,width=2)
+        for xx,yy,m,val in pts: canvas.create_oval(xx-2,yy-2,xx+2,yy+2,fill=color,outline=color)
+        canvas.create_text(x+14, y+36+(si*14), text=str(srec.get('name') or '')[:34], fill=color, font=body_font(8), anchor='w')
+    for i,m in enumerate(months):
+        xx=left+(right-left)*(i/(max(1,n-1)))
+        canvas.create_text(xx,bottom+14,text=str(m)[-5:],fill=TEXT2,font=body_font(8))
+
+_fm505_chart_data = _fm506_chart_data
+_fm505_draw_line_chart = _fm506_draw_line_chart
+
+
+
+# ------------------------------------------------------------------
+# FiBu Mate 0.507 - Performance Kontenauswertung/Treasury-Stammdaten
+# Datum: 2026-07-13
+# ------------------------------------------------------------------
+FM507_VERSION = "0.507"
+_FM507_DB_READY = False
+_FM507_SEEDED = False
+
+def _fm507_db_init_fast():
+    global _FM507_DB_READY, _FM507_SEEDED
+    if _FM507_DB_READY:
+        return
+    _FM506_PREV_DB_INIT()
+    con = _fm501_db_connect()
+    try:
+        cur = con.cursor()
+        cur.execute('''CREATE TABLE IF NOT EXISTS treasury_banks (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            bankname TEXT NOT NULL,
+            kurzname TEXT,
+            bic TEXT,
+            blz TEXT,
+            kommentar TEXT,
+            active INTEGER DEFAULT 1,
+            created_at TEXT,
+            updated_at TEXT,
+            UNIQUE(bankname)
+        )''')
+        cur.execute('''CREATE TABLE IF NOT EXISTS treasury_accounts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            bank_id INTEGER NOT NULL,
+            account_name TEXT NOT NULL,
+            kontonummer TEXT,
+            iban TEXT,
+            waehrung TEXT DEFAULT 'EUR',
+            sap_konto TEXT,
+            kommentar TEXT,
+            active INTEGER DEFAULT 1,
+            created_at TEXT,
+            updated_at TEXT,
+            UNIQUE(bank_id, account_name)
+        )''')
+        cur.execute('CREATE INDEX IF NOT EXISTS idx_imports_bank_konto_deleted ON imports(bank,konto,deleted)')
+        cur.execute('CREATE INDEX IF NOT EXISTS idx_closings_import_date_month ON closings(import_id,abschlussdatum,monat_key)')
+        cur.execute('CREATE INDEX IF NOT EXISTS idx_fee_items_lookup ON fee_items(closing_id,monat_key,geschaeftsvorfall,positionstyp)')
+        cur.execute('CREATE INDEX IF NOT EXISTS idx_treasury_accounts_bank ON treasury_accounts(bank_id,active)')
+        con.commit()
+    finally:
+        con.close()
+    _FM507_DB_READY = True
+    if not _FM507_SEEDED:
+        _FM507_SEEDED = True
+        try: _fm506_seed_master_from_imports()
+        except Exception: pass
+
+def _fm506_db_init():
+    return _fm507_db_init_fast()
+_fm505_db_init = _fm507_db_init_fast
+
+def _fm506_distinct_values_fast(table, col):
+    allowed = {
+        'imports': {'bank','konto'},
+        'closings': {'abschlussdatum','monat_key'},
+        'fee_items': {'geschaeftsvorfall','positionstyp'}
+    }
+    if table not in allowed or col not in allowed[table]:
+        return []
+    _fm507_db_init_fast()
+    con = _fm501_db_connect()
+    try:
+        if table == 'imports':
+            q=f"SELECT DISTINCT COALESCE({col},'') v FROM imports WHERE COALESCE(deleted,0)=0 AND COALESCE({col},'')<>'' ORDER BY v"
+        elif table == 'closings':
+            q=f"SELECT DISTINCT COALESCE({col},'') v FROM closings WHERE COALESCE({col},'')<>'' ORDER BY v"
+        else:
+            q=f"SELECT DISTINCT COALESCE({col},'') v FROM fee_items WHERE COALESCE({col},'')<>'' ORDER BY v"
+        return [r['v'] if hasattr(r,'keys') else r[0] for r in con.execute(q).fetchall()]
+    finally:
+        con.close()
+
+def _fm506_banks(active_only=True):
+    _fm507_db_init_fast()
+    con = _fm501_db_connect()
+    try:
+        q = 'SELECT * FROM treasury_banks ' + ('WHERE COALESCE(active,1)=1 ' if active_only else '') + 'ORDER BY bankname'
+        return [dict(r) for r in con.execute(q).fetchall()]
+    finally:
+        con.close()
+
+def _fm506_accounts(bankname=None, active_only=True):
+    _fm507_db_init_fast()
+    con = _fm501_db_connect()
+    try:
+        sql = '''SELECT a.*, b.bankname FROM treasury_accounts a JOIN treasury_banks b ON b.id=a.bank_id WHERE 1=1'''
+        params = []
+        if active_only:
+            sql += ' AND COALESCE(a.active,1)=1 AND COALESCE(b.active,1)=1'
+        if bankname:
+            sql += ' AND b.bankname=?'; params.append(bankname)
+        sql += ' ORDER BY b.bankname, a.account_name'
+        return [dict(r) for r in con.execute(sql, params).fetchall()]
+    finally:
+        con.close()
+
+try:
+    FiBuMateApp.render_account_analysis_tool = _fm505_render_account_analysis_tool
+except Exception:
+    pass
+
+
+
+# ------------------------------------------------------------------
+# FiBu Mate 0.508 - Benutzeranlage E3/E4 und neue Hauptmenue-Icons
+# Datum: 2026-07-14
+# ------------------------------------------------------------------
+FM508_VERSION = "0.508"
+try:
+    ICON_FILES["fibu_data_prep"] = "Fibu_Mate_Datenaufbereitung_transparent_256x256.ico"
+    ICON_FILES["fibu_treasury"] = "Fibu_Mate_Kontenauswertung_transparent_256x256.ico"
+    ICON_FILES["file_explorer"] = "File_Explorer_23583.ico"
+except Exception:
+    pass
+try:
+    _FM508_PREV_DRAW_TILE_ICON_IMAGE = FiBuMateApp.draw_tile_icon_image
+except Exception:
+    _FM508_PREV_DRAW_TILE_ICON_IMAGE = None
+
+def _fm508_draw_tile_icon_image(self, tile, icon_type, cx, cy):
+    if icon_type in ("fibu_data_prep", "fibu_treasury", "file_explorer"):
+        photo = self.get_icon_photo(icon_type, 54, 54)
+        if photo:
+            tile.create_image(cx, cy, image=photo)
+            return True
+        try:
+            fallback = "pdf_xls" if icon_type == "fibu_data_prep" else ("modules" if icon_type == "fibu_treasury" else "doc_file")
+            return _FM508_PREV_DRAW_TILE_ICON_IMAGE(self, tile, fallback, cx, cy)
+        except Exception:
+            return False
+    if _FM508_PREV_DRAW_TILE_ICON_IMAGE:
+        return _FM508_PREV_DRAW_TILE_ICON_IMAGE(self, tile, icon_type, cx, cy)
+    return False
+
+def _fm508_allowed_new_user_roles(app):
+    try:
+        role = app.my_role()
+        if role == ROLE_E4 or getattr(app, 'current_user_key', '') == SUPERUSER_KEY:
+            return ROLE_ORDER
+        if role == ROLE_E3:
+            return [r for r in ROLE_ORDER if r != ROLE_E4]
+    except Exception:
+        pass
+    return []
+
+def _fm508_auth_default():
+    try:
+        return _fm488_default_auth()
+    except Exception:
+        return {"password_hash": None, "enabled": False, "password_must_set": True}
+
+def _fm508_open_new_user_dialog(app):
+    if app.my_role() not in (ROLE_E3, ROLE_E4) and getattr(app, 'current_user_key', '') != SUPERUSER_KEY:
+        try: messagebox.showwarning('FiBu Mate','Keine Berechtigung zum Anlegen neuer Benutzer.')
+        except Exception: pass
+        return
+    users = app.user_data.setdefault('users', {})
+    roles = _fm508_allowed_new_user_roles(app)
+    if not roles: return
+    win = tk.Toplevel(app.root); win.title('Neuen Benutzer anlegen'); win.configure(bg=BG); win.transient(app.root); win.grab_set()
+    tk.Label(win,text='Neuen Benutzer anlegen',bg=BG,fg=TEXT,font=body_font(14,'bold')).grid(row=0,column=0,columnspan=2,sticky='w',padx=16,pady=(14,10))
+    display_var=tk.StringVar(value=''); first_var=tk.StringVar(value=''); email_var=tk.StringVar(value=''); role_var=tk.StringVar(value=roles[0])
+    for r,(label,var) in enumerate([('Anzeigename / Nachname',display_var),('Vorname',first_var),('E-Mail',email_var)],1):
+        tk.Label(win,text=label,bg=BG,fg=TEXT2,font=body_font(9)).grid(row=r,column=0,sticky='w',padx=16,pady=(4,2))
+        tk.Entry(win,textvariable=var,bg=WHITE,fg=TEXT,font=body_font(10),width=32,relief='solid',bd=1).grid(row=r,column=1,sticky='ew',padx=16,pady=(4,2))
+    tk.Label(win,text='Rolle',bg=BG,fg=TEXT2,font=body_font(9)).grid(row=4,column=0,sticky='w',padx=16,pady=(4,2))
+    ttk.Combobox(win,textvariable=role_var,values=roles,state='readonly',font=body_font(10),width=30).grid(row=4,column=1,sticky='ew',padx=16,pady=(4,2))
+    win.grid_columnconfigure(1,weight=1)
+    def create_user():
+        raw=' '.join(display_var.get().strip().split())
+        if not raw:
+            try: messagebox.showwarning('FiBu Mate','Bitte einen Anzeigenamen/Nachnamen eingeben.')
+            except Exception: pass
+            return
+        key=normalize_username(raw)
+        if not key or key in users:
+            try: messagebox.showwarning('FiBu Mate','Benutzername ist ungültig oder bereits vorhanden.')
+            except Exception: pass
+            return
+        role=role_var.get() or ROLE_E1
+        if role not in roles:
+            try: messagebox.showwarning('FiBu Mate','Diese Rolle darf nicht vergeben werden.')
+            except Exception: pass
+            return
+        first=first_var.get().strip()
+        users[key]={'display_name':raw,'first_name':first,'full_name':' '.join(x for x in [first,raw] if x).strip() or raw,'email':email_var.get().strip(),'favorites':[],'auth':_fm508_auth_default(),'permission':role}
+        app.ensure_permissions_defaults(); app.save_user_data()
+        try: messagebox.showinfo('FiBu Mate',f'Benutzer wurde angelegt:\n\n{raw}')
+        except Exception: pass
+        win.destroy(); app.render_page()
+    footer=tk.Frame(win,bg=BG); footer.grid(row=5,column=0,columnspan=2,sticky='e',padx=16,pady=(14,16))
+    tk.Button(footer,text='Anlegen',command=create_user,bg=BLUE,fg='white',font=body_font(10,'bold'),bd=0,padx=14,pady=7,cursor='hand2').pack(side='left',padx=(0,8))
+    tk.Button(footer,text='Abbrechen',command=win.destroy,bg=WHITE,fg=TEXT,font=body_font(10),relief='solid',bd=1,padx=14,pady=6).pack(side='left')
+    try: win.wait_window()
+    except Exception: pass
+try:
+    FiBuMateApp.draw_tile_icon_image = _fm508_draw_tile_icon_image
+except Exception:
+    pass
+
+# FIBU_MATE_V0508_ICON_MAIN_MENU_FINAL
+# Datum: 2026-07-14
+# Aktuelle Hauptmenue-Kacheln verwenden die neuen Icondateien fuer Hauptbuch, Debitoren, Treasury und Dateiausgabe.
+
+
+
+# ------------------------------------------------------------------
+# FIBU_MATE_V0510_WZ_COLLAPSE_READABILITY
+# Datum: 2026-07-14
+# Zweck:
+# - Wissenszentrale: Trefferbereich einklappbar, Status persistent pro Benutzer.
+# - Wissenszentrale: Hauptbereich nutzt bei eingeklapptem Trefferfenster den frei gewordenen Platz.
+# - Wissenszentrale: Treffer- und Hauptfenster nutzen den Bildschirmplatz effizienter.
+# - Global: kleine Schriften konservativ besser lesbar machen, ohne Kachel-/Hauptlayout zu verschieben.
+# ------------------------------------------------------------------
+FM510_VERSION = "0.510"
+
+try:
+    _FM510_OLD_BODY_FONT = body_font
+except Exception:
+    _FM510_OLD_BODY_FONT = None
+
+
+def _fm510_body_font(size=10, weight=None, underline=False, scale=1.0):
+    """Konservative Lesbarkeitsstufe: nur kleine Body-Fonts leicht anheben."""
+    try:
+        s = int(size or 10)
+        if s <= 8:
+            s = 10
+        elif s == 9:
+            s = 10
+        elif s == 10:
+            s = 11
+        # ab 11 bleibt unverändert, damit bestehende Layouts nicht aufbrechen
+        if _FM510_OLD_BODY_FONT:
+            return _FM510_OLD_BODY_FONT(s, weight=weight, underline=underline, scale=scale)
+    except Exception:
+        pass
+    styles = []
+    if weight:
+        styles.append(weight)
+    if underline:
+        styles.append('underline')
+    return tuple(['Aptos' if 'Aptos' else 'Segoe UI', max(10, int(size or 10))] + styles)
+
+try:
+    body_font = _fm510_body_font
+except Exception:
+    pass
+
+# zentrale Mindestwerte sehr vorsichtig anheben; bestehende Hoehen bleiben weitgehend erhalten
+try:
+    READABILITY_MIN_BUTTON_FONT = max(READABILITY_MIN_BUTTON_FONT, 12)
+    READABILITY_MIN_ENTRY_FONT = max(READABILITY_MIN_ENTRY_FONT, 12)
+    READABILITY_MIN_TEXT_FONT = max(READABILITY_MIN_TEXT_FONT, 12)
+    READABILITY_MIN_TTK_FONT = max(READABILITY_MIN_TTK_FONT, 12)
+    READABILITY_TREEVIEW_ROWHEIGHT = max(READABILITY_TREEVIEW_ROWHEIGHT, 29)
+except Exception:
+    pass
+
+
+def _fm510_user_ui_prefs(app):
+    try:
+        data = app.user_data.setdefault('users', {}).setdefault(getattr(app, 'current_user_key', '') or '', {})
+        return data.setdefault('ui_prefs', {})
+    except Exception:
+        try:
+            return app.user_data.setdefault('settings', {}).setdefault('ui_prefs_global', {})
+        except Exception:
+            return {}
+
+
+def _fm510_kb_hits_collapsed(app):
+    try:
+        return bool(_fm510_user_ui_prefs(app).get('knowledge_hits_collapsed', False))
+    except Exception:
+        return False
+
+
+def _fm510_set_kb_hits_collapsed(app, value):
+    try:
+        _fm510_user_ui_prefs(app)['knowledge_hits_collapsed'] = bool(value)
+        app.save_user_data()
+    except Exception:
+        pass
+
+
+def _fm510_toggle_kb_hits(app):
+    _fm510_set_kb_hits_collapsed(app, not _fm510_kb_hits_collapsed(app))
+    try:
+        app.render_page()
+    except Exception:
+        pass
+
+try:
+    _FM510_PREV_RENDER_HITS_PANE = FiBuMateApp.render_kb_hits_pane
+except Exception:
+    _FM510_PREV_RENDER_HITS_PANE = None
+
+
+def _fm510_render_kb_hits_pane(self, x, y, w, h):
+    if _fm510_kb_hits_collapsed(self):
+        frame = tk.Frame(self.root, bg=WHITE, highlightbackground=LINE, highlightthickness=2)
+        self.widget_items.append(frame)
+        btn = tk.Button(frame, text='▶ Treffer', command=lambda: _fm510_toggle_kb_hits(self),
+                        bg=WHITE, fg=BLUE, font=body_font(10, weight='bold'), relief='solid', bd=1,
+                        cursor='hand2', padx=6, pady=5)
+        btn.pack(fill='both', expand=True, padx=4, pady=4)
+        self.canvas.create_window(ui_s(x), ui_s(y), window=frame, anchor='nw', width=ui_s(w), height=ui_s(h))
+        return
+    if _FM510_PREV_RENDER_HITS_PANE:
+        result = _FM510_PREV_RENDER_HITS_PANE(self, x, y, w, h)
+    else:
+        result = None
+    # kleiner Einklappbutton im Trefferkopf, ohne bestehende Trefferliste zu ersetzen
+    try:
+        btn = tk.Button(self.root, text='◀', command=lambda: _fm510_toggle_kb_hits(self), bg=WHITE, fg=BLUE,
+                        activebackground='#E6EEF8', font=body_font(10, weight='bold'), relief='solid', bd=1,
+                        cursor='hand2')
+        self.widget_items.append(btn)
+        self.canvas.create_window(ui_s(x + max(8, w - 46)), ui_s(y + 12), window=btn, anchor='nw', width=ui_s(32), height=ui_s(28))
+    except Exception:
+        pass
+    return result
+
+
+def _fm510_render_knowledge_work_area(self):
+    self.kb_ensure_state_vars()
+    try:
+        self.root.bind('<Escape>', self.kb_handle_escape, add='+')
+        self.root.option_add('*TCombobox*Listbox.font', body_font(11))
+    except Exception:
+        pass
+    w, h = self.canvas.winfo_width(), self.canvas.winfo_height()
+    nav_y = 136
+    bx = 28
+    bx = self.draw_kb_button(bx, nav_y, 'Start', self.kb_show_start_overlay, False, width=92)
+    bx = self.draw_kb_button(bx, nav_y, 'Übersicht', lambda: self.kb_switch_view_from_start('all'), False, width=112)
+    if self.kb_can_create_or_edit():
+        bx = self.draw_kb_button(bx, nav_y, 'Neuer Eintrag', lambda: self.kb_switch_view_from_start('new'), False, width=128)
+    bx = self.draw_kb_button(bx, nav_y, 'To-Dos', lambda: self.kb_switch_view_from_start('todos'), False, width=92)
+    bx = self.draw_kb_button(bx, nav_y, 'Veraltete Einträge', lambda: self.kb_switch_view_from_start('outdated'), False, width=148)
+    if self.kb_can_manage_categories():
+        bx = self.draw_kb_button(bx, nav_y, 'Kategorien verwalten', lambda: self.kb_switch_view_from_start('categories'), False, width=168)
+
+    bar = tk.Frame(self.root, bg=BG)
+    self.widget_items.append(bar)
+    bar.grid_columnconfigure(0, weight=1)
+    tk.Label(bar, text='Suche', bg=BG, fg=TEXT2, font=body_font(9)).grid(row=0, column=0, sticky='w')
+    for i in range(4):
+        tk.Label(bar, text=f'Kategorie {i+1}', bg=BG, fg=TEXT2, font=body_font(9)).grid(row=0, column=i+2, sticky='w', padx=(12,0))
+    search_row = tk.Frame(bar, bg=BG)
+    search_row.grid(row=1, column=0, sticky='ew')
+    search_row.grid_columnconfigure(0, weight=1)
+    try:
+        ent = tk.Entry(search_row, textvariable=self.kb_search_var, font=body_font(10), bg=WHITE, fg=TEXT, relief='flat', bd=0,
+                       highlightthickness=1, highlightbackground=_FM451_BTN_BORDER, highlightcolor=BLUE)
+    except Exception:
+        ent = tk.Entry(search_row, textvariable=self.kb_search_var, font=body_font(10), bg=WHITE, fg=TEXT, relief='solid', bd=1)
+    ent.grid(row=0, column=0, sticky='ew', ipady=6)
+    ent.bind('<Return>', self.kb_on_search_return)
+    try:
+        _fm451_button(search_row, 'Suchen', command=self.kb_apply_filters, font_size=9).grid(row=0, column=1, padx=(8,0), sticky='ns')
+    except Exception:
+        tk.Button(search_row, text='Suchen', command=self.kb_apply_filters, bg=WHITE, fg=TEXT, font=body_font(9)).grid(row=0, column=1, padx=(8,0), sticky='ns')
+    vals = [''] + self.kb_get_categories()
+    for i, var in enumerate(self.kb_filter_vars):
+        try:
+            dd = _fm451_filter_dropdown(bar, self, var, vals, command=self.kb_apply_filters)
+        except Exception:
+            dd = ttk.Combobox(bar, textvariable=var, values=vals, state='readonly', font=body_font(10), width=15)
+            dd.bind('<<ComboboxSelected>>', self.kb_apply_filters)
+        dd.grid(row=1, column=i+2, sticky='ew', padx=(12,0))
+    selected = [(v.get() or '').strip().lower() for v in self.kb_filter_vars]
+    if self.knowledge_view == 'todos' or 'to-do' in selected:
+        tk.Label(bar, text='Rhythmus', bg=BG, fg=TEXT2, font=body_font(9)).grid(row=0, column=6, sticky='w', padx=(12,0))
+        rhythm = ttk.Combobox(bar, textvariable=self.kb_todo_rhythm_var, values=['','täglich','wöchentlich','monatlich','quartalsweise','jährlich','bei Bedarf'], state='readonly', font=body_font(10), width=15)
+        rhythm.grid(row=1, column=6, sticky='ew', padx=(12,0), ipady=4)
+        rhythm.bind('<<ComboboxSelected>>', self.kb_apply_filters)
+    else:
+        try: self.kb_todo_rhythm_var.set('')
+        except Exception: pass
+    self.canvas.create_window(ui_s(28), ui_s(184), window=bar, anchor='nw', width=ui_s(max(980, w-56)), height=ui_s(66))
+
+    collapsed = _fm510_kb_hits_collapsed(self)
+    left_x = 20
+    left_y = 266
+    pane_h = max(500, h - left_y - 24)
+    if collapsed:
+        left_w = 92
+        gap = 14
+    else:
+        left_w = max(360, min(500, int(w * 0.27)))
+        gap = 24
+    right_x = left_x + left_w + gap
+    right_w = max(760, w - right_x - 24)
+    self.render_kb_hits_pane(left_x, left_y, left_w, pane_h)
+    if self.knowledge_view == 'new':
+        self.render_kb_new_entry_area(right_x, left_y, right_w, pane_h)
+    elif self.knowledge_view == 'todos':
+        self.render_kb_list_area(right_x, left_y, right_w, pane_h, title='To-Dos')
+    elif self.knowledge_view == 'outdated':
+        self.render_kb_list_area(right_x, left_y, right_w, pane_h, title='Veraltete Einträge', status_filter='Veraltet')
+    elif self.knowledge_view == 'categories':
+        self.render_kb_categories_area(right_x, left_y, right_w, pane_h)
+    elif self.knowledge_view == 'detail':
+        self.render_kb_detail_area(right_x, left_y, right_w, pane_h)
+    else:
+        self.render_kb_list_area(right_x, left_y, right_w, pane_h, title='Übersicht')
+
+try:
+    FiBuMateApp.render_kb_hits_pane = _fm510_render_kb_hits_pane
+    FiBuMateApp.render_knowledge_work_area = _fm510_render_knowledge_work_area
+except Exception:
+    pass
+
+
+# ------------------------------------------------------------------
+# FIBU_MATE_V0511_GLOBAL_READABILITY_TUNING
+# Datum: 2026-07-14
+# Zweck:
+# - Globale Lesbarkeit weiter verbessern, auch in nachgeladenen Modulen.
+# - Kleine explizite Tk-/ttk-Schriften konservativ anheben.
+# - Große Überschriften, Kacheln und Hauptmenüabstände bleiben unverändert.
+# ------------------------------------------------------------------
+FM511_VERSION = "0.511"
+
+try:
+    _FM511_PREV_BODY_FONT = body_font
+except Exception:
+    _FM511_PREV_BODY_FONT = None
+
+
+def _fm511_body_font(size=10, weight=None, underline=False, scale=1.0):
+    try:
+        s = int(size or 10)
+        if s <= 9:
+            s = 11
+        elif s in (10, 11):
+            s = 12
+        if _FM511_PREV_BODY_FONT:
+            return _FM511_PREV_BODY_FONT(s, weight=weight, underline=underline, scale=scale)
+    except Exception:
+        pass
+    styles = []
+    if weight:
+        styles.append(weight)
+    if underline:
+        styles.append('underline')
+    return tuple(['Aptos', max(11, int(size or 10))] + styles)
+
+try:
+    body_font = _fm511_body_font
+except Exception:
+    pass
+
+_FM511_ORIGINAL_WIDGET_INITS = {}
+_FM511_ORIGINAL_WIDGET_CONFIGS = {}
+_FM511_ORIGINAL_CANVAS_CREATE_TEXT = None
+
+
+def _fm511_font_minimum_for_widget(widget_cls, default=12):
+    try:
+        if widget_cls in (tk.Button, tk.Menubutton, tk.Checkbutton, tk.Radiobutton, tk.Entry, tk.Text, tk.Listbox, tk.Label):
+            return 12
+    except Exception:
+        pass
+    return default
+
+
+def _fm511_font_tuple(font_value, minimum=12):
+    if font_value is None or font_value == '':
+        return ('Aptos', minimum)
+    try:
+        if isinstance(font_value, tuple):
+            if len(font_value) >= 2 and isinstance(font_value[1], int) and abs(font_value[1]) < minimum:
+                return tuple([font_value[0], minimum] + list(font_value[2:]))
+            return font_value
+        if isinstance(font_value, list):
+            vals = list(font_value)
+            if len(vals) >= 2 and isinstance(vals[1], int) and abs(vals[1]) < minimum:
+                vals[1] = minimum
+            return tuple(vals)
+    except Exception:
+        pass
+    return font_value
+
+
+def _fm511_patch_widget_class(widget_cls):
+    if widget_cls in _FM511_ORIGINAL_WIDGET_INITS:
+        return
+    try:
+        orig_init = widget_cls.__init__
+        orig_configure = getattr(widget_cls, 'configure', None)
+        orig_config = getattr(widget_cls, 'config', None)
+        _FM511_ORIGINAL_WIDGET_INITS[widget_cls] = orig_init
+        _FM511_ORIGINAL_WIDGET_CONFIGS[widget_cls] = (orig_configure, orig_config)
+        minimum = _fm511_font_minimum_for_widget(widget_cls)
+        def patched_init(self, master=None, cnf=None, **kw):
+            cnf = dict(cnf or {})
+            if 'font' in kw:
+                kw['font'] = _fm511_font_tuple(kw.get('font'), minimum)
+            elif 'font' in cnf:
+                cnf['font'] = _fm511_font_tuple(cnf.get('font'), minimum)
+            else:
+                kw['font'] = ('Aptos', minimum)
+            return orig_init(self, master, cnf, **kw)
+        def patched_configure(self, cnf=None, **kw):
+            cnf = dict(cnf or {})
+            if 'font' in kw:
+                kw['font'] = _fm511_font_tuple(kw.get('font'), minimum)
+            if 'font' in cnf:
+                cnf['font'] = _fm511_font_tuple(cnf.get('font'), minimum)
+            return orig_configure(self, cnf, **kw)
+        widget_cls.__init__ = patched_init
+        if callable(orig_configure):
+            widget_cls.configure = patched_configure
+        if callable(orig_config):
+            widget_cls.config = patched_configure
+    except Exception:
+        pass
+
+
+def _fm511_patch_canvas_text():
+    global _FM511_ORIGINAL_CANVAS_CREATE_TEXT
+    try:
+        if _FM511_ORIGINAL_CANVAS_CREATE_TEXT is not None:
+            return
+        _FM511_ORIGINAL_CANVAS_CREATE_TEXT = tk.Canvas.create_text
+        def patched_create_text(self, *args, **kw):
+            try:
+                text_value = str(kw.get('text', '') or '').strip()
+                if text_value not in {'', '★', '+', '-', '−'}:
+                    if 'font' in kw:
+                        kw['font'] = _fm511_font_tuple(kw.get('font'), 12)
+                    else:
+                        kw['font'] = ('Aptos', 12)
+            except Exception:
+                pass
+            return _FM511_ORIGINAL_CANVAS_CREATE_TEXT(self, *args, **kw)
+        tk.Canvas.create_text = patched_create_text
+    except Exception:
+        pass
+
+
+def _fm511_install_readability(root=None):
+    try:
+        for cls in (tk.Label, tk.Button, tk.Entry, tk.Text, tk.Listbox, tk.Checkbutton, tk.Radiobutton, tk.Menubutton):
+            _fm511_patch_widget_class(cls)
+        _fm511_patch_canvas_text()
+        try:
+            style = ttk.Style(root) if root is not None else ttk.Style()
+            style.configure('TLabel', font=('Aptos', 12))
+            style.configure('TButton', font=('Aptos', 12))
+            style.configure('TCheckbutton', font=('Aptos', 12))
+            style.configure('TRadiobutton', font=('Aptos', 12))
+            style.configure('TCombobox', font=('Aptos', 12))
+            style.configure('Treeview', font=('Aptos', 12), rowheight=max(30, ui_s(30)))
+            style.configure('Treeview.Heading', font=('Aptos', 12, 'bold'))
+        except Exception:
+            pass
+        try:
+            if root is not None:
+                root.option_add('*TCombobox*Listbox.font', ('Aptos', 12))
+                root.option_add('*Menu.font', ('Aptos', 12))
+        except Exception:
+            pass
+    except Exception:
+        pass
+
+try:
+    _fm511_old_init = FiBuMateApp.__init__
+    def _fm511_init(self, *args, **kwargs):
+        result = _fm511_old_init(self, *args, **kwargs)
+        try:
+            _fm511_install_readability(getattr(self, 'root', None))
+        except Exception:
+            pass
+        return result
+    FiBuMateApp.__init__ = _fm511_init
+except Exception:
+    pass
+
+try:
+    _fm511_old_render_page = FiBuMateApp.render_page
+    def _fm511_render_page(self, *args, **kwargs):
+        try:
+            _fm511_install_readability(getattr(self, 'root', None))
+        except Exception:
+            pass
+        return _fm511_old_render_page(self, *args, **kwargs)
+    FiBuMateApp.render_page = _fm511_render_page
+except Exception:
+    pass
+
+
+# FIBUMATE_GLOBAL_VERSION_0517: Benutzerverwaltung CRUD und Scrollfix
+
+
+# ------------------------------------------------------------------
+# FIBU_MATE_CENTRAL_PASSWORD_PERSISTENCE_V0516
+# Datum: 2026-07-15
+# Zweck:
+# - Passworthashes ausschliesslich dauerhaft in der zentralen Benutzerdatei auf G: speichern.
+# - Lokale, patch-/installationsabhaengige Benutzerdateien nicht mehr als aktive Quelle verwenden.
+# - Stale Clients duerfen ein bereits zentral gespeichertes Passwort nicht mit leerem Auth-Stand ueberschreiben.
+# - Vor jeder Anmeldung zentrale Benutzerdaten neu laden.
+# - Atomisches Schreiben mit kurzer dateibasierter Schreibsperre.
+# ------------------------------------------------------------------
+FIBU_MATE_CENTRAL_PASSWORD_PERSISTENCE_VERSION = "0.516"
+_FM516_USER_FILE_LOCK_TIMEOUT_SEC = 20.0
+
+
+def _fm516_central_user_path():
+    # Genau eine persistente Quelle, unabhaengig vom Installations-/Patchordner.
+    return os.path.join(NETWORK_ROOT, "Fibu_Mate_Doc", "Config", "fibu_mate_users.json")
+
+
+def _fm516_read_user_json(path):
+    try:
+        if path and os.path.exists(path):
+            with open(path, "r", encoding="utf-8") as f:
+                data=json.load(f)
+            return _fm444_normalize_user_data(data)
+    except Exception:
+        pass
+    return None
+
+
+def _fm516_auth_time(auth):
+    auth=auth if isinstance(auth,dict) else {}
+    return max(str(auth.get("password_set_at") or ""), str(auth.get("password_reset_at") or ""))
+
+
+def _fm516_merge_auth(central_auth, incoming_auth):
+    central=dict(central_auth or {})
+    incoming=dict(incoming_auth or {})
+    c_hash=bool(central.get("password_hash"))
+    i_hash=bool(incoming.get("password_hash"))
+    c_time=_fm516_auth_time(central); i_time=_fm516_auth_time(incoming)
+    # Ein explizit neuerer Set-/Reset-Vorgang gewinnt.
+    if i_time and i_time >= c_time:
+        return incoming
+    # Ein erstmals gesetztes Passwort darf einen leeren Zentralstand fuellen.
+    if i_hash and not c_hash:
+        return incoming
+    # Ein stale/leer geladener Client darf ein bestehendes Zentralpasswort nie loeschen.
+    if c_hash and not i_hash:
+        return central
+    # Bei gleichwertigen Daten bleibt der zentrale persistente Stand fuehrend.
+    if c_hash:
+        return central
+    return incoming or central or {"password_hash":None,"enabled":False,"password_must_set":True}
+
+
+def _fm516_merge_user_data(central, incoming):
+    central=_fm444_normalize_user_data(central or {})
+    incoming=_fm444_normalize_user_data(incoming or {})
+    merged={
+        "last_username_prefill": incoming.get("last_username_prefill", central.get("last_username_prefill", "")),
+        "users": {},
+        "settings": dict(central.get("settings") or {}),
+    }
+    merged["settings"].update(incoming.get("settings") or {})
+    keys=set((central.get("users") or {}).keys()) | set((incoming.get("users") or {}).keys())
+    for key in keys:
+        c=dict((central.get("users") or {}).get(key) or {})
+        i=dict((incoming.get("users") or {}).get(key) or {})
+        if c and i:
+            out=dict(c); out.update(i)
+            out["auth"]=_fm516_merge_auth(c.get("auth"),i.get("auth"))
+        elif i:
+            out=i
+        else:
+            out=c
+        merged["users"][key]=out
+    return _fm444_normalize_user_data(merged)
+
+
+def _fm516_acquire_file_lock(lock_path):
+    import time as _time
+    deadline=_time.time()+_FM516_USER_FILE_LOCK_TIMEOUT_SEC
+    while True:
+        try:
+            fd=os.open(lock_path, os.O_CREAT|os.O_EXCL|os.O_WRONLY)
+            try:
+                os.write(fd, (str(os.getpid())+"|"+datetime.now().isoformat(timespec="seconds")).encode("utf-8"))
+            finally:
+                os.close(fd)
+            return True
+        except FileExistsError:
+            try:
+                if _time.time()-os.path.getmtime(lock_path)>60:
+                    os.remove(lock_path); continue
+            except Exception:
+                pass
+            if _time.time()>=deadline:
+                return False
+            _time.sleep(0.15)
+
+
+def _fm516_atomic_write(path,data):
+    folder=os.path.dirname(path); os.makedirs(folder,exist_ok=True)
+    lock_path=path+".lock"
+    if not _fm516_acquire_file_lock(lock_path):
+        raise RuntimeError("Zentrale Benutzerdatei ist derzeit durch einen anderen Speichervorgang gesperrt.")
+    try:
+        current=_fm516_read_user_json(path) or _fm444_default_user_data()
+        merged=_fm516_merge_user_data(current,data)
+        tmp=path+".tmp."+str(os.getpid())
+        with open(tmp,"w",encoding="utf-8") as f:
+            json.dump(merged,f,ensure_ascii=False,indent=2)
+            f.flush()
+            try: os.fsync(f.fileno())
+            except Exception: pass
+        os.replace(tmp,path)
+        return merged
+    finally:
+        try: os.remove(lock_path)
+        except Exception: pass
+
+
+def _fm516_recover_local_passwords(central):
+    """Einmalige Rettung bereits lokal gespeicherter Hashes, sofern zentral noch leer."""
+    changed=False
+    candidates=[]
+    try: candidates.append(_fm444_local_user_data_path())
+    except Exception: pass
+    try:
+        if LEGACY_USER_DATA_PATH: candidates.append(LEGACY_USER_DATA_PATH)
+    except Exception: pass
+    for candidate in candidates:
+        local=_fm516_read_user_json(candidate)
+        if not local: continue
+        for key,luser in (local.get("users") or {}).items():
+            if key not in (central.get("users") or {}): continue
+            cuser=central["users"][key]
+            cauth=dict(cuser.get("auth") or {}); lauth=dict(luser.get("auth") or {})
+            if not cauth.get("password_hash") and lauth.get("password_hash"):
+                cuser["auth"]=lauth; changed=True
+    return changed
+
+
+def _fm516_load_user_data(self):
+    path=_fm516_central_user_path()
+    data=_fm516_read_user_json(path)
+    if data is None:
+        data=_fm444_default_user_data()
+        try: data=_fm516_atomic_write(path,data)
+        except Exception: pass
+    else:
+        try:
+            if _fm516_recover_local_passwords(data):
+                data=_fm516_atomic_write(path,data)
+        except Exception:
+            pass
+    self._fm444_active_user_data_path=path
+    self._fm516_active_user_data_path=path
+    try: self._user_data_mtime=os.path.getmtime(path) if os.path.exists(path) else 0
+    except Exception: self._user_data_mtime=0
+    return _fm444_normalize_user_data(data)
+
+
+def _fm516_get_user_data_path(self):
+    return _fm516_central_user_path()
+
+
+def _fm516_save_user_data(self):
+    path=_fm516_central_user_path()
+    try:
+        merged=_fm516_atomic_write(path,getattr(self,"user_data",None))
+        self.user_data=merged
+        self._fm444_active_user_data_path=path
+        self._fm516_active_user_data_path=path
+        try: self._user_data_mtime=os.path.getmtime(path)
+        except Exception: pass
+        return True
+    except Exception as exc:
+        try:
+            messagebox.showerror("FiBu Mate","Benutzerdaten konnten nicht zentral gespeichert werden.\n\nEs wird bewusst kein lokaler Passwort-Fallback verwendet.\n\nZiel: "+path+"\n\nTechnische Ursache:\n"+str(exc))
+        except Exception: pass
+        return False
+
+
+_FM516_PREV_LOGIN_USER=_fm488_login_user
+def _fm516_login_user(self,username):
+    # Nach Abmeldung und nach einem Patch immer den aktuellen zentralen Hash laden.
+    try: self.user_data=_fm516_load_user_data(self)
+    except Exception: pass
+    return _FM516_PREV_LOGIN_USER(self,username)
+
+
+FiBuMateApp.load_user_data=_fm516_load_user_data
+FiBuMateApp.get_user_data_path=_fm516_get_user_data_path
+FiBuMateApp.save_user_data=_fm516_save_user_data
+FiBuMateApp.login_user=_fm516_login_user
+
+
+
+# ------------------------------------------------------------------
+# FIBU_MATE_USER_MANAGEMENT_CRUD_SCROLL_V0517
+# Datum: 2026-07-15
+# Zweck:
+# - Benutzeranlage wieder als eigener, jederzeit sichtbarer Vorgang.
+# - Bearbeiten aktualisiert exakt den gewaehlten Benutzer und legt keinen neuen an.
+# - Loeschen entfernt den Benutzer atomar aus der zentralen Benutzerdatei.
+# - Benutzerverwaltung wieder vollstaendig scrollbar, inklusive Mausrad ueber Eingabefeldern.
+# ------------------------------------------------------------------
+FIBU_MATE_USER_MANAGEMENT_CRUD_SCROLL_VERSION = "0.517"
+
+
+def _fm517_can_manage_target(app,key,for_delete=False):
+    users=app.user_data.setdefault('users',{})
+    if key not in users: return False
+    actor=getattr(app,'current_user_key','') or ''
+    if key==SUPERUSER_KEY: return False
+    if for_delete and key==actor: return False
+    try:
+        actor_rank=app.role_rank(app.my_role())
+        target_rank=app.role_rank(users[key].get('permission',ROLE_E1))
+        return actor_rank>=3 and target_rank<=actor_rank
+    except Exception:
+        return False
+
+
+def _fm517_allowed_roles(app,target_key=None):
+    try:
+        rank=app.role_rank(app.my_role())
+        return [r for r in ROLE_ORDER if app.role_rank(r)<=rank and (rank>=4 or r!=ROLE_E4)]
+    except Exception:
+        return [ROLE_E1]
+
+
+def _fm517_update_user(app,key,display_name,first_name,email,role):
+    users=app.user_data.setdefault('users',{})
+    if key not in users:
+        messagebox.showwarning('FiBu Mate','Der gewählte Benutzer ist nicht mehr vorhanden.'); return False
+    if not _fm517_can_manage_target(app,key) and key!=getattr(app,'current_user_key',''):
+        messagebox.showwarning('FiBu Mate','Keine Berechtigung für diesen Benutzer.'); return False
+    allowed=_fm517_allowed_roles(app,key)
+    if role not in allowed:
+        messagebox.showwarning('FiBu Mate','Diese Rolle darf nicht vergeben werden.'); return False
+    # Schlüssel/Anmeldename bleibt stabil. Anzeigename ist nur ein Stammdatenfeld.
+    user=users[key]
+    display=' '.join(str(display_name or '').strip().split()) or user.get('display_name',key)
+    first=str(first_name or '').strip()
+    user['display_name']=display
+    user['first_name']=first
+    user['email']=str(email or '').strip()
+    user['full_name']=' '.join(x for x in (first,display) if x).strip() or display
+    user['permission']=role
+    _fm488_normalize_auth(user)
+    app.ensure_permissions_defaults()
+    if not app.save_user_data(): return False
+    messagebox.showinfo('FiBu Mate','Benutzerdaten wurden gespeichert.')
+    app.render_page(); return True
+
+
+def _fm517_create_user(app,display_name,first_name,email,role):
+    raw=' '.join(str(display_name or '').strip().split())
+    if not raw:
+        messagebox.showwarning('FiBu Mate','Bitte einen Anzeigenamen/Nachnamen eingeben.'); return False
+    key=normalize_username(raw)
+    allowed=_fm517_allowed_roles(app)
+    if app.my_role() not in (ROLE_E3,ROLE_E4) or not key or role not in allowed:
+        messagebox.showwarning('FiBu Mate','Benutzername oder Rolle ist nicht zulässig.'); return False
+    # Zentral unter Lock erneut prüfen. Dadurch entstehen keine Doppelanlagen.
+    path=_fm516_central_user_path(); lock_path=path+'.lock'
+    if not _fm516_acquire_file_lock(lock_path):
+        messagebox.showerror('FiBu Mate','Die zentrale Benutzerverwaltung ist derzeit gesperrt. Bitte erneut versuchen.'); return False
+    try:
+        central=_fm516_read_user_json(path) or _fm444_default_user_data()
+        users=central.setdefault('users',{})
+        if key in users:
+            messagebox.showwarning('FiBu Mate','Dieser Benutzer ist bereits vorhanden.'); return False
+        first=str(first_name or '').strip()
+        users[key]={'display_name':raw,'first_name':first,'full_name':' '.join(x for x in (first,raw) if x).strip() or raw,
+                    'email':str(email or '').strip(),'favorites':[],'auth':_fm488_default_auth(),'permission':role}
+        tmp=path+'.tmp.'+str(os.getpid())
+        with open(tmp,'w',encoding='utf-8') as f:
+            json.dump(_fm444_normalize_user_data(central),f,ensure_ascii=False,indent=2); f.flush()
+            try: os.fsync(f.fileno())
+            except Exception: pass
+        os.replace(tmp,path)
+    finally:
+        try: os.remove(lock_path)
+        except Exception: pass
+    app.user_data=_fm516_load_user_data(app)
+    messagebox.showinfo('FiBu Mate','Benutzer wurde angelegt:\n\n'+raw)
+    app.render_page(); return True
+
+
+def _fm517_delete_user(app,key):
+    if not _fm517_can_manage_target(app,key,for_delete=True):
+        messagebox.showwarning('FiBu Mate','Dieser Benutzer kann nicht gelöscht werden.'); return False
+    display=app.user_data.get('users',{}).get(key,{}).get('display_name',key)
+    if not messagebox.askyesno('Benutzer löschen','Benutzer unwiderruflich löschen?\n\n'+str(display)):
+        return False
+    path=_fm516_central_user_path(); lock_path=path+'.lock'
+    if not _fm516_acquire_file_lock(lock_path):
+        messagebox.showerror('FiBu Mate','Die zentrale Benutzerverwaltung ist derzeit gesperrt. Bitte erneut versuchen.'); return False
+    deleted=False
+    try:
+        central=_fm516_read_user_json(path) or _fm444_default_user_data()
+        users=central.setdefault('users',{})
+        if key in users:
+            users.pop(key); deleted=True
+        tmp=path+'.tmp.'+str(os.getpid())
+        with open(tmp,'w',encoding='utf-8') as f:
+            json.dump(_fm444_normalize_user_data(central),f,ensure_ascii=False,indent=2); f.flush()
+            try: os.fsync(f.fileno())
+            except Exception: pass
+        os.replace(tmp,path)
+    finally:
+        try: os.remove(lock_path)
+        except Exception: pass
+    app.user_data=_fm516_load_user_data(app)
+    if deleted: messagebox.showinfo('FiBu Mate','Benutzer wurde gelöscht.')
+    else: messagebox.showwarning('FiBu Mate','Der Benutzer war zentral bereits nicht mehr vorhanden.')
+    app.render_page(); return deleted
+
+
+def _fm517_open_new_user_dialog(app):
+    if app.my_role() not in (ROLE_E3,ROLE_E4):
+        messagebox.showwarning('FiBu Mate','Keine Berechtigung zum Anlegen neuer Benutzer.'); return
+    roles=_fm517_allowed_roles(app)
+    win=tk.Toplevel(app.root); win.title('Neuen Benutzer anlegen'); win.configure(bg=BG); win.transient(app.root); win.grab_set(); win.resizable(False,False)
+    display=tk.StringVar(); first=tk.StringVar(); email=tk.StringVar(); role=tk.StringVar(value=roles[0])
+    tk.Label(win,text='Neuen Benutzer anlegen',bg=BG,fg=TEXT,font=body_font(14,'bold')).grid(row=0,column=0,columnspan=2,sticky='w',padx=18,pady=(16,10))
+    for row,(label,var) in enumerate((('Anzeigename / Nachname',display),('Vorname',first),('E-Mail',email)),1):
+        tk.Label(win,text=label,bg=BG,fg=TEXT2,font=body_font(10)).grid(row=row,column=0,sticky='w',padx=18,pady=5)
+        tk.Entry(win,textvariable=var,bg=WHITE,fg=TEXT,font=body_font(10),width=34,relief='solid',bd=1).grid(row=row,column=1,sticky='ew',padx=18,pady=5,ipady=4)
+    tk.Label(win,text='Rolle',bg=BG,fg=TEXT2,font=body_font(10)).grid(row=4,column=0,sticky='w',padx=18,pady=5)
+    ttk.Combobox(win,textvariable=role,values=roles,state='readonly',font=body_font(10),width=32).grid(row=4,column=1,sticky='ew',padx=18,pady=5)
+    footer=tk.Frame(win,bg=BG); footer.grid(row=5,column=0,columnspan=2,sticky='e',padx=18,pady=(14,16))
+    def create():
+        if _fm517_create_user(app,display.get(),first.get(),email.get(),role.get()): win.destroy()
+    tk.Button(footer,text='Anlegen',command=create,bg='#CFEAD6',fg=TEXT,font=body_font(10,'bold'),relief='solid',bd=1,padx=16,pady=6).pack(side='left',padx=(0,8))
+    tk.Button(footer,text='Abbrechen',command=win.destroy,bg=WHITE,fg=TEXT,font=body_font(10),relief='solid',bd=1,padx=16,pady=6).pack(side='left')
+    try: win.bind('<Return>',lambda e:create())
+    except Exception: pass
+
+
+def _fm517_render_users_menu(self):
+    if not self.can_view_user_management(): self.render_menu_text('Keine Berechtigung für die Benutzerverwaltung.'); return
+    # Vor jedem Render zentral neu laden, damit Anlage/Löschung anderer Clients sichtbar ist.
+    try: self.user_data=_fm516_load_user_data(self)
+    except Exception: pass
+    users=self.user_data.setdefault('users',{})
+    visible=[self.current_user_key] if self.my_role()==ROLE_E1 and self.current_user_key in users else sorted(users)
+    w,h=self.canvas.winfo_width(),self.canvas.winfo_height(); top=132; vh=max(320,int(h-top-30))
+    outer=tk.Frame(self.root,bg=BG); self.widget_items.append(outer); self.canvas.create_window(0,top,window=outer,anchor='nw',width=w,height=vh)
+    toolbar=tk.Frame(outer,bg=BG); toolbar.pack(fill='x',padx=24,pady=(0,8))
+    tk.Label(toolbar,text='Benutzerverwaltung',font=self.zoomed_content_font(('Segoe UI',15,'bold')),bg=BG,fg=TEXT).pack(side='left')
+    if self.my_role() in (ROLE_E3,ROLE_E4):
+        tk.Button(toolbar,text='Neuen Benutzer anlegen',command=lambda:_fm517_open_new_user_dialog(self),bg='#CFEAD6',fg=TEXT,font=body_font(10,'bold'),relief='solid',bd=1,padx=14,pady=6).pack(side='right')
+    area=tk.Frame(outer,bg=BG); area.pack(fill='both',expand=True,padx=24,pady=(0,10))
+    cv=tk.Canvas(area,bg=BG,highlightthickness=0,bd=0); sb=tk.Scrollbar(area,orient='vertical',command=cv.yview)
+    frame=tk.Frame(cv,bg=BG); win=cv.create_window((0,0),window=frame,anchor='nw')
+    cv.configure(yscrollcommand=sb.set); cv.pack(side='left',fill='both',expand=True); sb.pack(side='right',fill='y')
+    def update_scroll(_=None):
+        cv.itemconfigure(win,width=max(cv.winfo_width(),1320)); cv.configure(scrollregion=cv.bbox('all'))
+    frame.bind('<Configure>',update_scroll); cv.bind('<Configure>',update_scroll)
+    def wheel(event):
+        try: cv.yview_scroll(int(-1*(event.delta/120)),'units')
+        except Exception: pass
+        return 'break'
+    # bind_all while page exists ensures wheel over Entry/Combobox also scrolls.
+    cv.bind_all('<MouseWheel>',wheel,add='+')
+    self.widget_items.append(type('_FM517WheelCleanup',(object,),{'destroy':lambda _s: cv.unbind_all('<MouseWheel>')})())
+    heads=['Benutzer','Anzeigename/Nachname','Vorname','E-Mail','Rolle','Passwort','','','']
+    for col,head in enumerate(heads): tk.Label(frame,text=head,bg=BG,fg=TEXT,font=body_font(10,'bold')).grid(row=0,column=col,sticky='w',padx=(0,12),pady=(0,8))
+    for row,key in enumerate(visible,1):
+        user=users[key]; auth=_fm488_normalize_auth(user); edit=_fm517_can_manage_target(self,key) or key==self.current_user_key
+        display=tk.StringVar(value=user.get('display_name',key)); first=tk.StringVar(value=user.get('first_name','')); email=tk.StringVar(value=user.get('email','')); role=tk.StringVar(value=user.get('permission',ROLE_E1))
+        tk.Label(frame,text=key,bg=BG,fg=TEXT2,font=body_font(10)).grid(row=row,column=0,sticky='w',padx=(0,12),pady=5)
+        tk.Entry(frame,textvariable=display,width=22,bg=WHITE,fg=TEXT,font=body_font(10),relief='solid',bd=1,state='normal' if edit else 'disabled').grid(row=row,column=1,sticky='w',padx=(0,12),pady=5,ipady=3)
+        tk.Entry(frame,textvariable=first,width=18,bg=WHITE,fg=TEXT,font=body_font(10),relief='solid',bd=1,state='normal' if edit else 'disabled').grid(row=row,column=2,sticky='w',padx=(0,12),pady=5,ipady=3)
+        tk.Entry(frame,textvariable=email,width=30,bg=WHITE,fg=TEXT,font=body_font(10),relief='solid',bd=1,state='normal' if edit else 'disabled').grid(row=row,column=3,sticky='w',padx=(0,12),pady=5,ipady=3)
+        ttk.Combobox(frame,textvariable=role,values=_fm517_allowed_roles(self,key),state='readonly' if edit else 'disabled',font=body_font(10),width=24).grid(row=row,column=4,sticky='w',padx=(0,12),pady=5)
+        status='gesetzt' if auth.get('password_hash') and not auth.get('password_must_set') else 'muss gesetzt werden'
+        tk.Label(frame,text=status,bg=BG,fg=TEXT2,font=body_font(10)).grid(row=row,column=5,sticky='w',padx=(0,12),pady=5)
+        tk.Button(frame,text='Speichern',command=lambda k=key,d=display,f=first,e=email,r=role:_fm517_update_user(self,k,d.get(),f.get(),e.get(),r.get()),bg='#CFEAD6' if edit else GREY_DISABLED,fg=TEXT,relief='solid',bd=1,width=10,state='normal' if edit else 'disabled').grid(row=row,column=6,padx=(0,8),pady=5)
+        can_reset=_fm488_can_reset_password(self,key)
+        tk.Button(frame,text='PW Reset',command=lambda k=key:_fm488_reset_password_for_user(self,k),bg=WHITE if can_reset else GREY_DISABLED,fg=TEXT,relief='solid',bd=1,width=10,state='normal' if can_reset else 'disabled').grid(row=row,column=7,padx=(0,8),pady=5)
+        can_delete=_fm517_can_manage_target(self,key,for_delete=True)
+        tk.Button(frame,text='Löschen',command=lambda k=key:_fm517_delete_user(self,k),bg=RED if can_delete else GREY_DISABLED,fg=WHITE,relief='solid',bd=1,width=10,state='normal' if can_delete else 'disabled').grid(row=row,column=8,padx=(0,8),pady=5)
+    update_scroll()
+
+
+FiBuMateApp.render_users_menu=_fm517_render_users_menu
 
 if __name__ == "__main__":
     FiBuMateApp().run()
