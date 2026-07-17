@@ -1,10 +1,10 @@
 {
   "app_name": "FiBu Mate",
-  "version": "0.461",
-  "app_version": "0.461",
-  "installed_version": "0.461",
-  "installer_version": "0.461",
-  "written_at": "2026-06-23T11:34:55",
-  "source": "FiBu Mate Patcher v3 - tatsächliche Installer-/Patch-Version",
-  "version_authority": "Patcher latest.json/app_version.json, nicht Fibu_mate.py im Build-Ordner"
+  "version": "0.520",
+  "app_version": "0.520",
+  "installed_version": "0.520",
+  "installer_version": "0.520",
+  "patcher_version": "0.520",
+  "written_at": "2026-07-16T08:58:48",
+  "source": "FiBu Mate Patcher Safe Collect"
 }

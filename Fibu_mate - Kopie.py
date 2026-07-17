@@ -9084,5 +9084,10848 @@ try:
 except Exception:
     pass
 
+
+
+# ------------------------------------------------------------------
+# Wissenszentrale - aktive Formatbuttons FINAL 2026-06-18
+# Version 0.456
+# Zweck:
+# - Textformat-Buttons bleiben optisch eingedrückt, solange die Option an der aktuellen Auswahl/Cursorposition aktiv ist.
+# - Gilt für Fett, Kursiv, Unterstrichen sowie Textfarben Standard/Rot/Blau.
+# - Nutzt die vorhandene v0.446-Formatlogik inkl. Farbtags; überschreibt nur die Toolbar-Darstellung und Aktualisierung.
+# ------------------------------------------------------------------
+
+_FM456_ACTIVE_BG = "#DDEAF7"
+_FM456_ACTIVE_BG_RED = "#FEE2E2"
+_FM456_ACTIVE_BG_BLUE = "#DDEAF7"
+_FM456_INACTIVE_BG = WHITE
+
+
+def _fm456_current_format(widget):
+    try:
+        try:
+            index = widget.index("sel.first")
+        except Exception:
+            index = widget.index("insert")
+        return _wz446_format_at(widget, index)
+    except Exception:
+        return {"size": 10, "bold": False, "italic": False, "underline": False, "color": "standard"}
+
+
+def _fm456_button_style(button, active=False, color_key=None):
+    try:
+        if active:
+            bg = _FM456_ACTIVE_BG_RED if color_key == "rot" else (_FM456_ACTIVE_BG_BLUE if color_key == "blau" else _FM456_ACTIVE_BG)
+            button.configure(relief="sunken", bd=2, bg=bg, activebackground=bg)
+        else:
+            button.configure(relief="raised", bd=1, bg=_FM456_INACTIVE_BG, activebackground="#E7F0FA")
+    except Exception:
+        pass
+
+
+def _fm456_update_format_buttons(widget, buttons):
+    fmt = _fm456_current_format(widget)
+    try:
+        _fm456_button_style(buttons.get("bold"), bool(fmt.get("bold")))
+        _fm456_button_style(buttons.get("italic"), bool(fmt.get("italic")))
+        _fm456_button_style(buttons.get("underline"), bool(fmt.get("underline")))
+        active_color = _wz446_color_key(fmt.get("color", "standard"))
+        for key in ("standard", "rot", "blau"):
+            _fm456_button_style(buttons.get("color_" + key), active_color == key, key)
+    except Exception:
+        pass
+
+
+def _fm456_apply_and_update(widget, buttons, mark_unsaved, *, toggle=None, color=None, size=None):
+    try:
+        _wz446_apply_selection(widget, toggle=toggle, color=color, size=size)
+        mark_unsaved()
+    except Exception:
+        pass
+    try:
+        widget.after_idle(lambda: _fm456_update_format_buttons(widget, buttons))
+    except Exception:
+        _fm456_update_format_buttons(widget, buttons)
+
+
+def _fm456_toolbar(parent, widget, mark_unsaved):
+    bar = tk.Frame(parent, bg=WHITE)
+    bar.pack(fill="x", pady=(0, 6))
+    buttons = {}
+    tk.Label(bar, text="Format:", bg=WHITE, fg=TEXT2, font=body_font(9)).pack(side="left", padx=(0, 6))
+    size_var = tk.StringVar(value="10")
+    size_cb = ttk.Combobox(bar, textvariable=size_var, values=["8", "9", "10", "11", "12", "14", "16", "18", "20", "22", "24", "28", "32"], width=4, state="readonly", font=body_font(9))
+    size_cb.pack(side="left", padx=(0, 6))
+    size_cb.bind("<<ComboboxSelected>>", lambda e: _fm456_apply_and_update(widget, buttons, mark_unsaved, size=int(size_var.get())))
+    for label, key in [("B", "bold"), ("I", "italic"), ("U", "underline")]:
+        btn = tk.Button(bar, text=label, command=lambda k=key: _fm456_apply_and_update(widget, buttons, mark_unsaved, toggle=k), bg=WHITE, fg=TEXT, font=body_font(10, weight="bold" if key == "bold" else None, underline=(key == "underline")), relief="raised", bd=1, width=3)
+        btn.pack(side="left", padx=(0, 4)); buttons[key] = btn
+    tk.Label(bar, text="Farbe:", bg=WHITE, fg=TEXT2, font=body_font(9)).pack(side="left", padx=(10, 4))
+    for key in ("standard", "rot", "blau"):
+        btn = tk.Button(bar, text=_WZ446_COLOR_LABELS[key], command=lambda c=key: _fm456_apply_and_update(widget, buttons, mark_unsaved, color=c), bg=WHITE, fg=_WZ446_COLOR_MAP[key], font=body_font(9, weight="bold" if key != "standard" else None), relief="raised", bd=1)
+        btn.pack(side="left", padx=(0, 4), ipadx=5); buttons["color_" + key] = btn
+    app = getattr(mark_unsaved, "__self__", None)
+    if app is not None:
+        try:
+            tk.Button(bar, text="Bild aus Zwischenablage", command=lambda: _wz446_add_clipboard_image(app), bg=WHITE, fg=TEXT, font=body_font(9), relief="raised", bd=1).pack(side="left", padx=(10, 4), ipadx=5)
+            tk.Button(bar, text="Bild aus Datei", command=lambda: _wz446_insert_image_file(app), bg=WHITE, fg=TEXT, font=body_font(9), relief="raised", bd=1).pack(side="left", padx=(0, 4), ipadx=5)
+        except Exception:
+            pass
+    tk.Label(bar, text="Text markieren und Format wählen.", bg=WHITE, fg=TEXT2, font=body_font(8)).pack(side="left", padx=(8, 0))
+    def schedule_update(event=None):
+        try:
+            widget.after_idle(lambda: _fm456_update_format_buttons(widget, buttons))
+        except Exception:
+            _fm456_update_format_buttons(widget, buttons)
+        return None
+    try:
+        for seq in ("<KeyRelease>", "<ButtonRelease-1>", "<FocusIn>", "<<Selection>>"):
+            widget.bind(seq, schedule_update, add="+")
+        widget.bind("<Control-b>", lambda e: (_fm456_apply_and_update(widget, buttons, mark_unsaved, toggle="bold"), "break")[-1], add="+")
+        widget.bind("<Control-i>", lambda e: (_fm456_apply_and_update(widget, buttons, mark_unsaved, toggle="italic"), "break")[-1], add="+")
+        widget.bind("<Control-u>", lambda e: (_fm456_apply_and_update(widget, buttons, mark_unsaved, toggle="underline"), "break")[-1], add="+")
+    except Exception:
+        pass
+    schedule_update()
+    return bar
+
+# Finale Kompatibilitätszuweisung: vorhandene Renderfunktionen rufen _wz439_toolbar oder _wz446_toolbar direkt auf.
+_wz446_toolbar = _fm456_toolbar
+_wz439_toolbar = _fm456_toolbar
+
+
+# ------------------------------------------------------------------
+# FiBu Mate - Wissenszentrale Kategorie-Filter + Untermenue-Icon FINAL 2026-06-18
+# Version 0.465
+# Zweck:
+# - Kategorie-Filter der Wissenszentrale darf bei gemischten/alten Kategorie-Datenformaten nicht mehr abstuerzen.
+# - Filterausfuehrung aus Combobox-Events wird entkoppelt, damit Tk-Widgets nicht waehrend des Auswahl-Callbacks zerstoert werden.
+# - Menuekacheln, die in ein Untermenue fuehren, nutzen das neue Entrance-/Login-Pfeil-Icon.
+# - Hauptmenuekacheln bleiben bewusst unveraendert.
+# ------------------------------------------------------------------
+
+_FM465_SUBMENU_ICON_FILE = "arrow_entrance_in_internet_log_login_security_icon_127060.ico"
+try:
+    ICON_FILES["submenu_enter"] = _FM465_SUBMENU_ICON_FILE
+except Exception:
+    pass
+
+
+def _fm465_text(value):
+    """Robuste Textnormalisierung fuer Suche/Filter ohne TypeError bei Listen, Dicts oder None."""
+    try:
+        if value is None:
+            return ""
+        if isinstance(value, str):
+            return value
+        if isinstance(value, dict):
+            parts = []
+            for key in ("name", "title", "label", "value", "text", "user", "status", "rhythm"):
+                if key in value:
+                    parts.append(_fm465_text(value.get(key)))
+            if parts:
+                return " ".join(p for p in parts if p)
+            return " ".join(_fm465_text(v) for v in value.values())
+        if isinstance(value, (list, tuple, set)):
+            return " ".join(_fm465_text(v) for v in value)
+        return str(value)
+    except Exception:
+        try:
+            return str(value)
+        except Exception:
+            return ""
+
+
+def _fm465_norm_category_value(value):
+    """Liefert einen sauberen Kategorienamen fuer String/Dict/sonstige Altformate."""
+    try:
+        if value is None:
+            return ""
+        if isinstance(value, dict):
+            for key in ("name", "title", "label", "value", "category"):
+                candidate = _fm465_norm_category_value(value.get(key))
+                if candidate:
+                    return candidate
+            return ""
+        value = str(value).strip()
+        if not value:
+            return ""
+        return " ".join(value.split())
+    except Exception:
+        return ""
+
+
+def _fm465_categories(raw):
+    """Normalisiert Kategorien auf Liste[str] - tolerant gegen Liste, Text, Dict und Altimporte."""
+    result = []
+    try:
+        if raw is None:
+            values = []
+        elif isinstance(raw, dict):
+            values = [raw]
+        elif isinstance(raw, (list, tuple, set)):
+            values = list(raw)
+        else:
+            values = [raw]
+        seen = set()
+        for item in values:
+            if isinstance(item, str) and re.search(r"[;,|]", item):
+                sub_values = re.split(r"[;,|]", item)
+            else:
+                sub_values = [item]
+            for sub_item in sub_values:
+                name = _fm465_norm_category_value(sub_item)
+                if not name:
+                    continue
+                marker = name.casefold()
+                if marker not in seen:
+                    seen.add(marker)
+                    result.append(name)
+    except Exception:
+        pass
+    return result
+
+
+def _fm465_filter_values(self):
+    values = []
+    try:
+        self.kb_ensure_state_vars()
+        for var in getattr(self, "kb_filter_vars", []) or []:
+            try:
+                name = _fm465_norm_category_value(var.get())
+            except Exception:
+                name = ""
+            if name:
+                marker = name.casefold()
+                if marker not in values:
+                    values.append(marker)
+    except Exception:
+        pass
+    return values
+
+
+def _fm465_kb_filtered_entries(self):
+    """Absturzsichere Filterlogik fuer Suche, Kategorie-Filter und To-Do-Rhythmus."""
+    try:
+        self.kb_ensure_state_vars()
+    except Exception:
+        pass
+    try:
+        entries = self.kb_load_entries()
+    except Exception as exc:
+        try:
+            messagebox.showerror("Wissenszentrale", "Wissenseinträge konnten nicht geladen werden:\n" + str(exc))
+        except Exception:
+            pass
+        entries = []
+    if not isinstance(entries, list):
+        entries = []
+
+    try:
+        search = _fm465_text(getattr(self, "kb_search_var", tk.StringVar(value="")).get()).strip().casefold()
+    except Exception:
+        search = ""
+    filters = _fm465_filter_values(self)
+    try:
+        rhythm = _fm465_text(getattr(self, "kb_todo_rhythm_var", tk.StringVar(value="")).get()).strip().casefold()
+    except Exception:
+        rhythm = ""
+    view = str(getattr(self, "knowledge_view", "all") or "all")
+
+    result = []
+    for entry in entries:
+        try:
+            if not isinstance(entry, dict):
+                continue
+            categories = _fm465_categories(entry.get("categories", []))
+            cats_cf = [c.casefold() for c in categories]
+            if view == "todos" and "to-do" not in cats_cf:
+                continue
+            if view == "todos" and rhythm and _fm465_text(entry.get("rhythm", "")).strip().casefold() != rhythm:
+                continue
+            if filters and not all(f in cats_cf for f in filters):
+                continue
+            if search:
+                hay = " ".join([
+                    _fm465_text(entry.get("title", "")),
+                    _fm465_text(entry.get("text", "")),
+                    _fm465_text(entry.get("user", "")),
+                    _fm465_text(entry.get("status", "")),
+                    _fm465_text(entry.get("rhythm", "")),
+                    " ".join(categories),
+                ]).casefold()
+                if search not in hay:
+                    continue
+            result.append(entry)
+        except Exception:
+            continue
+
+    def _sort_key(entry):
+        try:
+            return _fm465_text(entry.get("updated_at") or entry.get("created_at") or "")
+        except Exception:
+            return ""
+    return sorted(result, key=_sort_key, reverse=True)
+
+
+def _fm465_kb_apply_filters(self, event=None):
+    """Filter anwenden, aber Combobox-Callbacks sicher nach Tk-idle verschieben."""
+    def _run():
+        try:
+            self._fm465_filter_render_pending = False
+        except Exception:
+            pass
+        try:
+            self.kb_selected_entry_id = None
+            current_view = getattr(self, "knowledge_view", "all")
+            if current_view not in ("new", "categories", "outdated"):
+                self.knowledge_view = "todos" if current_view == "todos" else "all"
+            self.render_page()
+        except Exception as exc:
+            try:
+                messagebox.showerror("Wissenszentrale", "Filter konnte nicht angewendet werden:\n" + str(exc))
+            except Exception:
+                pass
+    try:
+        if event is not None and hasattr(self, "root") and self.root:
+            if getattr(self, "_fm465_filter_render_pending", False):
+                return "break"
+            self._fm465_filter_render_pending = True
+            self.root.after_idle(_run)
+            return "break"
+    except Exception:
+        pass
+    _run()
+    return "break"
+
+
+def _fm465_kb_on_search_return(self, event=None):
+    return _fm465_kb_apply_filters(self, event)
+
+
+try:
+    FiBuMateApp.kb_filtered_entries = _fm465_kb_filtered_entries
+    FiBuMateApp.kb_apply_filters = _fm465_kb_apply_filters
+    FiBuMateApp.kb_on_search_return = _fm465_kb_on_search_return
+except Exception:
+    pass
+
+
+try:
+    _fm465_old_module_icon_type = FiBuMateApp.module_icon_type
+except Exception:
+    _fm465_old_module_icon_type = None
+
+
+def _fm465_module_icon_type(self, module_id):
+    """Untermenue-Kacheln im Modulmenue erhalten das neue Eingangspfeil-Icon."""
+    try:
+        if str(module_id or "").startswith("page:"):
+            return "submenu_enter"
+    except Exception:
+        pass
+    if _fm465_old_module_icon_type:
+        return _fm465_old_module_icon_type(self, module_id)
+    return "modules"
+
+
+try:
+    FiBuMateApp.module_icon_type = _fm465_module_icon_type
+except Exception:
+    pass
+
+
+def _fm465_render_center_menu(self, items, title=""):
+    """Zentrale Untermenue-/Funktionsauswahl mit neuem Untermenue-Icon.
+
+    Wird nicht fuer Hauptmenuekacheln verwendet; das Hauptmenue bleibt dadurch optisch unveraendert.
+    """
+    w, h = self.canvas.winfo_width(), self.canvas.winfo_height()
+    tile_w = int(max(260, min(360, w * 0.2)))
+    tile_h = int(max(110, min(160, h * 0.14)))
+    gap = int(max(18, h * 0.03))
+    start_y = y_pct(h, 55)
+    start_x = x_pct(w, 50)
+    for i, (label, page) in enumerate(items or []):
+        y = start_y + i * (tile_h + gap)
+        cmd = (lambda p=page, l=label: self.show_page(p, l, True))
+        tile = Tile(self.root, self, f"center_{page}", label, cmd, favorite_enabled=False, center_text=True, icon_type="submenu_enter")
+        tile.resize_tile(tile_w, tile_h)
+        self.widget_items.append(tile)
+        self.focusable_tiles.append(tile)
+        self.canvas.create_window(start_x, y, window=tile, anchor="center")
+
+
+try:
+    FiBuMateApp.render_center_menu = _fm465_render_center_menu
+except Exception:
+    pass
+
+
+
+# ------------------------------------------------------------------
+# FiBu Mate - Wissenszentrale Kategorie-Filter Auswahlabsturz FIX 2026-06-23
+# Version 0.466
+# Zweck:
+# - Behebt den Absturz beim Auswaehlen einer Filterkategorie in der Wissenszentrale.
+# - Ursache: Der aktive Dropdown-/Menue-Callback konnte sofort ein render_page() ausloesen,
+#   wodurch Tk-Widgets waehrend der laufenden Menueauswahl zerstoert wurden.
+# - Loesung: Filter-Renderings werden konsequent per after_idle entkoppelt und re-entrant geschuetzt.
+# - Die farbige Kategorieauswahl bleibt erhalten; Suche, To-Dos und Veraltete Eintraege bleiben kompatibel.
+# ------------------------------------------------------------------
+
+_FM466_FILTER_PATCH_VERSION = "0.466"
+
+
+def _fm466_safe_call_filter_command(app, command):
+    """Fuehrt Filterkommandos erst nach Abschluss des aktuellen Tk-Menuecallbacks aus."""
+    if not command:
+        return
+    def _run():
+        try:
+            command()
+        except TypeError:
+            try:
+                command(None)
+            except Exception as exc:
+                try:
+                    messagebox.showerror("Wissenszentrale", "Filter konnte nicht angewendet werden:\n" + str(exc))
+                except Exception:
+                    pass
+        except Exception as exc:
+            try:
+                messagebox.showerror("Wissenszentrale", "Filter konnte nicht angewendet werden:\n" + str(exc))
+            except Exception:
+                pass
+    try:
+        root = getattr(app, "root", None)
+        if root:
+            root.after_idle(_run)
+            return
+    except Exception:
+        pass
+    _run()
+
+
+def _fm466_filter_dropdown(parent, app, var, values, width=17, command=None):
+    """Stabiles farbiges Kategorie-Dropdown ohne Sofort-Render im Menuecallback."""
+    box = tk.Frame(parent, bg=BG)
+    value_lbl = tk.Label(box, text=(var.get() or '(alle)'), bg=WHITE, fg=TEXT,
+                         font=body_font(10), anchor='w', relief='flat', padx=8)
+    value_lbl.pack(side='left', fill='x', expand=True, ipady=5)
+    arrow = tk.Menubutton(
+        box, text='▼', bg=_FM451_BTN_BG if '_FM451_BTN_BG' in globals() else WHITE,
+        fg=TEXT, activebackground=_FM451_BTN_ACTIVE if '_FM451_BTN_ACTIVE' in globals() else '#DDEAF7',
+        relief='flat', bd=0, font=body_font(8), cursor='hand2', highlightthickness=1,
+        highlightbackground=_FM451_BTN_BORDER if '_FM451_BTN_BORDER' in globals() else LINE, width=2)
+    menu = tk.Menu(arrow, tearoff=False)
+    arrow.configure(menu=menu)
+    arrow.pack(side='left', padx=(3, 0), ipady=3)
+
+    def _cat_color(value):
+        try:
+            return _fm451_cat_color(app, value)
+        except Exception:
+            try:
+                return app.kb_get_category_color(value)
+            except Exception:
+                return _wz_cat_default_color(value)
+
+    def _soften(color, factor=0.78):
+        try:
+            return _fm451_soften(color, factor)
+        except Exception:
+            try:
+                return _wz442_light_color(color, factor)
+            except Exception:
+                return WHITE
+
+    def repaint():
+        try:
+            val = (var.get() or '').strip()
+            if val:
+                color = _cat_color(val)
+                value_lbl.configure(text=val, bg=_soften(color, 0.78), fg=_wz_cat_fg(color))
+            else:
+                value_lbl.configure(text='(alle)', bg=WHITE, fg=TEXT)
+        except Exception:
+            pass
+
+    def select(value):
+        try:
+            var.set(value)
+            repaint()
+        finally:
+            _fm466_safe_call_filter_command(app, command)
+
+    try:
+        menu.add_command(label='(alle)', command=lambda: select(''), background=WHITE, foreground=TEXT)
+    except Exception:
+        menu.add_command(label='(alle)', command=lambda: select(''))
+    seen = set()
+    for value in values or []:
+        if not value:
+            continue
+        marker = str(value).casefold()
+        if marker in seen:
+            continue
+        seen.add(marker)
+        color = _cat_color(value)
+        try:
+            menu.add_command(label='  ' + str(value), command=lambda v=value: select(v),
+                             background=_soften(color, 0.40), foreground=_wz_cat_fg(color),
+                             activebackground=color, activeforeground=_wz_cat_fg(color))
+        except Exception:
+            menu.add_command(label='  ' + str(value), command=lambda v=value: select(v))
+    repaint()
+    return box
+
+
+def _fm466_kb_apply_filters(self, event=None):
+    """Absturzsicheres Filter-Rendering: nie direkt aus Auswahl-/Menuecallbacks rendern."""
+    def _run():
+        try:
+            self._fm466_filter_render_pending = False
+            self._fm466_filter_render_running = True
+            self.kb_selected_entry_id = None
+            current_view = getattr(self, "knowledge_view", "all")
+            if current_view not in ("new", "categories", "outdated"):
+                self.knowledge_view = "todos" if current_view == "todos" else "all"
+            self.render_page()
+        except Exception as exc:
+            try:
+                messagebox.showerror("Wissenszentrale", "Filter konnte nicht angewendet werden:\n" + str(exc))
+            except Exception:
+                pass
+        finally:
+            try:
+                self._fm466_filter_render_running = False
+            except Exception:
+                pass
+    try:
+        if getattr(self, "_fm466_filter_render_running", False):
+            return "break"
+        root = getattr(self, "root", None)
+        if root:
+            if getattr(self, "_fm466_filter_render_pending", False):
+                return "break"
+            self._fm466_filter_render_pending = True
+            root.after_idle(_run)
+            return "break"
+    except Exception:
+        pass
+    _run()
+    return "break"
+
+
+def _fm466_kb_on_search_return(self, event=None):
+    return _fm466_kb_apply_filters(self, event)
+
+
+# Finale Zuweisungen direkt vor Programmstart: ueberschreibt v0.451/v0.465 Filter-Callbacks.
+try:
+    _fm451_filter_dropdown = _fm466_filter_dropdown
+except Exception:
+    pass
+try:
+    FiBuMateApp.kb_apply_filters = _fm466_kb_apply_filters
+    FiBuMateApp.kb_on_search_return = _fm466_kb_on_search_return
+except Exception:
+    pass
+
+
+
+# ------------------------------------------------------------------
+# FiBu Mate - Wissenszentrale Aktualisiert + Aktuell-Kennzeichnung FINAL 2026-06-23
+# Version 0.467
+# Zweck:
+# - Wissenszentrale: "Geändert" wird fachlich zu "Aktualisiert".
+# - Trefferliste zeigt den Benutzer/Vollnamen zusätzlich an.
+# - Detailansicht und Übersicht erhalten den Button "Eintrag als aktuell kennzeichnen".
+# - Der Button setzt nach Ja/Nein-Abfrage updated_at auf das aktuelle Datum/die aktuelle Zeit.
+# - Kategorie-Filter zeigen ausgewählte Kategorien mit voller Farbe statt entsättigter Farbe.
+# - Untermenü-Kacheln außerhalb des Hauptmenüs nutzen das Entrance-/Login-Pfeil-Icon.
+# ------------------------------------------------------------------
+
+_FM467_PATCH_VERSION = "0.467"
+_FM467_SUBMENU_ICON_FILE = "arrow_entrance_in_internet_log_login_security_icon_127060.ico"
+
+try:
+    ICON_FILES["submenu_enter"] = _FM467_SUBMENU_ICON_FILE
+except Exception:
+    pass
+
+
+def _fm467_text(value):
+    try:
+        if value is None:
+            return ""
+        if isinstance(value, str):
+            return value
+        if isinstance(value, (list, tuple, set)):
+            return " ".join(_fm467_text(x) for x in value if x is not None)
+        if isinstance(value, dict):
+            return " ".join(_fm467_text(v) for v in value.values() if v is not None)
+        return str(value)
+    except Exception:
+        return ""
+
+
+def _fm467_user_fullname(self, raw_user):
+    """Bestmoegliche Vollnamenanzeige fuer Benutzerfelder in der Wissenszentrale."""
+    raw = _fm467_text(raw_user).strip()
+    if not raw:
+        return ""
+    # Wenn bereits ein sprechender Anzeigename gespeichert ist, direkt verwenden.
+    if " " in raw or "," in raw:
+        return raw
+    wanted = raw.casefold()
+    candidates = []
+    try:
+        data = getattr(self, "user_data", None)
+        if isinstance(data, dict):
+            candidates.extend(data.values())
+            candidates.append(data)
+        elif isinstance(data, list):
+            candidates.extend(data)
+    except Exception:
+        pass
+    seen = set()
+    stack = list(candidates)
+    while stack:
+        item = stack.pop(0)
+        marker = id(item)
+        if marker in seen:
+            continue
+        seen.add(marker)
+        if isinstance(item, dict):
+            keys = ["username", "user", "key", "login", "kuerzel", "kürzel", "id", "name"]
+            vals = [_fm467_text(item.get(k)).strip() for k in keys]
+            if any(v and v.casefold() == wanted for v in vals):
+                for dk in ("display_name", "display", "fullname", "full_name", "vollname", "name"):
+                    val = _fm467_text(item.get(dk)).strip()
+                    if val:
+                        return val
+            for v in item.values():
+                if isinstance(v, (dict, list, tuple)):
+                    stack.append(v)
+        elif isinstance(item, (list, tuple)):
+            stack.extend(item)
+    return raw
+
+
+def _fm467_now(self):
+    try:
+        return self.kb_now()
+    except Exception:
+        try:
+            return datetime.now().isoformat(timespec="seconds")
+        except Exception:
+            return str(datetime.now())
+
+
+def _fm467_set_entry_current(self, entry_id=None):
+    entry_id = entry_id or getattr(self, "kb_selected_entry_id", None)
+    if not entry_id:
+        try:
+            messagebox.showwarning("Wissenszentrale", "Bitte zuerst einen Eintrag auswählen.")
+        except Exception:
+            pass
+        return False
+    try:
+        ok = messagebox.askyesno("Wissenszentrale", "Den Inhalt dieses Eintrags als aktuell kennzeichnen?")
+    except Exception:
+        ok = False
+    if not ok:
+        return False
+    entries = self.kb_load_entries()
+    now = _fm467_now(self)
+    changed = False
+    for entry in entries:
+        try:
+            if entry.get("id") == entry_id:
+                entry["updated_at"] = now
+                changed = True
+                break
+        except Exception:
+            continue
+    if not changed:
+        try:
+            messagebox.showwarning("Wissenszentrale", "Der ausgewählte Eintrag wurde nicht gefunden.")
+        except Exception:
+            pass
+        return False
+    if self.kb_save_entries(entries):
+        self.kb_selected_entry_id = entry_id
+        try:
+            self.knowledge_unsaved = False
+        except Exception:
+            pass
+        try:
+            self.render_page()
+        except Exception:
+            pass
+        return True
+    return False
+
+
+def _fm467_cat_color(app, value):
+    try:
+        return app.kb_get_category_color(value)
+    except Exception:
+        try:
+            return _wz442_cat_color(app, value)
+        except Exception:
+            return _wz_cat_default_color(value)
+
+
+def _fm467_filter_dropdown(parent, app, var, values, width=17, command=None):
+    """Kategorie-Filter mit voller Farbe fuer die aktuell ausgewaehlte Kategorie."""
+    box = tk.Frame(parent, bg=BG)
+    value_lbl = tk.Label(box, text=(var.get() or '(alle)'), bg=WHITE, fg=TEXT,
+                         font=body_font(10), anchor='w', relief='flat', padx=8)
+    value_lbl.pack(side='left', fill='x', expand=True, ipady=5)
+    arrow = tk.Menubutton(
+        box, text='▼', bg=_FM451_BTN_BG if '_FM451_BTN_BG' in globals() else WHITE,
+        fg=TEXT, activebackground=_FM451_BTN_ACTIVE if '_FM451_BTN_ACTIVE' in globals() else '#DDEAF7',
+        relief='flat', bd=0, font=body_font(8), cursor='hand2', highlightthickness=1,
+        highlightbackground=_FM451_BTN_BORDER if '_FM451_BTN_BORDER' in globals() else LINE, width=2)
+    menu = tk.Menu(arrow, tearoff=False)
+    arrow.configure(menu=menu)
+    arrow.pack(side='left', padx=(3, 0), ipady=3)
+
+    def repaint():
+        try:
+            val = (var.get() or '').strip()
+            if val:
+                color = _fm467_cat_color(app, val)
+                value_lbl.configure(text=val, bg=color, fg=_wz_cat_fg(color))
+            else:
+                value_lbl.configure(text='(alle)', bg=WHITE, fg=TEXT)
+        except Exception:
+            pass
+
+    def _deferred_command():
+        if not command:
+            return
+        try:
+            if hasattr(app, 'root') and app.root:
+                app.root.after_idle(command)
+                return
+        except Exception:
+            pass
+        try:
+            command()
+        except TypeError:
+            command(None)
+
+    def select(value):
+        var.set(value)
+        repaint()
+        _deferred_command()
+
+    try:
+        menu.add_command(label='(alle)', command=lambda: select(''), background=WHITE, foreground=TEXT)
+    except Exception:
+        menu.add_command(label='(alle)', command=lambda: select(''))
+    seen = set()
+    for value in values or []:
+        if not value:
+            continue
+        key = str(value).casefold()
+        if key in seen:
+            continue
+        seen.add(key)
+        color = _fm467_cat_color(app, value)
+        try:
+            menu.add_command(label='  ' + str(value), command=lambda v=value: select(v),
+                             background=color, foreground=_wz_cat_fg(color),
+                             activebackground=color, activeforeground=_wz_cat_fg(color))
+        except Exception:
+            menu.add_command(label='  ' + str(value), command=lambda v=value: select(v))
+    repaint()
+    return box
+
+
+def _fm467_render_hits_pane(self, x, y, w, h):
+    frame = tk.Frame(self.root, bg=WHITE, highlightbackground=LINE, highlightthickness=2)
+    self.widget_items.append(frame)
+    tk.Label(frame, text="Treffer", bg=WHITE, fg=BLUE, font=body_font(15, weight="bold")).pack(anchor="w", padx=18, pady=(16, 8))
+    entries = self.kb_filtered_entries()
+    listbox = tk.Listbox(frame, bg=WHITE, fg=TEXT, font=body_font(10), relief="flat", activestyle="none", exportselection=False)
+    listbox.pack(fill="both", expand=True, padx=16, pady=(0, 14))
+    id_map = []
+    if entries:
+        for idx, entry in enumerate(entries):
+            cats = entry.get("categories", []) or []
+            cats_txt = ", ".join(_fm467_text(c) for c in cats if _fm467_text(c).strip())
+            user_txt = _fm467_user_fullname(self, entry.get("user", ""))
+            line = f"{self.kb_display_date(entry.get('updated_at'))}  |  {entry.get('title','')}"
+            if user_txt:
+                line += f"  |  {user_txt}"
+            if cats_txt:
+                line += f"  [{cats_txt}]"
+            listbox.insert("end", line)
+            id_map.append(entry.get("id"))
+            if cats:
+                c = _fm467_cat_color(self, cats[0])
+                try:
+                    listbox.itemconfig(idx, bg=_wz442_light_color(c), fg=TEXT, selectbackground=c, selectforeground=_wz_cat_fg(c))
+                except Exception:
+                    pass
+    else:
+        listbox.insert("end", "Noch keine Treffer vorhanden.")
+        listbox.insert("end", "Filter und Suche wirken auf die Wissensdatenbank.")
+    def _select(event=None):
+        sel = listbox.curselection()
+        if not sel or not id_map or sel[0] >= len(id_map):
+            return
+        if not self.kb_confirm_unsaved_before_switch():
+            return
+        self.kb_selected_entry_id = id_map[sel[0]]
+        self.knowledge_view = "detail"
+        self.knowledge_start_overlay = False
+        self.render_page()
+    listbox.bind("<<ListboxSelect>>", _select)
+    self.canvas.create_window(ui_s(x), ui_s(y), window=frame, anchor="nw", width=ui_s(w), height=ui_s(h))
+
+
+def _fm467_render_kb_list_area(self, x, y, w, h, title='Gesamtliste aller Einträge', status_filter=None):
+    frame = tk.Frame(self.root, bg=WHITE, highlightbackground=LINE, highlightthickness=2)
+    self.widget_items.append(frame)
+    header = tk.Frame(frame, bg=WHITE)
+    header.pack(fill='x', padx=16, pady=(12, 6))
+    tk.Label(header, text=title, bg=WHITE, fg=BLUE, font=body_font(14, weight='bold')).pack(side='left')
+    action_btn = tk.Button(header, text='Eintrag als aktuell kennzeichnen', command=lambda: _current_from_tree(),
+                           bg='#CFEAD6', fg=TEXT, font=body_font(9, weight='bold'), relief='solid', bd=1)
+    action_btn.pack(side='right', padx=(8, 0), ipadx=8, ipady=3)
+    sort_state = getattr(self, 'kb_overview_sort_state', {'column':'date','descending':True}) or {}
+    direction = 'absteigend' if sort_state.get('descending', True) else 'aufsteigend'
+    tk.Label(header, text=f"Sortierung: {sort_state.get('column','date')} ({direction})", bg=WHITE, fg=TEXT2, font=body_font(9)).pack(side='right')
+    columns = ('date','title','categories','user','status')
+    labels = {'date':'Aktualisiert','title':'Titel','categories':'Kategorien','user':'Benutzer','status':'Status'}
+    tree = ttk.Treeview(frame, columns=columns, show='headings', height=14)
+    try:
+        style = ttk.Style()
+        style.configure('Treeview', rowheight=28, font=body_font(10))
+        style.configure('Treeview.Heading', font=body_font(10, weight='bold'))
+    except Exception:
+        pass
+    for col in columns:
+        marker = ''
+        if sort_state.get('column') == col:
+            marker = ' ↓' if sort_state.get('descending', True) else ' ↑'
+        tree.heading(col, text=labels[col]+marker, command=lambda c=col: (setattr(self, 'kb_overview_sort_state', {'column': c, 'descending': not (getattr(self, 'kb_overview_sort_state', {}) or {}).get('descending', True) if (getattr(self, 'kb_overview_sort_state', {}) or {}).get('column') == c else (True if c == 'date' else False)}), self.render_page()))
+    tree.column('date', width=125, stretch=False)
+    tree.column('title', width=max(250, int(w*0.34)), stretch=True)
+    tree.column('categories', width=max(170, int(w*0.20)), stretch=True)
+    tree.column('user', width=190, stretch=False)
+    tree.column('status', width=100, stretch=False)
+    yscroll = ttk.Scrollbar(frame, orient='vertical', command=tree.yview)
+    tree.configure(yscrollcommand=yscroll.set)
+    tree.pack(side='left', fill='both', expand=True, padx=(16,0), pady=(0,16))
+    yscroll.pack(side='right', fill='y', padx=(0,16), pady=(0,16))
+    entries = self.kb_filtered_entries()
+    if status_filter:
+        entries = [e for e in entries if str(e.get('status','')).lower() == status_filter.lower()]
+    state = getattr(self, 'kb_overview_sort_state', None)
+    if not state:
+        self.kb_overview_sort_state = {'column':'date','descending':True}
+    entries = sorted(entries, key=lambda e: (
+        str(e.get('updated_at') or e.get('created_at') or '') if self.kb_overview_sort_state.get('column')=='date' else
+        str(e.get('title','')).casefold() if self.kb_overview_sort_state.get('column')=='title' else
+        ', '.join(e.get('categories',[]) or []).casefold() if self.kb_overview_sort_state.get('column')=='categories' else
+        _fm467_user_fullname(self, e.get('user','')).casefold() if self.kb_overview_sort_state.get('column')=='user' else
+        str(e.get('status','')).casefold()
+    ), reverse=bool(self.kb_overview_sort_state.get('descending', True)))
+    id_map = {}
+    for entry in entries:
+        iid = entry.get('id') or self.kb_make_entry_id()
+        base_iid = iid; n = 1
+        while iid in id_map:
+            n += 1; iid = f'{base_iid}_{n}'
+        id_map[iid] = entry.get('id')
+        tree.insert('', 'end', iid=iid, values=(
+            self.kb_display_date(entry.get('updated_at')),
+            entry.get('title',''),
+            ', '.join(entry.get('categories',[]) or []),
+            _fm467_user_fullname(self, entry.get('user','')),
+            entry.get('status','')
+        ))
+    if not entries:
+        tree.insert('', 'end', values=('', 'Noch keine Einträge vorhanden', '', '', ''))
+    def _open(event=None):
+        sel = tree.selection()
+        if sel and sel[0] in id_map:
+            self.kb_select_entry(id_map[sel[0]])
+    def _current_from_tree():
+        sel = tree.selection()
+        if not sel or sel[0] not in id_map:
+            try:
+                messagebox.showwarning('Wissenszentrale', 'Bitte zuerst einen Eintrag in der Übersicht auswählen.')
+            except Exception:
+                pass
+            return
+        _fm467_set_entry_current(self, id_map[sel[0]])
+    tree.bind('<Double-Button-1>', _open)
+    tree.bind('<Return>', _open)
+    self.canvas.create_window(ui_s(x), ui_s(y), window=frame, anchor='nw', width=ui_s(w), height=ui_s(h))
+
+
+def _fm467_render_kb_detail_area(self, x, y, w, h):
+    entry = self.kb_get_entry(getattr(self, "kb_selected_entry_id", None))
+    if not entry:
+        self.render_kb_list_area(x, y, w, h, title="Übersicht")
+        return
+    frame = tk.Frame(self.root, bg=WHITE, highlightbackground=LINE, highlightthickness=2)
+    self.widget_items.append(frame)
+    top = tk.Frame(frame, bg=WHITE)
+    top.pack(fill='x', padx=18, pady=(14, 5))
+    tk.Label(top, text=entry.get("title", ""), bg=WHITE, fg=BLUE, font=body_font(16, weight="bold")).pack(side='left', anchor='w')
+    tk.Button(top, text='Eintrag als aktuell kennzeichnen', command=lambda: _fm467_set_entry_current(self, entry.get('id')),
+              bg='#CFEAD6', fg=TEXT, font=body_font(9, weight='bold'), relief='solid', bd=1).pack(side='right', padx=(8, 0), ipadx=8, ipady=3)
+    tk.Label(frame, text=f"Aktualisiert: {self.kb_display_date(entry.get('updated_at'))}    Benutzer: {_fm467_user_fullname(self, entry.get('user',''))}    Status: {entry.get('status','')}", bg=WHITE, fg=TEXT2, font=body_font(10)).pack(anchor="w", padx=18)
+    try:
+        _wz439_badges(frame, self, entry.get("categories", []) or [])
+    except Exception:
+        tk.Label(frame, text="Kategorien: " + (", ".join(entry.get("categories", []) or []) or "Keine Kategorien"), bg=WHITE, fg=TEXT, font=body_font(10, weight="bold")).pack(anchor="w", padx=18, pady=(8,4))
+    try:
+        _wz439_render_image_view(frame, self, entry.get("inline_images", []) or [])
+    except Exception:
+        pass
+    text_frame = tk.Frame(frame, bg=WHITE)
+    text_frame.pack(fill="both", expand=True, padx=18, pady=(6, 8))
+    txt = tk.Text(text_frame, bg="#F8FAFC", fg=TEXT, font=body_font(10), relief="solid", bd=1, wrap="word", height=8)
+    yscroll = tk.Scrollbar(text_frame, orient="vertical", command=txt.yview)
+    txt.configure(yscrollcommand=yscroll.set)
+    txt.pack(side="left", fill="both", expand=True)
+    yscroll.pack(side="right", fill="y")
+    txt.insert("1.0", entry.get("text", ""))
+    try:
+        _wz439_apply_formatting(txt, entry.get("text_formatting", []) or [])
+    except Exception:
+        pass
+    txt.configure(state="disabled")
+    try:
+        txt.bind("<MouseWheel>", lambda ev: _wz439_text_mousewheel(txt, ev))
+    except Exception:
+        pass
+    lower = tk.Frame(frame, bg=WHITE)
+    lower.pack(fill="x", padx=18, pady=(0, 8))
+    left = tk.Frame(lower, bg=WHITE)
+    left.pack(side="left", fill="both", expand=True)
+    right = tk.Frame(lower, bg=WHITE)
+    right.pack(side="right", fill="both", expand=True, padx=(12, 0))
+    tk.Label(left, text="Anhänge", bg=WHITE, fg=BLUE, font=body_font(10, weight="bold")).pack(anchor="w")
+    attachments = entry.get("attachments", []) or []
+    if attachments:
+        for a in attachments:
+            tk.Label(left, text="• " + a.get("name", ""), bg=WHITE, fg=TEXT, font=body_font(9)).pack(anchor="w")
+    else:
+        tk.Label(left, text="Keine Anhänge", bg=WHITE, fg=TEXT2, font=body_font(9)).pack(anchor="w")
+    tk.Label(right, text="Kommentare", bg=WHITE, fg=BLUE, font=body_font(10, weight="bold")).pack(anchor="w")
+    for c in (entry.get("comments", []) or [])[-3:]:
+        tk.Label(right, text=f"{self.kb_display_date(c.get('created_at'))}: {c.get('text','')[:80]}", bg=WHITE, fg=TEXT, font=body_font(9), wraplength=380, justify="left").pack(anchor="w")
+    comment = tk.Text(right, height=2, bg="#F8FAFC", fg=TEXT, font=body_font(9), relief="solid", bd=1, wrap="word")
+    comment.pack(fill="x", pady=(4, 0))
+    buttons = tk.Frame(frame, bg=WHITE)
+    buttons.pack(fill="x", padx=18, pady=(0, 14))
+    if self.kb_can_create_or_edit():
+        tk.Button(buttons, text="Bearbeiten", command=self.kb_edit_selected_entry, bg=WHITE, fg=TEXT, font=body_font(10, weight="bold"), relief="solid", bd=1).pack(side="left", padx=(0, 8), ipadx=16, ipady=4)
+    tk.Button(buttons, text="Kommentar speichern", command=lambda: self.kb_add_comment_to_selected(comment), bg=WHITE, fg=TEXT, font=body_font(10), relief="solid", bd=1).pack(side="left", padx=(0, 8), ipadx=16, ipady=4)
+    tk.Button(buttons, text="Word-Export", command=self.kb_export_selected_to_word, bg=WHITE, fg=TEXT, font=body_font(10), relief="solid", bd=1).pack(side="left", padx=(0, 8), ipadx=16, ipady=4)
+    tk.Button(buttons, text="Zur Übersicht", command=lambda: self.kb_switch_view_from_start("all"), bg=WHITE, fg=TEXT, font=body_font(10), relief="solid", bd=1).pack(side="left", ipadx=16, ipady=4)
+    self.canvas.create_window(ui_s(x), ui_s(y), window=frame, anchor="nw", width=ui_s(w), height=ui_s(h))
+
+
+def _fm467_export_word(self):
+    entry = self.kb_get_entry(getattr(self, "kb_selected_entry_id", None))
+    if not entry:
+        try: messagebox.showwarning("Wissenszentrale", "Kein Eintrag für den Word-Export ausgewählt.")
+        except Exception: pass
+        return
+    try:
+        from docx import Document
+        import re as _re
+        doc = Document()
+        doc.add_heading(entry.get("title", "Wissenseintrag") or "Wissenseintrag", level=1)
+        meta = [
+            ("Aktualisiert", self.kb_display_date(entry.get("updated_at"))),
+            ("Benutzer", _fm467_user_fullname(self, entry.get("user", ""))),
+            ("Status", entry.get("status", "")),
+            ("Kategorien", ", ".join(entry.get("categories", []) or [])),
+            ("To-Do-Rhythmus", entry.get("rhythm", "")),
+        ]
+        for label, val in meta:
+            if val:
+                p = doc.add_paragraph(); p.add_run(f"{label}: ").bold = True; p.add_run(str(val))
+        doc.add_heading("Inhalt", level=2)
+        text_value = entry.get("text", "") or ""
+        if text_value:
+            for line in str(text_value).splitlines() or [""]:
+                doc.add_paragraph(line)
+        else:
+            doc.add_paragraph("-")
+        doc.add_heading("Anhänge", level=2)
+        attachments = entry.get("attachments", []) or []
+        if attachments:
+            for a in attachments:
+                doc.add_paragraph(f"- {a.get('name','')} ({a.get('path','')})")
+        else:
+            doc.add_paragraph("Keine Anhänge")
+        doc.add_heading("Kommentare", level=2)
+        comments = entry.get("comments", []) or []
+        if comments:
+            for c in comments:
+                doc.add_paragraph(f"{self.kb_display_date(c.get('created_at'))} - {c.get('user','')}: {c.get('text','')}")
+        else:
+            doc.add_paragraph("Keine Kommentare")
+        safe = _re.sub(r"[^A-Za-z0-9_äöüÄÖÜß.-]+", "_", entry.get("title", "Wissenseintrag"))[:80].strip("._") or "Wissenseintrag"
+        out = os.path.join(self.kb_export_dir(), f"{safe}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.docx")
+        doc.save(out)
+        messagebox.showinfo("Wissenszentrale", "Word-Export erstellt:\n" + out)
+    except Exception as exc:
+        try: messagebox.showerror("Wissenszentrale", "Word-Export fehlgeschlagen:\n" + str(exc))
+        except Exception: pass
+
+
+# Icon-Render-Sicherheit: submenu_enter muss auch tatsaechlich gezeichnet werden koennen.
+try:
+    _fm467_old_draw_tile_icon_image = FiBuMateApp.draw_tile_icon_image
+except Exception:
+    _fm467_old_draw_tile_icon_image = None
+
+
+def _fm467_draw_tile_icon_image(self, tile, icon_type, cx, cy):
+    if icon_type == "submenu_enter":
+        photo = self.get_icon_photo("submenu_enter", 48, 48)
+        if photo:
+            tile.create_image(cx, cy, image=photo)
+            return True
+        return False
+    if _fm467_old_draw_tile_icon_image:
+        return _fm467_old_draw_tile_icon_image(self, tile, icon_type, cx, cy)
+    return False
+
+
+def _fm467_module_icon_type(self, module_id):
+    try:
+        if str(module_id or "").startswith("page:"):
+            return "submenu_enter"
+    except Exception:
+        pass
+    try:
+        return _fm465_module_icon_type(self, module_id)
+    except Exception:
+        return "modules"
+
+
+# Finale Zuweisungen direkt vor Programmstart.
+try:
+    _fm451_filter_dropdown = _fm467_filter_dropdown
+    _fm466_filter_dropdown = _fm467_filter_dropdown
+except Exception:
+    pass
+try:
+    FiBuMateApp.kb_mark_entry_current = _fm467_set_entry_current
+    FiBuMateApp.render_kb_hits_pane = _fm467_render_hits_pane
+    FiBuMateApp.render_kb_list_area = _fm467_render_kb_list_area
+    FiBuMateApp.render_kb_detail_area = _fm467_render_kb_detail_area
+    FiBuMateApp.kb_export_selected_to_word = _fm467_export_word
+    FiBuMateApp.draw_tile_icon_image = _fm467_draw_tile_icon_image
+    FiBuMateApp.module_icon_type = _fm467_module_icon_type
+except Exception:
+    pass
+
+
+
+# ------------------------------------------------------------------
+# FiBu Mate - Wissenszentrale Übersicht Kategorie-Chips FINAL 2026-06-23
+# Version 0.468
+# Zweck:
+# - Übersichtstabelle der Wissenszentrale zeigt Kategorien als farbige, nicht-interaktive Chips.
+# - Ersetzt die reine Kategorien-Textspalte in der Übersicht durch visuelle Farbbadges je Kategorie.
+# - Erhält Sortierung, Auswahl, Doppelklick-Öffnen und Button "Eintrag als aktuell kennzeichnen".
+# ------------------------------------------------------------------
+
+_FM468_PATCH_VERSION = "0.468"
+
+
+def _fm468_cat_color(app, value):
+    try:
+        return _fm467_cat_color(app, value)
+    except Exception:
+        try:
+            return app.kb_get_category_color(value)
+        except Exception:
+            return _wz_cat_default_color(value)
+
+
+def _fm468_text(value):
+    try:
+        return _fm467_text(value)
+    except Exception:
+        return "" if value is None else str(value)
+
+
+def _fm468_user_fullname(app, value):
+    try:
+        return _fm467_user_fullname(app, value)
+    except Exception:
+        return _fm468_text(value).strip()
+
+
+def _fm468_sort_entries_for_overview(self, entries):
+    state = getattr(self, 'kb_overview_sort_state', None)
+    if not state:
+        self.kb_overview_sort_state = {'column': 'date', 'descending': True}
+        state = self.kb_overview_sort_state
+    col = state.get('column', 'date')
+    def key(e):
+        try:
+            if col == 'date':
+                return str(e.get('updated_at') or e.get('created_at') or '')
+            if col == 'title':
+                return str(e.get('title','')).casefold()
+            if col == 'categories':
+                return ', '.join(e.get('categories',[]) or []).casefold()
+            if col == 'user':
+                return _fm468_user_fullname(self, e.get('user','')).casefold()
+            return str(e.get('status','')).casefold()
+        except Exception:
+            return ''
+    return sorted(entries or [], key=key, reverse=bool(state.get('descending', True)))
+
+
+def _fm468_render_category_chips(parent, app, categories, max_width=330):
+    chip_frame = tk.Frame(parent, bg=WHITE)
+    used = 0
+    if not categories:
+        tk.Label(chip_frame, text='—', bg=WHITE, fg=TEXT2, font=body_font(9)).pack(side='left')
+        return chip_frame
+    for cat in categories:
+        cat = _fm468_text(cat).strip()
+        if not cat:
+            continue
+        # einfache Breitenbegrenzung; weitere Kategorien werden als +n zusammengefasst
+        est = 18 + len(cat) * 7
+        remaining = len([c for c in categories if _fm468_text(c).strip()])
+        if used and used + est > max_width:
+            tk.Label(chip_frame, text='  +' + str(max(1, remaining)) + '  ', bg='#E5E7EB', fg=TEXT, font=body_font(8, weight='bold'), relief='solid', bd=1).pack(side='left', padx=(0, 5), ipady=1)
+            break
+        color = _fm468_cat_color(app, cat)
+        fg = _wz_cat_fg(color)
+        tk.Label(chip_frame, text='  ' + cat + '  ', bg=color, fg=fg, font=body_font(8, weight='bold'), relief='solid', bd=1).pack(side='left', padx=(0, 5), ipady=1)
+        used += est
+    return chip_frame
+
+
+def _fm468_render_kb_list_area(self, x, y, w, h, title='Gesamtliste aller Einträge', status_filter=None):
+    frame = tk.Frame(self.root, bg=WHITE, highlightbackground=LINE, highlightthickness=2)
+    self.widget_items.append(frame)
+
+    header = tk.Frame(frame, bg=WHITE)
+    header.pack(fill='x', padx=16, pady=(12, 6))
+    tk.Label(header, text=title, bg=WHITE, fg=BLUE, font=body_font(14, weight='bold')).pack(side='left')
+    tk.Button(header, text='Eintrag als aktuell kennzeichnen', command=lambda: _current_from_selected(),
+              bg='#CFEAD6', fg=TEXT, font=body_font(9, weight='bold'), relief='solid', bd=1).pack(side='right', padx=(8, 0), ipadx=8, ipady=3)
+    sort_state = getattr(self, 'kb_overview_sort_state', {'column':'date','descending':True}) or {}
+    direction = 'absteigend' if sort_state.get('descending', True) else 'aufsteigend'
+    tk.Label(header, text=f"Sortierung: {sort_state.get('column','date')} ({direction})", bg=WHITE, fg=TEXT2, font=body_font(9)).pack(side='right')
+
+    table = tk.Frame(frame, bg=WHITE)
+    table.pack(fill='both', expand=True, padx=16, pady=(0, 16))
+    table.grid_columnconfigure(0, weight=1)
+    table.grid_rowconfigure(1, weight=1)
+
+    # Spaltenlayout wird als proportionaler Grid-Aufbau gerendert; Kategorie-Spalte nutzt echte Tk-Chips.
+    columns = [
+        ('date', 'Aktualisiert', 0, 16),
+        ('title', 'Titel', 1, 32),
+        ('categories', 'Kategorien', 2, 30),
+        ('user', 'Benutzer', 3, 16),
+        ('status', 'Status', 4, 10),
+    ]
+    head = tk.Frame(table, bg='#F1F5F9')
+    head.grid(row=0, column=0, sticky='ew')
+    for _, _, col_index, weight in columns:
+        head.grid_columnconfigure(col_index, weight=weight)
+    for key, label, col_index, _weight in columns:
+        marker = ''
+        if sort_state.get('column') == key:
+            marker = ' ↓' if sort_state.get('descending', True) else ' ↑'
+        def sort_cmd(c=key):
+            current = getattr(self, 'kb_overview_sort_state', {}) or {}
+            descending = not current.get('descending', True) if current.get('column') == c else (True if c == 'date' else False)
+            self.kb_overview_sort_state = {'column': c, 'descending': descending}
+            self.render_page()
+        tk.Button(head, text=label + marker, command=sort_cmd, bg='#F1F5F9', fg=TEXT, activebackground='#E2E8F0',
+                  font=body_font(9, weight='bold'), relief='flat', anchor='w').grid(row=0, column=col_index, sticky='ew', padx=(4, 4), pady=3)
+
+    canvas = tk.Canvas(table, bg=WHITE, highlightthickness=0)
+    scroll = ttk.Scrollbar(table, orient='vertical', command=canvas.yview)
+    canvas.configure(yscrollcommand=scroll.set)
+    canvas.grid(row=1, column=0, sticky='nsew')
+    scroll.grid(row=1, column=1, sticky='ns')
+    body = tk.Frame(canvas, bg=WHITE)
+    win = canvas.create_window((0,0), window=body, anchor='nw')
+    def _on_body_config(event=None):
+        try:
+            canvas.configure(scrollregion=canvas.bbox('all'))
+        except Exception:
+            pass
+    def _on_canvas_config(event=None):
+        try:
+            canvas.itemconfigure(win, width=canvas.winfo_width())
+        except Exception:
+            pass
+    body.bind('<Configure>', _on_body_config)
+    canvas.bind('<Configure>', _on_canvas_config)
+    try:
+        canvas.bind('<MouseWheel>', lambda e: (canvas.yview_scroll(int(-1*(e.delta/120)), 'units'), 'break'))
+        body.bind('<MouseWheel>', lambda e: (canvas.yview_scroll(int(-1*(e.delta/120)), 'units'), 'break'))
+    except Exception:
+        pass
+
+    entries = self.kb_filtered_entries()
+    if status_filter:
+        entries = [e for e in entries if str(e.get('status','')).lower() == status_filter.lower()]
+    entries = _fm468_sort_entries_for_overview(self, entries)
+    selected = {'id': getattr(self, 'kb_selected_entry_id', None)}
+    row_frames = {}
+
+    def _paint_selection():
+        for eid, row in row_frames.items():
+            try:
+                row.configure(bg=('#EAF2FB' if eid == selected.get('id') else WHITE))
+                for child in row.winfo_children():
+                    if not getattr(child, '_fm468_chip_container', False):
+                        try: child.configure(bg=row.cget('bg'))
+                        except Exception: pass
+            except Exception:
+                pass
+
+    def _select_entry(eid):
+        selected['id'] = eid
+        self.kb_selected_entry_id = eid
+        _paint_selection()
+
+    def _open_entry(eid):
+        if not eid:
+            return
+        if not self.kb_confirm_unsaved_before_switch():
+            return
+        self.kb_selected_entry_id = eid
+        self.knowledge_view = 'detail'
+        self.knowledge_start_overlay = False
+        self.render_page()
+
+    if not entries:
+        empty = tk.Label(body, text='Noch keine Einträge vorhanden', bg=WHITE, fg=TEXT2, font=body_font(10), anchor='w')
+        empty.pack(fill='x', padx=8, pady=10)
+    else:
+        for row_no, entry in enumerate(entries):
+            eid = entry.get('id') or self.kb_make_entry_id()
+            row = tk.Frame(body, bg=WHITE if row_no % 2 == 0 else '#FAFAFA', highlightbackground='#E5E7EB', highlightthickness=1)
+            row.pack(fill='x', expand=True)
+            for _, _, col_index, weight in columns:
+                row.grid_columnconfigure(col_index, weight=weight)
+            row_frames[eid] = row
+            vals = {
+                'date': self.kb_display_date(entry.get('updated_at')),
+                'title': entry.get('title',''),
+                'user': _fm468_user_fullname(self, entry.get('user','')),
+                'status': entry.get('status',''),
+            }
+            tk.Label(row, text=vals['date'], bg=row.cget('bg'), fg=TEXT, font=body_font(9), anchor='w').grid(row=0, column=0, sticky='ew', padx=(6,4), pady=6)
+            tk.Label(row, text=vals['title'], bg=row.cget('bg'), fg=TEXT, font=body_font(9, weight='bold'), anchor='w').grid(row=0, column=1, sticky='ew', padx=4, pady=6)
+            chips = _fm468_render_category_chips(row, self, entry.get('categories', []) or [], max_width=max(220, int(w*0.24)))
+            chips._fm468_chip_container = True
+            chips.configure(bg=row.cget('bg'))
+            chips.grid(row=0, column=2, sticky='w', padx=4, pady=5)
+            tk.Label(row, text=vals['user'], bg=row.cget('bg'), fg=TEXT, font=body_font(9), anchor='w').grid(row=0, column=3, sticky='ew', padx=4, pady=6)
+            tk.Label(row, text=vals['status'], bg=row.cget('bg'), fg=TEXT, font=body_font(9), anchor='w').grid(row=0, column=4, sticky='ew', padx=4, pady=6)
+            for child in row.winfo_children():
+                try:
+                    child.bind('<Button-1>', lambda e, id=eid: _select_entry(id))
+                    child.bind('<Double-Button-1>', lambda e, id=eid: _open_entry(id))
+                    child.bind('<MouseWheel>', lambda e: (canvas.yview_scroll(int(-1*(e.delta/120)), 'units'), 'break'))
+                except Exception:
+                    pass
+            row.bind('<Button-1>', lambda e, id=eid: _select_entry(id))
+            row.bind('<Double-Button-1>', lambda e, id=eid: _open_entry(id))
+            row.bind('<MouseWheel>', lambda e: (canvas.yview_scroll(int(-1*(e.delta/120)), 'units'), 'break'))
+    _paint_selection()
+
+    def _current_from_selected():
+        eid = selected.get('id') or getattr(self, 'kb_selected_entry_id', None)
+        if not eid:
+            try:
+                messagebox.showwarning('Wissenszentrale', 'Bitte zuerst einen Eintrag in der Übersicht auswählen.')
+            except Exception:
+                pass
+            return
+        try:
+            _fm467_set_entry_current(self, eid)
+        except Exception:
+            try:
+                self.kb_mark_entry_current(eid)
+            except Exception:
+                pass
+
+    self.canvas.create_window(ui_s(x), ui_s(y), window=frame, anchor='nw', width=ui_s(w), height=ui_s(h))
+
+
+# Finale Zuweisung direkt vor Programmstart: Übersicht nutzt ab v0.468 echte Kategorie-Chips.
+try:
+    FiBuMateApp.render_kb_list_area = _fm468_render_kb_list_area
+except Exception:
+    pass
+
+
+
+# ------------------------------------------------------------------
+# FiBu Mate - Wissenszentrale Übersicht stabil + ESC Start FINAL 2026-06-23
+# Version 0.469
+# Zweck:
+# - Übersichtstabelle robuster: feste Spaltenkoordinaten, alle Inhalte linksbündig.
+# - Kategorie-Chips werden gezeichnet, nicht als Layout-Widgets gesetzt; dadurch kein Verschieben.
+# - Escape aus dem Startbereich der Wissenszentrale geht direkt ins Hauptmenü (Seite main), nicht nach main_menu.
+# ------------------------------------------------------------------
+
+_FM469_PATCH_VERSION = "0.469"
+
+
+def _fm469_txt(v):
+    try: return _fm468_text(v)
+    except Exception: return "" if v is None else str(v)
+
+
+def _fm469_user(app, v):
+    try: return _fm468_user_fullname(app, v)
+    except Exception:
+        try: return _fm467_user_fullname(app, v)
+        except Exception: return _fm469_txt(v).strip()
+
+
+def _fm469_cat_color(app, v):
+    try: return _fm468_cat_color(app, v)
+    except Exception:
+        try: return app.kb_get_category_color(v)
+        except Exception: return _wz_cat_default_color(v)
+
+
+def _fm469_ell(v, max_chars):
+    s = _fm469_txt(v).replace('\n', ' ').strip()
+    try: max_chars = int(max_chars)
+    except Exception: max_chars = 30
+    if max_chars < 5: return s[:max_chars]
+    return s if len(s) <= max_chars else s[:max_chars-1] + '…'
+
+
+def _fm469_layout(total_width):
+    tw = max(760, int(total_width or 760))
+    date_w = 124
+    status_w = 96
+    user_w = max(150, min(210, int(tw * 0.17)))
+    cat_w = max(250, min(380, int(tw * 0.30)))
+    title_w = max(230, tw - date_w - cat_w - user_w - status_w)
+    widths = [date_w, title_w, cat_w, user_w, status_w]
+    starts = [0]
+    for ww in widths[:-1]: starts.append(starts[-1] + ww)
+    return starts, widths
+
+
+def _fm469_sort(self, entries):
+    try: return _fm468_sort_entries_for_overview(self, entries)
+    except Exception:
+        state = getattr(self, 'kb_overview_sort_state', {'column':'date','descending':True}) or {}
+        col = state.get('column', 'date')
+        def key(e):
+            if col == 'date': return str(e.get('updated_at') or e.get('created_at') or '')
+            if col == 'title': return str(e.get('title','')).casefold()
+            if col == 'categories': return ', '.join(e.get('categories',[]) or []).casefold()
+            if col == 'user': return _fm469_user(self, e.get('user','')).casefold()
+            return str(e.get('status','')).casefold()
+        return sorted(entries or [], key=key, reverse=bool(state.get('descending', True)))
+
+
+def _fm469_render_kb_list_area(self, x, y, w, h, title='Gesamtliste aller Einträge', status_filter=None):
+    frame = tk.Frame(self.root, bg=WHITE, highlightbackground=LINE, highlightthickness=2)
+    self.widget_items.append(frame)
+    top = tk.Frame(frame, bg=WHITE); top.pack(fill='x', padx=16, pady=(12, 6))
+    tk.Label(top, text=title, bg=WHITE, fg=BLUE, font=body_font(14, weight='bold')).pack(side='left')
+    tk.Button(top, text='Eintrag als aktuell kennzeichnen', command=lambda: _mark_current(), bg='#CFEAD6', fg=TEXT, font=body_font(9, weight='bold'), relief='solid', bd=1).pack(side='right', padx=(8,0), ipadx=8, ipady=3)
+    state = getattr(self, 'kb_overview_sort_state', {'column':'date','descending':True}) or {}
+    tk.Label(top, text=f"Sortierung: {state.get('column','date')} ({'absteigend' if state.get('descending', True) else 'aufsteigend'})", bg=WHITE, fg=TEXT2, font=body_font(9)).pack(side='right')
+
+    table = tk.Frame(frame, bg=WHITE); table.pack(fill='both', expand=True, padx=16, pady=(0,16))
+    table.grid_columnconfigure(0, weight=1); table.grid_rowconfigure(1, weight=1)
+    head = tk.Canvas(table, height=31, bg='#F1F5F9', highlightthickness=0); head.grid(row=0, column=0, sticky='ew')
+    body = tk.Canvas(table, bg=WHITE, highlightthickness=0); body.grid(row=1, column=0, sticky='nsew')
+    sb = ttk.Scrollbar(table, orient='vertical', command=body.yview); sb.grid(row=1, column=1, sticky='ns')
+    body.configure(yscrollcommand=sb.set)
+    selected = {'id': getattr(self, 'kb_selected_entry_id', None)}
+    row_rects = {}
+    keys = ['date','title','categories','user','status']
+    labels = {'date':'Aktualisiert','title':'Titel','categories':'Kategorien','user':'Benutzer','status':'Status'}
+
+    entries = self.kb_filtered_entries()
+    if status_filter: entries = [e for e in entries if str(e.get('status','')).lower() == status_filter.lower()]
+    entries = _fm469_sort(self, entries)
+
+    def _sort(c):
+        cur = getattr(self, 'kb_overview_sort_state', {}) or {}
+        desc = not cur.get('descending', True) if cur.get('column') == c else (True if c == 'date' else False)
+        self.kb_overview_sort_state = {'column': c, 'descending': desc}
+        self.render_page()
+
+    def _draw_chip(cv, x0, y0, txt, color, right, tag):
+        txt = _fm469_txt(txt).strip()
+        if not txt: return x0
+        ww = max(42, min(145, 18 + len(txt)*7))
+        if x0 + ww > right: return x0
+        fg = _wz_cat_fg(color)
+        cv.create_rectangle(x0, y0, x0+ww, y0+20, fill=color, outline=color, tags=(tag,))
+        cv.create_text(x0+9, y0+10, text=_fm469_ell(txt, max(4, int((ww-14)/7))), anchor='w', fill=fg, font=body_font(8, weight='bold'), tags=(tag,))
+        return x0 + ww + 6
+
+    def _paint_selection():
+        for eid, (rect, row_no) in row_rects.items():
+            fill = '#EAF2FB' if eid == selected.get('id') else (WHITE if row_no % 2 == 0 else '#FAFAFA')
+            try: body.itemconfigure(rect, fill=fill)
+            except Exception: pass
+
+    def _select(eid):
+        selected['id'] = eid; self.kb_selected_entry_id = eid; _paint_selection()
+
+    def _open(eid):
+        if not eid: return
+        if not self.kb_confirm_unsaved_before_switch(): return
+        self.kb_selected_entry_id = eid; self.knowledge_view = 'detail'; self.knowledge_start_overlay = False; self.render_page()
+
+    def _redraw(width=None):
+        width = max(760, int(width or body.winfo_width() or (w-44)))
+        starts, widths = _fm469_layout(width-18)
+        head.delete('all'); body.delete('all'); row_rects.clear()
+        head.create_rectangle(0,0,width,31, fill='#F1F5F9', outline='')
+        for i,k in enumerate(keys):
+            x0 = starts[i]
+            marker = ' ↓' if state.get('column') == k and state.get('descending', True) else (' ↑' if state.get('column') == k else '')
+            tag = 'fm469_sort_' + k
+            head.create_text(x0+8, 16, text=labels[k]+marker, anchor='w', fill=TEXT, font=body_font(9, weight='bold'), tags=(tag,))
+            head.tag_bind(tag, '<Button-1>', lambda e, c=k: _sort(c))
+            if i > 0: head.create_line(x0,0,x0,31, fill='#D7DEE8')
+        row_h = 34
+        if not entries:
+            body.create_text(8, 18, text='Noch keine Einträge vorhanden', anchor='w', fill=TEXT2, font=body_font(10))
+            body.configure(scrollregion=(0,0,width,40)); return
+        for r,e in enumerate(entries):
+            eid = e.get('id') or self.kb_make_entry_id()
+            tag = 'fm469_row_' + str(r); y0 = r*row_h
+            fill = '#EAF2FB' if eid == selected.get('id') else (WHITE if r % 2 == 0 else '#FAFAFA')
+            rect = body.create_rectangle(0,y0,width,y0+row_h, fill=fill, outline='#E5E7EB', tags=(tag,))
+            row_rects[eid] = (rect, r)
+            for ix in starts[1:]: body.create_line(ix, y0, ix, y0+row_h, fill='#EEF2F7', tags=(tag,))
+            vals = [self.kb_display_date(e.get('updated_at')), e.get('title',''), '', _fm469_user(self, e.get('user','')), e.get('status','')]
+            chars = [14, max(18, int(widths[1]/7)), 0, max(12, int(widths[3]/7)), max(8, int(widths[4]/7))]
+            for i,val in enumerate(vals):
+                if i == 2: continue
+                body.create_text(starts[i]+8, y0+row_h/2, text=_fm469_ell(val, chars[i]), anchor='w', fill=TEXT, font=body_font(9, weight='bold' if i==1 else None), tags=(tag,))
+            cx, right = starts[2]+8, starts[2]+widths[2]-8
+            cats = [c for c in (e.get('categories',[]) or []) if _fm469_txt(c).strip()]
+            if not cats:
+                body.create_text(cx, y0+row_h/2, text='—', anchor='w', fill=TEXT2, font=body_font(9), tags=(tag,))
+            else:
+                shown = 0
+                for cat in cats:
+                    nx = _draw_chip(body, cx, y0+7, cat, _fm469_cat_color(self, cat), right, tag)
+                    if nx == cx:
+                        rest = len(cats)-shown
+                        if rest and cx+42 <= right: _draw_chip(body, cx, y0+7, '+'+str(rest), '#E5E7EB', right, tag)
+                        break
+                    cx = nx; shown += 1
+            body.tag_bind(tag, '<Button-1>', lambda ev, id=eid: _select(id))
+            body.tag_bind(tag, '<Double-Button-1>', lambda ev, id=eid: _open(id))
+        body.configure(scrollregion=(0,0,width,max(row_h*len(entries),row_h)))
+
+    def _mark_current():
+        eid = selected.get('id') or getattr(self, 'kb_selected_entry_id', None)
+        if not eid:
+            try: messagebox.showwarning('Wissenszentrale','Bitte zuerst einen Eintrag in der Übersicht auswählen.')
+            except Exception: pass
+            return
+        try: _fm467_set_entry_current(self, eid)
+        except Exception:
+            try: self.kb_mark_entry_current(eid)
+            except Exception: pass
+
+    head.bind('<Configure>', lambda e: _redraw(e.width))
+    body.bind('<Configure>', lambda e: _redraw(e.width))
+    try: body.bind('<MouseWheel>', lambda e: (body.yview_scroll(int(-1*(e.delta/120)), 'units'), 'break'))
+    except Exception: pass
+    _redraw(max(760, int(w)-44))
+    self.canvas.create_window(ui_s(x), ui_s(y), window=frame, anchor='nw', width=ui_s(w), height=ui_s(h))
+
+
+def _fm469_go_main_direct(self):
+    try: self.knowledge_start_overlay = False
+    except Exception: pass
+    try:
+        self.current_page = 'main'; self.current_title = 'Hauptmenü'; self.breadcrumb = [('main','Hauptmenü')]; self.page_history = []
+        self.render_page()
+    except Exception:
+        try: self.show_page('main', 'Hauptmenü', False)
+        except Exception: pass
+
+
+def _fm469_kb_handle_escape(self, event=None):
+    if getattr(self, 'current_page', '') == 'knowledge_base':
+        try:
+            if not bool(getattr(self, 'knowledge_start_overlay', False)):
+                self.knowledge_start_overlay = True; self.render_page(); return 'break'
+        except Exception: pass
+        _fm469_go_main_direct(self); return 'break'
+    return None
+
+try:
+    FiBuMateApp.render_kb_list_area = _fm469_render_kb_list_area
+    FiBuMateApp.kb_handle_escape = _fm469_kb_handle_escape
+except Exception:
+    pass
+
+
+
+# ------------------------------------------------------------------
+# FiBu Mate - Wissenszentrale Kategorie löschen + Auto-Speichern + Footer FINAL 2026-06-23
+# Version 0.470
+# Zweck:
+# - Kategorien können ab Berechtigungsstufe 3 gelöscht werden; Sonderkategorie To-Do bleibt geschützt.
+# - Wissenseinträge im Bearbeitungsmodus werden automatisch gespeichert, sowohl lokal als auch live über die bestehende Speicherlogik.
+# - Benutzer werden konsequent mit Vor- und Nachnamen aus der Benutzerverwaltung angezeigt.
+# - Startkachel "Neuer Eintrag": Öffnen-Button erhält die gleiche neutrale Farbgebung wie die anderen Öffnen-Buttons.
+# - Fußzeile wird nochmals ca. 15 % niedriger; Text bleibt in Originalgröße und wird nur bei Überlauf reduziert.
+# ------------------------------------------------------------------
+
+_FM470_PATCH_VERSION = "0.470"
+_FM470_AUTOSAVE_DELAY_MS = 3000
+_FM470_AUTOSAVE_INTERVAL_MS = 30000
+
+
+def _fm470_norm(v):
+    return " ".join(str(v or "").strip().split())
+
+
+def _fm470_user_fullname(self, raw_user):
+    raw = _fm470_norm(raw_user)
+    if not raw:
+        return ""
+    wanted = raw.casefold()
+    try:
+        data = getattr(self, 'user_data', {}) or {}
+    except Exception:
+        data = {}
+    users = data.get('users', {}) if isinstance(data, dict) else {}
+
+    def full_from_item(key, item):
+        if not isinstance(item, dict):
+            return ""
+        first = _fm470_norm(item.get('first_name') or item.get('vorname') or item.get('first') or item.get('given_name'))
+        last = _fm470_norm(item.get('last_name') or item.get('nachname') or item.get('surname') or item.get('display_name') or item.get('display') or item.get('name') or key)
+        full = _fm470_norm(item.get('full_name') or item.get('fullname') or item.get('vollname'))
+        if full and (' ' in full or ',' in full):
+            return full
+        if first and last:
+            return (first + ' ' + last).strip()
+        return full or last or first or _fm470_norm(key)
+
+    if isinstance(users, dict):
+        for key, item in users.items():
+            keys = {_fm470_norm(key).casefold()}
+            if isinstance(item, dict):
+                for k in ('username','user','user_key','login','kuerzel','kürzel','id','display_name','full_name','fullname','name','email'):
+                    val = _fm470_norm(item.get(k))
+                    if val:
+                        keys.add(val.casefold())
+            if wanted in keys:
+                return full_from_item(key, item)
+    # Falls der Eintrag bereits wie ein Vollname aussieht, beibehalten.
+    if ' ' in raw or ',' in raw:
+        return raw
+    return raw
+
+
+# Globale Anzeigehelfer der letzten Wissenszentrale-Patches auf Vor-/Nachname umbiegen.
+try:
+    _fm467_user_fullname = _fm470_user_fullname
+except Exception:
+    pass
+try:
+    _fm468_user_fullname = _fm470_user_fullname
+except Exception:
+    pass
+
+
+def _fm470_permission_level(self):
+    try:
+        return int(self.kb_current_permission_level())
+    except Exception:
+        pass
+    try:
+        rank = ROLE_RANK.get(self.my_role(), 1)
+        return int(rank)
+    except Exception:
+        return 1
+
+
+def _fm470_can_delete_category(self):
+    return _fm470_permission_level(self) >= 3
+
+
+def _fm470_delete_category_from_entries(self, cat_name):
+    cat_name = _wz_cat_norm(cat_name)
+    entries = self.kb_load_entries()
+    changed = False
+    for entry in entries:
+        old = list(entry.get('categories', []) or [])
+        new = [c for c in old if _wz_cat_norm(c).casefold() != cat_name.casefold()]
+        if new != old:
+            entry['categories'] = new
+            changed = True
+    return self.kb_save_entries(entries) if changed else True
+
+
+def _fm470_render_kb_categories_area(self, x, y, w, h):
+    if not self.kb_can_manage_categories():
+        self.render_kb_list_area(x, y, w, h, title='Übersicht')
+        return
+    frame = tk.Frame(self.root, bg=WHITE, highlightbackground=LINE, highlightthickness=2)
+    self.widget_items.append(frame)
+    tk.Label(frame, text='Kategorien verwalten', bg=WHITE, fg=BLUE, font=body_font(15, weight='bold')).pack(anchor='w', padx=18, pady=(14, 6))
+    hint = 'Kategorien können erstellt, umbenannt und farblich gepflegt werden. Löschen ist ab Berechtigungsstufe 3 möglich; To-Do bleibt als Sonderkategorie geschützt.'
+    tk.Label(frame, text=hint, bg=WHITE, fg=TEXT, font=body_font(10), wraplength=max(540, int(w*0.86)), justify='left').pack(anchor='w', padx=18, pady=(0, 10))
+    main = tk.Frame(frame, bg=WHITE); main.pack(fill='both', expand=True, padx=18, pady=(0, 14))
+    main.grid_columnconfigure(0, weight=1); main.grid_columnconfigure(1, weight=1); main.grid_rowconfigure(0, weight=1)
+    left = tk.Frame(main, bg=WHITE); left.grid(row=0, column=0, sticky='nsew', padx=(0,12))
+    right = tk.Frame(main, bg=WHITE); right.grid(row=0, column=1, sticky='nsew', padx=(12,0))
+    tk.Label(left, text='Vorhandene Kategorien', bg=WHITE, fg=TEXT2, font=body_font(10, weight='bold')).pack(anchor='w')
+    lb = tk.Listbox(left, bg=WHITE, fg=TEXT, font=body_font(11), relief='solid', bd=1, exportselection=False)
+    lb.pack(fill='both', expand=True, pady=(6,0))
+    name_var = tk.StringVar(value=''); color_var = tk.StringVar(value='#2563EB'); info_var = tk.StringVar(value='Keine Kategorie ausgewählt')
+    tk.Label(right, text='Kategorie erstellen / bearbeiten', bg=WHITE, fg=TEXT2, font=body_font(10, weight='bold')).pack(anchor='w')
+    tk.Label(right, textvariable=info_var, bg=WHITE, fg=TEXT2, font=body_font(9)).pack(anchor='w', pady=(3,8))
+    form = tk.Frame(right, bg=WHITE); form.pack(fill='x')
+    tk.Label(form, text='Name', bg=WHITE, fg=TEXT2, font=body_font(9)).grid(row=0, column=0, sticky='w')
+    name_entry = tk.Entry(form, textvariable=name_var, bg=WHITE, fg=TEXT, font=body_font(11), relief='solid', bd=1)
+    name_entry.grid(row=1, column=0, sticky='ew', ipady=5, pady=(0,8))
+    tk.Label(form, text='Farbe (#RRGGBB)', bg=WHITE, fg=TEXT2, font=body_font(9)).grid(row=2, column=0, sticky='w')
+    color_entry = tk.Entry(form, textvariable=color_var, bg=WHITE, fg=TEXT, font=body_font(11), relief='solid', bd=1)
+    color_entry.grid(row=3, column=0, sticky='ew', ipady=5, pady=(0,8)); form.grid_columnconfigure(0, weight=1)
+    preview = tk.Label(right, text='Farbvorschau', bg='#2563EB', fg='#FFFFFF', font=body_font(10, weight='bold'), relief='solid', bd=1)
+    preview.pack(fill='x', ipady=8, pady=(0,10))
+    swatches = tk.Frame(right, bg=WHITE); swatches.pack(anchor='w', pady=(0,10))
+    for c in _WZ_CAT_PALETTE:
+        tk.Button(swatches, text='', command=lambda cc=c: (color_var.set(cc), apply_preview()), bg=c, activebackground=c, relief='solid', bd=1, width=3).pack(side='left', padx=(0,4), ipady=6)
+
+    def apply_preview(*_):
+        c = _wz_cat_hex(color_var.get(), _wz_cat_default_color(name_var.get() or 'Kategorie'))
+        preview.configure(bg=c, fg=_wz_cat_fg(c), text='Farbvorschau  ' + c)
+
+    def refresh(selected=None):
+        selected = _wz_cat_norm(selected or getattr(self, 'kb_selected_category_name', ''))
+        lb.delete(0, 'end'); sel_idx = None
+        for idx, cat in enumerate(self.kb_get_categories()):
+            color = self.kb_get_category_color(cat)
+            lb.insert('end', cat)
+            try:
+                if cat == selected:
+                    lb.itemconfig(idx, bg=color, fg=_wz_cat_fg(color), selectbackground=color, selectforeground=_wz_cat_fg(color)); sel_idx = idx
+                else:
+                    lb.itemconfig(idx, bg=_wz442_light_color(color), fg=TEXT, selectbackground=color, selectforeground=_wz_cat_fg(color))
+            except Exception:
+                pass
+        if sel_idx is not None:
+            lb.selection_set(sel_idx); lb.see(sel_idx)
+
+    def select_cat(event=None):
+        sel = lb.curselection()
+        if not sel: return
+        cat = lb.get(sel[0]); self.kb_selected_category_name = cat
+        name_var.set(cat); color_var.set(self.kb_get_category_color(cat)); info_var.set('Ausgewählt: ' + cat); apply_preview(); refresh(cat)
+    lb.bind('<<ListboxSelect>>', select_cat)
+
+    def create_cat():
+        name = _wz_cat_norm(name_var.get())
+        if not name:
+            messagebox.showwarning('Wissenszentrale', 'Bitte einen Kategorienamen eingeben.'); return
+        if name.lower() in {c.lower() for c in self.kb_get_categories()}:
+            messagebox.showwarning('Wissenszentrale', 'Diese Kategorie existiert bereits. Bitte Änderungen speichern verwenden.'); return
+        meta = self.kb_load_category_meta(); meta[name] = {'name': name, 'color': _wz_cat_hex(color_var.get(), _wz_cat_default_color(name))}
+        if self.kb_save_category_meta(meta):
+            self.kb_selected_category_name = name; info_var.set('Neu erstellt: ' + name); refresh(name); self.render_page()
+
+    def save_cat():
+        old = _wz_cat_norm(getattr(self, 'kb_selected_category_name', '')); new = _wz_cat_norm(name_var.get())
+        if not new:
+            messagebox.showwarning('Wissenszentrale', 'Bitte einen Kategorienamen eingeben.'); return
+        meta = self.kb_load_category_meta()
+        if old and old != new:
+            if old.lower() == 'to-do':
+                messagebox.showwarning('Wissenszentrale', "Die Sonderkategorie 'To-Do' darf nicht umbenannt werden. Die Farbe kann gespeichert werden."); new = old; name_var.set(old)
+            elif new.lower() in {c.lower() for c in self.kb_get_categories() if c.lower() != old.lower()}:
+                messagebox.showwarning('Wissenszentrale', 'Der neue Kategoriename existiert bereits.'); return
+            else:
+                for k in list(meta.keys()):
+                    if k.lower() == old.lower(): meta.pop(k, None)
+                if not _wz_cat_rename_entries(self, old, new): return
+        meta[new] = {'name': new, 'color': _wz_cat_hex(color_var.get(), _wz_cat_default_color(new))}
+        if self.kb_save_category_meta(meta):
+            self.kb_selected_category_name = new; info_var.set('Gespeichert: ' + new); refresh(new); self.render_page()
+
+    def delete_cat():
+        if not _fm470_can_delete_category(self):
+            messagebox.showwarning('Wissenszentrale', 'Kategorien können erst ab Berechtigungsstufe 3 gelöscht werden.'); return
+        cat = _wz_cat_norm(getattr(self, 'kb_selected_category_name', '') or name_var.get())
+        if not cat:
+            messagebox.showwarning('Wissenszentrale', 'Bitte zuerst eine Kategorie auswählen.'); return
+        if cat.lower() == 'to-do':
+            messagebox.showwarning('Wissenszentrale', "Die Sonderkategorie 'To-Do' darf nicht gelöscht werden."); return
+        if not messagebox.askyesno('Wissenszentrale', f"Kategorie '{cat}' wirklich löschen?\n\nDie Kategorie wird aus allen Einträgen entfernt."):
+            return
+        meta = self.kb_load_category_meta()
+        for k in list(meta.keys()):
+            if k.lower() == cat.lower(): meta.pop(k, None)
+        if not _fm470_delete_category_from_entries(self, cat): return
+        if self.kb_save_category_meta(meta):
+            self.kb_selected_category_name = ''; name_var.set(''); color_var.set('#2563EB'); info_var.set('Kategorie gelöscht: ' + cat); apply_preview(); refresh(); self.render_page()
+
+    def blank_cat():
+        self.kb_selected_category_name = ''; name_var.set(''); color_var.set('#2563EB'); info_var.set('Neue Kategorie erfassen'); apply_preview(); refresh(); name_entry.focus_set()
+
+    color_var.trace_add('write', apply_preview)
+    btns = tk.Frame(right, bg=WHITE); btns.pack(fill='x', pady=(4,0))
+    tk.Button(btns, text='Kategorie erstellen', command=create_cat, bg='#CFEAD6', fg=TEXT, font=body_font(10, weight='bold'), relief='solid', bd=1).pack(side='left', padx=(0,8), ipadx=10, ipady=4)
+    tk.Button(btns, text='Änderungen speichern', command=save_cat, bg=WHITE, fg=TEXT, font=body_font(10), relief='solid', bd=1).pack(side='left', padx=(0,8), ipadx=10, ipady=4)
+    del_bg = '#FEE2E2' if _fm470_can_delete_category(self) else '#E5E7EB'
+    tk.Button(btns, text='Kategorie löschen', command=delete_cat, bg=del_bg, fg=TEXT, font=body_font(10), relief='solid', bd=1).pack(side='left', padx=(0,8), ipadx=10, ipady=4)
+    tk.Button(btns, text='Neu leeren', command=blank_cat, bg=WHITE, fg=TEXT, font=body_font(10), relief='solid', bd=1).pack(side='left', ipadx=10, ipady=4)
+    apply_preview(); refresh(getattr(self, 'kb_selected_category_name', ''))
+    self.canvas.create_window(ui_s(x), ui_s(y), window=frame, anchor='nw', width=ui_s(w), height=ui_s(h))
+
+
+def _fm470_autosave_now(self):
+    try:
+        if getattr(self, 'current_page', '') != 'knowledge_base' or getattr(self, 'knowledge_view', '') != 'new':
+            return False
+        self.kb_ensure_state_vars()
+        title = _fm470_norm(getattr(self, 'kb_title_var', tk.StringVar(value='')).get())
+        try:
+            text_value = self.kb_text_widget.get('1.0', 'end-1c')
+            formatting = _wz439_capture_formatting(self.kb_text_widget) if '_wz439_capture_formatting' in globals() else []
+        except Exception:
+            text_value = getattr(self, 'kb_text_initial', '')
+            formatting = getattr(self, 'kb_text_formatting_initial', []) or []
+        categories = []
+        for var in getattr(self, 'kb_entry_category_vars', []) or []:
+            v = _fm470_norm(var.get())
+            if v and v not in categories: categories.append(v)
+        user = _fm470_norm(getattr(self, 'kb_user_var', tk.StringVar(value='')).get())
+        status = _fm470_norm(getattr(self, 'kb_status_var', tk.StringVar(value='Aktiv')).get()) or 'Entwurf'
+        rhythm = _fm470_norm(getattr(self, 'kb_rhythm_var', tk.StringVar(value='')).get()) if any(c.lower() == 'to-do' for c in categories) else ''
+        if not title and not text_value.strip() and not categories:
+            return False
+        if not title:
+            title = 'Automatisch gespeicherter Entwurf'
+            try: self.kb_title_var.set(title)
+            except Exception: pass
+        entries = self.kb_load_entries(); now = self.kb_now() if hasattr(self, 'kb_now') else datetime.now().isoformat(timespec='seconds')
+        selected_id = getattr(self, 'kb_edit_entry_id', None) or getattr(self, 'kb_autosave_entry_id', None)
+        if not selected_id:
+            selected_id = self.kb_make_entry_id() if hasattr(self, 'kb_make_entry_id') else hashlib.sha1((title+now).encode('utf-8')).hexdigest()[:16]
+            self.kb_autosave_entry_id = selected_id
+            self.kb_edit_entry_id = selected_id
+        found = False
+        for entry in entries:
+            if entry.get('id') == selected_id:
+                entry.update({'title': title, 'categories': categories[:4], 'user': user, 'status': status, 'rhythm': rhythm, 'text': text_value, 'text_formatting': formatting, 'updated_at': now, 'autosaved_at': now})
+                found = True; break
+        if not found:
+            entries.append({'id': selected_id, 'title': title, 'categories': categories[:4], 'user': user, 'status': status, 'rhythm': rhythm, 'text': text_value, 'text_formatting': formatting, 'inline_images': getattr(self, 'kb_inline_images', []) or [], 'created_at': now, 'updated_at': now, 'autosaved_at': now, 'comments': [], 'attachments': []})
+        ok = self.kb_save_entries(entries)
+        if ok:
+            self.kb_selected_entry_id = selected_id; self.knowledge_unsaved = False; self.kb_autosave_last_at = now
+        return bool(ok)
+    except Exception:
+        return False
+
+
+def _fm470_schedule_autosave(self, delay=None):
+    try:
+        if getattr(self, 'current_page', '') != 'knowledge_base' or getattr(self, 'knowledge_view', '') != 'new': return
+        delay = _FM470_AUTOSAVE_DELAY_MS if delay is None else int(delay)
+        token = object(); self.kb_autosave_token = token
+        def run():
+            if getattr(self, 'kb_autosave_token', None) is token:
+                _fm470_autosave_now(self)
+                _fm470_schedule_autosave(self, _FM470_AUTOSAVE_INTERVAL_MS)
+        self.root.after(delay, run)
+    except Exception:
+        pass
+
+
+def _fm470_install_autosave(self):
+    try:
+        if getattr(self, 'knowledge_view', '') != 'new': return
+        def mark(event=None):
+            try: self.kb_mark_unsaved()
+            except Exception: pass
+            _fm470_schedule_autosave(self, _FM470_AUTOSAVE_DELAY_MS)
+        tw = getattr(self, 'kb_text_widget', None)
+        if tw:
+            tw.bind('<KeyRelease>', mark, add='+'); tw.bind('<<Paste>>', mark, add='+'); tw.bind('<<Cut>>', mark, add='+')
+        for var in [getattr(self, 'kb_title_var', None), getattr(self, 'kb_user_var', None), getattr(self, 'kb_status_var', None), getattr(self, 'kb_rhythm_var', None)] + list(getattr(self, 'kb_entry_category_vars', []) or []):
+            try: var.trace_add('write', lambda *_: _fm470_schedule_autosave(self, _FM470_AUTOSAVE_DELAY_MS))
+            except Exception: pass
+        _fm470_schedule_autosave(self, _FM470_AUTOSAVE_INTERVAL_MS)
+    except Exception:
+        pass
+
+try:
+    _fm470_old_render_new_entry_area = FiBuMateApp.render_kb_new_entry_area
+except Exception:
+    _fm470_old_render_new_entry_area = None
+
+def _fm470_render_kb_new_entry_area(self, x, y, w, h):
+    if _fm470_old_render_new_entry_area:
+        result = _fm470_old_render_new_entry_area(self, x, y, w, h)
+    else:
+        result = None
+    _fm470_install_autosave(self)
+    return result
+
+try:
+    _fm470_old_render_start_overlay = FiBuMateApp.render_knowledge_start_overlay
+except Exception:
+    _fm470_old_render_start_overlay = None
+
+def _fm470_render_knowledge_start_overlay(self):
+    if not _fm470_old_render_start_overlay:
+        return None
+    original = self.draw_kb_button
+    def neutral_open_button(x, y, text, command=None, accent=False, width=None):
+        if text == 'Öffnen':
+            accent = False
+        return original(x, y, text, command, accent, width)
+    self.draw_kb_button = neutral_open_button
+    try:
+        return _fm470_old_render_start_overlay(self)
+    finally:
+        self.draw_kb_button = original
+
+
+def _fm470_footer_font(size=9):
+    return ('Segoe UI', int(size))
+
+
+def _fm470_fit_label(label, max_width, base_size=9, min_size=7):
+    try:
+        label.update_idletasks()
+        size = base_size
+        while size > min_size and label.winfo_reqwidth() > max_width:
+            size -= 1
+            label.configure(font=_fm470_footer_font(size))
+            label.update_idletasks()
+    except Exception:
+        pass
+
+
+def _fm470_create_footer(self):
+    self.footer = tk.Frame(self.root, bg='black', height=ui_s(42)); self.footer._zoom_exclude = True
+    self.footer.pack(side='bottom', fill='x'); self.footer.pack_propagate(False)
+    self.user_label = tk.Label(self.footer, bg='black', fg='white', font=_fm470_footer_font(9))
+    self.user_label.place(relx=0, rely=0.5, anchor='w', x=10)
+    self.version_label = tk.Label(self.footer, text=self.version_label_text(), bg='black', fg='white', font=_fm470_footer_font(9))
+    self.version_label.place(relx=0.5, rely=0.5, anchor='center')
+    self.clock_label = tk.Label(self.footer, bg='black', fg='white', font=_fm470_footer_font(9))
+    self.clock_label.place(relx=1, rely=0.5, anchor='e', x=-10)
+    self.update_clock()
+
+
+def _fm470_update_clock(self):
+    try:
+        self.clock_label.config(text=datetime.now().strftime('%H:%M:%S'), font=_fm470_footer_font(9))
+        display = _fm470_user_fullname(self, getattr(self, 'current_user_key', '') or getattr(self, 'current_user_display', ''))
+        self.user_label.config(text=(f'Benutzer {display}' if display else ''), font=_fm470_footer_font(9))
+        self.version_label.config(text=self.version_label_text(), font=_fm470_footer_font(9))
+        try:
+            w = max(600, self.root.winfo_width())
+            _fm470_fit_label(self.user_label, int(w*0.36), 9, 7)
+            _fm470_fit_label(self.version_label, int(w*0.28), 9, 7)
+            _fm470_fit_label(self.clock_label, int(w*0.16), 9, 7)
+        except Exception:
+            pass
+        self.root.after(1000, self.update_clock)
+    except Exception:
+        pass
+
+try:
+    FiBuMateApp.render_kb_categories_area = _fm470_render_kb_categories_area
+    FiBuMateApp.render_kb_new_entry_area = _fm470_render_kb_new_entry_area
+    FiBuMateApp.render_knowledge_start_overlay = _fm470_render_knowledge_start_overlay
+    FiBuMateApp.create_footer = _fm470_create_footer
+    FiBuMateApp.update_clock = _fm470_update_clock
+except Exception:
+    pass
+
+
+
+# ------------------------------------------------------------------
+# FiBu Mate - Wissenszentrale Eintrag löschen + Hauptmenü Kachelgrößen FINAL 2026-06-23
+# Version 0.471
+# Zweck:
+# - Wissenseinträge können ab E3 gelöscht werden; darunter ist der Button sichtbar, aber deaktiviert/grau.
+# - Löschen-Button steht links neben "Eintrag als aktuell kennzeichnen" und nutzt das etablierte Papierkorb-Symbol.
+# - Hauptmenü: Zeile 1 +5 %, Zeile 2 -5 %; neue Kachel "Dateiausgabe" in Zeile 2 als Platzhalter.
+# ------------------------------------------------------------------
+
+_FM471_PATCH_VERSION = "0.471"
+_FM471_DELETE_SYMBOL = "🗑"
+
+
+def _fm471_permission_rank(self):
+    try:
+        return int(self.kb_current_permission_level())
+    except Exception:
+        pass
+    try:
+        return int(ROLE_RANK.get(self.my_role(), 1))
+    except Exception:
+        return 1
+
+
+def _fm471_can_delete_entry(self):
+    return _fm471_permission_rank(self) >= 3
+
+
+def _fm471_entry_title(entry):
+    try:
+        return str((entry or {}).get('title') or 'Wissenseintrag')
+    except Exception:
+        return 'Wissenseintrag'
+
+
+def _fm471_delete_entry(self, entry_id=None):
+    entry_id = entry_id or getattr(self, 'kb_selected_entry_id', None)
+    if not entry_id:
+        try: messagebox.showwarning('Wissenszentrale', 'Bitte zuerst einen Eintrag auswählen.')
+        except Exception: pass
+        return False
+    if not _fm471_can_delete_entry(self):
+        return False
+    entries = self.kb_load_entries()
+    target = None
+    remaining = []
+    for e in entries:
+        if e.get('id') == entry_id:
+            target = e
+        else:
+            remaining.append(e)
+    if not target:
+        try: messagebox.showwarning('Wissenszentrale', 'Der ausgewählte Eintrag wurde nicht gefunden.')
+        except Exception: pass
+        return False
+    try:
+        if not messagebox.askyesno('Eintrag löschen', f"Eintrag wirklich löschen?\n\n{_fm471_entry_title(target)}"):
+            return False
+    except Exception:
+        return False
+    if self.kb_save_entries(remaining):
+        try:
+            if hasattr(self, 'kb_autosave_entry_id') and self.kb_autosave_entry_id == entry_id:
+                self.kb_autosave_entry_id = None
+        except Exception:
+            pass
+        self.kb_selected_entry_id = None
+        self.kb_edit_entry_id = None
+        self.knowledge_unsaved = False
+        self.knowledge_view = 'all'
+        self.knowledge_start_overlay = False
+        self.render_page()
+        return True
+    return False
+
+
+def _fm471_delete_button(parent, self, entry_id=None):
+    can_delete = _fm471_can_delete_entry(self)
+    return tk.Button(parent, text=f'{_FM471_DELETE_SYMBOL} Löschen', command=(lambda eid=entry_id: _fm471_delete_entry(self, eid)) if can_delete else (lambda: None),
+                     bg=('#FEE2E2' if can_delete else '#E5E7EB'), fg=(TEXT if can_delete else '#7A7F87'),
+                     activebackground=('#FECACA' if can_delete else '#E5E7EB'), font=body_font(10), relief='solid', bd=1,
+                     state=('normal' if can_delete else 'disabled'), cursor=('hand2' if can_delete else 'arrow'))
+
+
+# --- Übersicht inkl. Löschbutton links neben "Eintrag als aktuell kennzeichnen" ---
+def _fm471_render_kb_list_area(self, x, y, w, h, title='Gesamtliste aller Einträge', status_filter=None):
+    frame = tk.Frame(self.root, bg=WHITE, highlightbackground=LINE, highlightthickness=2)
+    self.widget_items.append(frame)
+    top = tk.Frame(frame, bg=WHITE); top.pack(fill='x', padx=16, pady=(12, 6))
+    tk.Label(top, text=title, bg=WHITE, fg=BLUE, font=body_font(14, weight='bold')).pack(side='left')
+    selected = {'id': getattr(self, 'kb_selected_entry_id', None)}
+    row_rects = {}
+
+    def _mark_current():
+        eid = selected.get('id') or getattr(self, 'kb_selected_entry_id', None)
+        if not eid:
+            try: messagebox.showwarning('Wissenszentrale', 'Bitte zuerst einen Eintrag in der Übersicht auswählen.')
+            except Exception: pass
+            return
+        try: _fm467_set_entry_current(self, eid)
+        except Exception:
+            try: self.kb_mark_entry_current(eid)
+            except Exception: pass
+
+    tk.Button(top, text='Eintrag als aktuell kennzeichnen', command=_mark_current, bg='#CFEAD6', fg=TEXT, font=body_font(9, weight='bold'), relief='solid', bd=1).pack(side='right', padx=(8,0), ipadx=8, ipady=3)
+    _fm471_delete_button(top, self, None).pack(side='right', padx=(8,0), ipadx=8, ipady=3)
+    state = getattr(self, 'kb_overview_sort_state', {'column':'date','descending':True}) or {}
+    tk.Label(top, text=f"Sortierung: {state.get('column','date')} ({'absteigend' if state.get('descending', True) else 'aufsteigend'})", bg=WHITE, fg=TEXT2, font=body_font(9)).pack(side='right')
+
+    table = tk.Frame(frame, bg=WHITE); table.pack(fill='both', expand=True, padx=16, pady=(0,16))
+    table.grid_columnconfigure(0, weight=1); table.grid_rowconfigure(1, weight=1)
+    head = tk.Canvas(table, height=31, bg='#F1F5F9', highlightthickness=0); head.grid(row=0, column=0, sticky='ew')
+    body = tk.Canvas(table, bg=WHITE, highlightthickness=0); body.grid(row=1, column=0, sticky='nsew')
+    sb = ttk.Scrollbar(table, orient='vertical', command=body.yview); sb.grid(row=1, column=1, sticky='ns')
+    body.configure(yscrollcommand=sb.set)
+    keys = ['date','title','categories','user','status']
+    labels = {'date':'Aktualisiert','title':'Titel','categories':'Kategorien','user':'Benutzer','status':'Status'}
+    entries = self.kb_filtered_entries()
+    if status_filter: entries = [e for e in entries if str(e.get('status','')).lower() == status_filter.lower()]
+    try: entries = _fm469_sort(self, entries)
+    except Exception: entries = _fm469_sort_entries_for_overview(self, entries)
+
+    def _sort(c):
+        cur = getattr(self, 'kb_overview_sort_state', {}) or {}
+        desc = not cur.get('descending', True) if cur.get('column') == c else (True if c == 'date' else False)
+        self.kb_overview_sort_state = {'column': c, 'descending': desc}
+        self.render_page()
+
+    def _draw_chip(cv, x0, y0, txt, color, right, tag):
+        txt = str(txt or '').strip()
+        if not txt: return x0
+        ww = max(42, min(145, 18 + len(txt)*7))
+        if x0 + ww > right: return x0
+        fg = _wz_cat_fg(color)
+        ell = txt if len(txt) <= max(4, int((ww-14)/7)) else txt[:max(4, int((ww-14)/7))-1] + '…'
+        cv.create_rectangle(x0, y0, x0+ww, y0+20, fill=color, outline=color, tags=(tag,))
+        cv.create_text(x0+9, y0+10, text=ell, anchor='w', fill=fg, font=body_font(8, weight='bold'), tags=(tag,))
+        return x0 + ww + 6
+
+    def _layout(total_width):
+        try: return _fm469_layout(total_width)
+        except Exception: return _fm469_column_layout(total_width)
+
+    def _ell(v, n):
+        try: return _fm469_ell(v, n)
+        except Exception:
+            s=str(v or '').replace('\n',' ').strip(); return s if len(s)<=n else s[:max(1,n-1)]+'…'
+
+    def _user(v):
+        try: return _fm470_user_fullname(self, v)
+        except Exception: return str(v or '')
+
+    def _cat_color(v):
+        try: return _fm469_cat_color(self, v)
+        except Exception:
+            try: return _fm470_cat_color(self, v)
+            except Exception: return self.kb_get_category_color(v)
+
+    def _paint_selection():
+        for eid, (rect, row_no) in row_rects.items():
+            fill = '#EAF2FB' if eid == selected.get('id') else (WHITE if row_no % 2 == 0 else '#FAFAFA')
+            try: body.itemconfigure(rect, fill=fill)
+            except Exception: pass
+
+    def _select(eid):
+        selected['id'] = eid; self.kb_selected_entry_id = eid; _paint_selection()
+
+    def _open(eid):
+        if not eid: return
+        if not self.kb_confirm_unsaved_before_switch(): return
+        self.kb_selected_entry_id = eid; self.knowledge_view = 'detail'; self.knowledge_start_overlay = False; self.render_page()
+
+    def _redraw(width=None):
+        width = max(760, int(width or body.winfo_width() or (w-44)))
+        starts, widths = _layout(width-18)
+        head.delete('all'); body.delete('all'); row_rects.clear()
+        head.create_rectangle(0,0,width,31, fill='#F1F5F9', outline='')
+        for i,k in enumerate(keys):
+            x0 = starts[i]
+            marker = ' ↓' if state.get('column') == k and state.get('descending', True) else (' ↑' if state.get('column') == k else '')
+            tag = 'fm471_sort_' + k
+            head.create_text(x0+8, 16, text=labels[k]+marker, anchor='w', fill=TEXT, font=body_font(9, weight='bold'), tags=(tag,))
+            head.tag_bind(tag, '<Button-1>', lambda e, c=k: _sort(c))
+            if i > 0: head.create_line(x0,0,x0,31, fill='#D7DEE8')
+        row_h = 34
+        if not entries:
+            body.create_text(8, 18, text='Noch keine Einträge vorhanden', anchor='w', fill=TEXT2, font=body_font(10))
+            body.configure(scrollregion=(0,0,width,40)); return
+        for r,e in enumerate(entries):
+            eid = e.get('id') or self.kb_make_entry_id()
+            tag = 'fm471_row_' + str(r); y0 = r*row_h
+            fill = '#EAF2FB' if eid == selected.get('id') else (WHITE if r % 2 == 0 else '#FAFAFA')
+            rect = body.create_rectangle(0,y0,width,y0+row_h, fill=fill, outline='#E5E7EB', tags=(tag,))
+            row_rects[eid] = (rect, r)
+            for ix in starts[1:]: body.create_line(ix, y0, ix, y0+row_h, fill='#EEF2F7', tags=(tag,))
+            vals = [self.kb_display_date(e.get('updated_at')), e.get('title',''), '', _user(e.get('user','')), e.get('status','')]
+            chars = [14, max(18, int(widths[1]/7)), 0, max(12, int(widths[3]/7)), max(8, int(widths[4]/7))]
+            for i,val in enumerate(vals):
+                if i == 2: continue
+                body.create_text(starts[i]+8, y0+row_h/2, text=_ell(val, chars[i]), anchor='w', fill=TEXT, font=body_font(9, weight='bold' if i==1 else None), tags=(tag,))
+            cx, right = starts[2]+8, starts[2]+widths[2]-8
+            cats = [c for c in (e.get('categories',[]) or []) if str(c or '').strip()]
+            if not cats:
+                body.create_text(cx, y0+row_h/2, text='—', anchor='w', fill=TEXT2, font=body_font(9), tags=(tag,))
+            else:
+                shown = 0
+                for cat in cats:
+                    nx = _draw_chip(body, cx, y0+7, cat, _cat_color(cat), right, tag)
+                    if nx == cx:
+                        rest = len(cats)-shown
+                        if rest and cx+42 <= right: _draw_chip(body, cx, y0+7, '+'+str(rest), '#E5E7EB', right, tag)
+                        break
+                    cx = nx; shown += 1
+            body.tag_bind(tag, '<Button-1>', lambda ev, id=eid: _select(id))
+            body.tag_bind(tag, '<Double-Button-1>', lambda ev, id=eid: _open(id))
+        body.configure(scrollregion=(0,0,width,max(row_h*len(entries),row_h)))
+
+    head.bind('<Configure>', lambda e: _redraw(e.width))
+    body.bind('<Configure>', lambda e: _redraw(e.width))
+    try: body.bind('<MouseWheel>', lambda e: (body.yview_scroll(int(-1*(e.delta/120)), 'units'), 'break'))
+    except Exception: pass
+    _redraw(max(760, int(w)-44))
+    self.canvas.create_window(ui_s(x), ui_s(y), window=frame, anchor='nw', width=ui_s(w), height=ui_s(h))
+
+
+# --- Detailansicht inkl. Löschbutton ---
+def _fm471_render_kb_detail_area(self, x, y, w, h):
+    entry = self.kb_get_entry(getattr(self, 'kb_selected_entry_id', None))
+    if not entry:
+        self.render_kb_list_area(x, y, w, h, title='Übersicht')
+        return
+    frame = tk.Frame(self.root, bg=WHITE, highlightbackground=LINE, highlightthickness=2)
+    self.widget_items.append(frame)
+    tk.Label(frame, text=entry.get('title', ''), bg=WHITE, fg=BLUE, font=body_font(16, weight='bold')).pack(anchor='w', padx=18, pady=(14, 5))
+    try: user_display = _fm470_user_fullname(self, entry.get('user',''))
+    except Exception: user_display = entry.get('user','')
+    tk.Label(frame, text=f"Aktualisiert: {self.kb_display_date(entry.get('updated_at'))}    Benutzer: {user_display}    Status: {entry.get('status','')}", bg=WHITE, fg=TEXT2, font=body_font(10)).pack(anchor='w', padx=18)
+    try: _wz439_badges(frame, self, entry.get('categories', []) or [])
+    except Exception:
+        tk.Label(frame, text='Kategorien: ' + (', '.join(entry.get('categories', []) or []) or 'Keine Kategorien'), bg=WHITE, fg=TEXT, font=body_font(10, weight='bold')).pack(anchor='w', padx=18, pady=(8,4))
+    try: _wz439_render_image_view(frame, self, entry.get('inline_images', []) or [])
+    except Exception: pass
+    text_frame = tk.Frame(frame, bg=WHITE); text_frame.pack(fill='both', expand=True, padx=18, pady=(6, 8))
+    txt = tk.Text(text_frame, bg='#F8FAFC', fg=TEXT, font=body_font(10), relief='solid', bd=1, wrap='word', height=8)
+    yscroll = tk.Scrollbar(text_frame, orient='vertical', command=txt.yview); txt.configure(yscrollcommand=yscroll.set)
+    txt.pack(side='left', fill='both', expand=True); yscroll.pack(side='right', fill='y')
+    txt.insert('1.0', entry.get('text', ''))
+    try: _wz439_apply_formatting(txt, entry.get('text_formatting', []) or [])
+    except Exception: pass
+    txt.configure(state='disabled')
+    try: txt.bind('<MouseWheel>', lambda ev: _wz439_text_mousewheel(txt, ev))
+    except Exception: pass
+    lower = tk.Frame(frame, bg=WHITE); lower.pack(fill='x', padx=18, pady=(0, 8))
+    left = tk.Frame(lower, bg=WHITE); left.pack(side='left', fill='both', expand=True)
+    right = tk.Frame(lower, bg=WHITE); right.pack(side='right', fill='both', expand=True, padx=(12,0))
+    tk.Label(left, text='Anhänge', bg=WHITE, fg=BLUE, font=body_font(10, weight='bold')).pack(anchor='w')
+    for a in entry.get('attachments', []) or []:
+        tk.Label(left, text='• ' + a.get('name',''), bg=WHITE, fg=TEXT, font=body_font(9)).pack(anchor='w')
+    tk.Label(right, text='Kommentare', bg=WHITE, fg=BLUE, font=body_font(10, weight='bold')).pack(anchor='w')
+    for c in (entry.get('comments', []) or [])[-3:]:
+        tk.Label(right, text=f"{self.kb_display_date(c.get('created_at'))}: {c.get('text','')[:80]}", bg=WHITE, fg=TEXT, font=body_font(9), wraplength=380, justify='left').pack(anchor='w')
+    comment = tk.Text(right, height=2, bg='#F8FAFC', fg=TEXT, font=body_font(9), relief='solid', bd=1, wrap='word'); comment.pack(fill='x', pady=(4,0))
+    buttons = tk.Frame(frame, bg=WHITE); buttons.pack(fill='x', padx=18, pady=(0,14))
+    if self.kb_can_create_or_edit():
+        tk.Button(buttons, text='Bearbeiten', command=self.kb_edit_selected_entry, bg=WHITE, fg=TEXT, font=body_font(10, weight='bold'), relief='solid', bd=1).pack(side='left', padx=(0,8), ipadx=16, ipady=4)
+    tk.Button(buttons, text='Kommentar speichern', command=lambda: self.kb_add_comment_to_selected(comment), bg=WHITE, fg=TEXT, font=body_font(10), relief='solid', bd=1).pack(side='left', padx=(0,8), ipadx=16, ipady=4)
+    tk.Button(buttons, text='Word-Export', command=self.kb_export_selected_to_word, bg=WHITE, fg=TEXT, font=body_font(10), relief='solid', bd=1).pack(side='left', padx=(0,8), ipadx=16, ipady=4)
+    tk.Button(buttons, text='Zur Übersicht', command=lambda: self.kb_switch_view_from_start('all'), bg=WHITE, fg=TEXT, font=body_font(10), relief='solid', bd=1).pack(side='left', padx=(0,8), ipadx=16, ipady=4)
+    _fm471_delete_button(buttons, self, entry.get('id')).pack(side='right', padx=(8,0), ipadx=12, ipady=4)
+    tk.Button(buttons, text='Eintrag als aktuell kennzeichnen', command=lambda eid=entry.get('id'): _fm467_set_entry_current(self, eid), bg='#CFEAD6', fg=TEXT, font=body_font(10, weight='bold'), relief='solid', bd=1).pack(side='right', ipadx=12, ipady=4)
+    self.canvas.create_window(ui_s(x), ui_s(y), window=frame, anchor='nw', width=ui_s(w), height=ui_s(h))
+
+
+# --- Hauptmenü: Zeile 1 +5 %, Zeile 2 -5 %, neue Kachel Dateiausgabe ---
+def _fm471_render_main_menu(self):
+    top_tiles = [
+        {'title':'Abschlusskalender','cmd':lambda: self.show_page('closing_calendar','Abschlusskalender',True),'fixed':None,'lock':False,'icon':'calendar','fold':False},
+        {'title':'Wissenszentrale','cmd':lambda: self.open_knowledge_base(),'fixed':None,'lock':False,'icon':'knowledge','fold':False},
+    ]
+    middle_tiles = [
+        {'title':'Tools - Hauptbuch','cmd':lambda: self.show_page('data_prep','Tools - Hauptbuch',True),'fixed':None,'lock':False,'icon':'fibu_data_prep','fold':False},
+        {'title':'Tools - Debitoren','cmd':lambda: self.show_page('debitoren_tools','Tools - Debitoren',True),'fixed':None,'lock':False,'icon':'fibu_data_prep','fold':False},
+        {'title':'Dateiausgabe','cmd':lambda: self.show_page('file_output','Dateiausgabe',True),'fixed':None,'lock':False,'icon':'file_explorer','fold':False},
+    ]
+    mini_tiles = [
+        {'title':'In Entwicklung','cmd':self.try_open_in_dev,'fixed':GREY_TILE,'lock':True,'icon':'lock','fold':False},
+        {'title':'Informationen','cmd':lambda: self.show_page('information','Informationen',True),'fixed':None,'lock':False,'icon':'info','fold':True},
+        {'title':'Einstellungen','cmd':lambda: self.show_page('settings','Einstellungen',True),'fixed':None,'lock':False,'icon':'gear','fold':True},
+    ]
+    w, h = self.canvas.winfo_width(), self.canvas.winfo_height()
+    tw = max(240, min(330, int(w * 0.165))); th = max(125, min(170, int(h * 0.155)))
+    gap_x = max(38, int(w * 0.04))
+    def centered_x_positions(count, tile_w, gap=gap_x):
+        total_width = count * tile_w + (count - 1) * gap
+        start_x = (w - total_width) / 2 + tile_w / 2
+        return [start_x + i * (tile_w + gap) for i in range(count)]
+    def create_tile_group(items, y, id_prefix, tile_w, tile_h):
+        xs = centered_x_positions(len(items), tile_w)
+        for i, item in enumerate(items):
+            tile = Tile(self.root, self, f'{id_prefix}_{i}', item['title'], item['cmd'], favorite_enabled=False, fixed_color=item['fixed'], lock_tile=item['lock'], icon_type=item['icon'], corner_fold=item['fold'])
+            tile.resize_tile(tile_w, tile_h)
+            self.widget_items.append(tile); self.focusable_tiles.append(tile)
+            self.canvas.create_window(xs[i], y, window=tile, anchor='center')
+    top_y = y_pct(h, 64); tools_y = y_pct(h, 43)
+    create_tile_group(top_tiles, top_y, 'main_menuzeile_1', max(250, int(tw*1.05)), max(130, int(th*1.05)))
+    create_tile_group(middle_tiles, tools_y, 'main_menuzeile_2', max(200, int(tw*0.86*0.95)), max(100, int(th*0.86*0.95)))
+    self.draw_continuous_relief_line(self.canvas, (top_y + tools_y) / 2, x_pct(w, 9.5), x_pct(w, 92))
+    mini_tw = int(tw * 0.72); mini_th = int(th * 0.72)
+    mini_center_y = y_pct(h, 16.5) + th / 2 - mini_th / 2
+    mini_top = mini_center_y - mini_th / 2
+    create_tile_group(mini_tiles, mini_center_y, 'main_mini_menuezeile', mini_tw, mini_th)
+    self.draw_continuous_relief_line(self.canvas, mini_top - 13, x_pct(w, 9.5), x_pct(w, 92))
+    self.draw_bottom_logo()
+
+try:
+    FiBuMateApp.render_kb_list_area = _fm471_render_kb_list_area
+    FiBuMateApp.render_kb_detail_area = _fm471_render_kb_detail_area
+    FiBuMateApp.render_main_menu = _fm471_render_main_menu
+except Exception:
+    pass
+
+
+
+# ------------------------------------------------------------------
+# FiBu Mate - Modul Dateiausgabe Übersicht + Vorschau FINAL 2026-06-23
+# Version 0.472
+# Zweck:
+# - Integriert das neue Hauptmenü-Modul "Dateiausgabe" direkt in die Hauptdatei.
+# - Zeigt zuletzt mit FiBu Mate erstellte Dateien mit Name, Benutzer, Datum und Kurzpfad.
+# - Unterstützt Sammelpositionen mit aufklappbaren Unterpositionen.
+# - Bietet Datei öffnen, Speicherort öffnen, Outlook-Entwurf und Teams-Weitergabe.
+# - Zweigeteilte Ansicht: links Übersicht, rechts Vorschau der gewählten Position.
+# ------------------------------------------------------------------
+
+_FM472_PATCH_VERSION = "0.472"
+_FM472_OUTPUT_EXTENSIONS = {'.pdf', '.xlsx', '.xls', '.docx', '.doc', '.csv', '.txt', '.png', '.jpg', '.jpeg', '.bmp', '.gif'}
+
+
+def _fm472_now_iso():
+    try:
+        return datetime.now().isoformat(timespec='seconds')
+    except Exception:
+        return ''
+
+
+def _fm472_display_dt(ts):
+    try:
+        if isinstance(ts, (int, float)):
+            return datetime.fromtimestamp(ts).strftime('%d.%m.%Y %H:%M')
+        s = str(ts or '')
+        if not s:
+            return ''
+        return datetime.fromisoformat(s.replace('Z', '+00:00')).strftime('%d.%m.%Y %H:%M')
+    except Exception:
+        return str(ts or '')[:16]
+
+
+def _fm472_safe_user(self, value=None):
+    try:
+        if value:
+            return _fm470_user_fullname(self, value)
+    except Exception:
+        pass
+    try:
+        return _fm470_user_fullname(self, getattr(self, 'current_user_key', '') or getattr(self, 'current_user_display', ''))
+    except Exception:
+        return str(value or getattr(self, 'current_user_display', '') or getattr(self, 'current_user_key', '') or '')
+
+
+def _fm472_output_roots():
+    roots = []
+    candidates = []
+    try: candidates.append(os.path.join(NETWORK_ROOT, 'Dateiausgabe'))
+    except Exception: pass
+    try: candidates.append(os.path.join(SCRIPT_DIR, 'Dateiausgabe'))
+    except Exception: pass
+    try: candidates.append(os.path.join(os.getcwd(), 'Dateiausgabe'))
+    except Exception: pass
+    candidates.append(r'C:\python\Dateiausgabe')
+    candidates.append(r'C:\python\Dateiausgabe\FiBu Mate')
+    seen = set()
+    for p in candidates:
+        try:
+            ap = os.path.abspath(p)
+            if ap not in seen:
+                seen.add(ap); roots.append(ap)
+        except Exception:
+            pass
+    return roots
+
+
+def _fm472_primary_output_root():
+    for p in _fm472_output_roots():
+        try:
+            os.makedirs(p, exist_ok=True)
+            return p
+        except Exception:
+            pass
+    return os.getcwd()
+
+
+def _fm472_log_paths():
+    paths = []
+    for root in _fm472_output_roots():
+        try:
+            paths.append(os.path.join(root, 'fibu_mate_dateiausgabe_log.json'))
+        except Exception:
+            pass
+    return paths
+
+
+def _fm472_read_json(path):
+    try:
+        if path and os.path.exists(path):
+            with open(path, 'r', encoding='utf-8') as f:
+                return json.load(f)
+    except Exception:
+        pass
+    return {}
+
+
+def _fm472_write_json(path, data):
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    tmp = path + '.tmp'
+    with open(tmp, 'w', encoding='utf-8') as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+    os.replace(tmp, path)
+
+
+def _fm472_short_path(path, max_len=58):
+    s = str(path or '')
+    if len(s) <= max_len:
+        return s
+    parts = s.replace('/', os.sep).split(os.sep)
+    if len(parts) >= 3:
+        compact = parts[0] + os.sep + '…' + os.sep + os.sep.join(parts[-2:])
+        if len(compact) <= max_len:
+            return compact
+    return '…' + s[-max_len+1:]
+
+
+def _fm472_file_key(path):
+    try:
+        return hashlib.sha1(os.path.abspath(path).casefold().encode('utf-8', errors='ignore')).hexdigest()[:18]
+    except Exception:
+        return hashlib.sha1(str(path).encode('utf-8', errors='ignore')).hexdigest()[:18]
+
+
+def _fm472_parent_dir_under_roots(path):
+    try:
+        ap = os.path.abspath(path)
+        for root in _fm472_output_roots():
+            try:
+                rp = os.path.relpath(ap, root)
+                if not rp.startswith('..'):
+                    parts = rp.split(os.sep)
+                    if len(parts) > 1:
+                        return os.path.join(root, parts[0])
+            except Exception:
+                pass
+    except Exception:
+        pass
+    return os.path.dirname(path)
+
+
+def _fm472_guess_module(path):
+    s = str(path or '').lower()
+    if 'debitor' in s and 'serien' in s:
+        return 'Debitoren-Serienbrief'
+    if 'aramark' in s:
+        return 'Aramark Monatsabrechnungen'
+    if 'nike' in s:
+        return 'Nike-Tools'
+    if 'afi' in s or 'upload' in s:
+        return 'AFI-Upload'
+    return 'FiBu Mate'
+
+
+def _fm472_register_output_file(self, path, user=None, module=None, group_id=None, group_title=None, created_at=None, children=None):
+    """Zentrale Registrierfunktion für künftige Exportmodule.
+    Einzeldatei: file_output_register(path)
+    Sammelexport: gleicher group_id/group_title für mehrere Dateien.
+    """
+    try:
+        if not path:
+            return False
+        entry = {
+            'id': _fm472_file_key(path),
+            'type': 'file',
+            'name': os.path.basename(str(path)),
+            'path': os.path.abspath(str(path)),
+            'user': user or _fm472_safe_user(self),
+            'module': module or _fm472_guess_module(path),
+            'group_id': group_id or '',
+            'group_title': group_title or '',
+            'created_at': created_at or _fm472_now_iso(),
+        }
+        data = {}
+        target = _fm472_log_paths()[0]
+        for p in _fm472_log_paths():
+            d = _fm472_read_json(p)
+            if isinstance(d, dict) and d.get('items'):
+                data = d; break
+        items = data.get('items', []) if isinstance(data, dict) else []
+        items = [x for x in items if isinstance(x, dict) and x.get('id') != entry['id']]
+        items.append(entry)
+        data = {'items': items[-1000:]}
+        _fm472_write_json(target, data)
+        return True
+    except Exception:
+        return False
+
+
+def _fm472_load_registered_items(self):
+    by_id = {}
+    for p in _fm472_log_paths():
+        d = _fm472_read_json(p)
+        for item in (d.get('items', []) if isinstance(d, dict) else []):
+            if isinstance(item, dict) and item.get('path'):
+                by_id[item.get('id') or _fm472_file_key(item.get('path'))] = dict(item)
+    return list(by_id.values())
+
+
+def _fm472_scan_output_files(self):
+    items = []
+    seen = set()
+    # 1) Registrierte Dateien bevorzugt übernehmen.
+    for item in _fm472_load_registered_items(self):
+        p = item.get('path')
+        if not p:
+            continue
+        try:
+            ap = os.path.abspath(p); seen.add(ap.casefold())
+            if os.path.exists(ap):
+                st = os.stat(ap)
+                item.setdefault('created_at', datetime.fromtimestamp(st.st_mtime).isoformat(timespec='seconds'))
+                item.setdefault('name', os.path.basename(ap)); item['path'] = ap
+                item.setdefault('user', _fm472_safe_user(self, item.get('user')))
+                item.setdefault('module', _fm472_guess_module(ap)); item.setdefault('type', 'file')
+                items.append(item)
+        except Exception:
+            pass
+    # 2) Dateiausgabe-Ordner scannen, damit auch bisherige Exporte ohne Log sichtbar werden.
+    for root in _fm472_output_roots():
+        if not os.path.isdir(root):
+            continue
+        try:
+            for dirpath, dirnames, filenames in os.walk(root):
+                # technische Logs/Backups ausblenden
+                if any(part.lower() in {'__pycache__', 'logs'} for part in dirpath.split(os.sep)):
+                    continue
+                for fn in filenames:
+                    ext = os.path.splitext(fn)[1].lower()
+                    if ext not in _FM472_OUTPUT_EXTENSIONS:
+                        continue
+                    ap = os.path.abspath(os.path.join(dirpath, fn))
+                    if ap.casefold() in seen:
+                        continue
+                    seen.add(ap.casefold())
+                    try:
+                        st = os.stat(ap)
+                        items.append({
+                            'id': _fm472_file_key(ap), 'type': 'file', 'name': fn, 'path': ap,
+                            'user': _fm472_safe_user(self), 'module': _fm472_guess_module(ap),
+                            'created_at': datetime.fromtimestamp(st.st_mtime).isoformat(timespec='seconds'),
+                            'group_id': '', 'group_title': ''
+                        })
+                    except Exception:
+                        pass
+        except Exception:
+            pass
+    return items
+
+
+def _fm472_build_groups(self, items):
+    # Registrierte group_id/group_title zuerst, sonst Unterordner als Sammelposition, wenn mehrere Dateien im Unterordner liegen.
+    groups = {}
+    singles = []
+    dir_bucket = {}
+    for item in items:
+        gid = str(item.get('group_id') or '').strip()
+        if gid:
+            groups.setdefault(gid, {'id':'grp_'+gid, 'type':'group', 'name': item.get('group_title') or item.get('module') or 'Sammelexport', 'path':'', 'user': item.get('user',''), 'module': item.get('module',''), 'created_at': item.get('created_at',''), 'children': []})['children'].append(item)
+        else:
+            base_dir = _fm472_parent_dir_under_roots(item.get('path',''))
+            dir_bucket.setdefault(base_dir, []).append(item)
+    for base_dir, arr in dir_bucket.items():
+        if len(arr) > 1 and base_dir and any(x.lower() in os.path.basename(base_dir).lower() for x in ('serien', 'sammel', 'export', 'dateiausgabe')):
+            latest = max(arr, key=lambda x: str(x.get('created_at','')))
+            gid = 'dir_' + _fm472_file_key(base_dir)
+            groups[gid] = {'id':gid, 'type':'group', 'name': os.path.basename(base_dir) or 'Sammelexport', 'path': base_dir, 'user': latest.get('user',''), 'module': latest.get('module','Sammelexport'), 'created_at': latest.get('created_at',''), 'children': sorted(arr, key=lambda x: str(x.get('name','')).lower())}
+        else:
+            singles.extend(arr)
+    out = list(groups.values()) + singles
+    out.sort(key=lambda x: str(x.get('created_at','')), reverse=True)
+    return out
+
+
+def _fm472_filter_items(items, query):
+    q = str(query or '').strip().casefold()
+    if not q:
+        return items
+    def hit(item):
+        vals = [item.get('name',''), item.get('user',''), item.get('module',''), item.get('created_at',''), _fm472_display_dt(item.get('created_at')), item.get('path','')]
+        return q in ' '.join(str(v) for v in vals).casefold()
+    result = []
+    for item in items:
+        if item.get('type') == 'group':
+            children = [c for c in item.get('children', []) if hit(c)]
+            if hit(item) or children:
+                clone = dict(item); clone['children'] = children if children else item.get('children', [])
+                result.append(clone)
+        elif hit(item):
+            result.append(item)
+    return result
+
+
+def _fm472_open_path(path):
+    try:
+        if not path or not os.path.exists(path):
+            messagebox.showwarning('Dateiausgabe', 'Datei oder Ordner wurde nicht gefunden.'); return False
+        if sys.platform.startswith('win'):
+            os.startfile(path)
+        elif sys.platform == 'darwin':
+            import subprocess; subprocess.Popen(['open', path])
+        else:
+            import subprocess; subprocess.Popen(['xdg-open', path])
+        return True
+    except Exception as exc:
+        try: messagebox.showerror('Dateiausgabe', 'Öffnen fehlgeschlagen:\n' + str(exc))
+        except Exception: pass
+        return False
+
+
+def _fm472_open_file(item):
+    return _fm472_open_path((item or {}).get('path',''))
+
+
+def _fm472_open_folder(item):
+    p = (item or {}).get('path','')
+    if item and item.get('type') == 'group' and p and os.path.isdir(p):
+        return _fm472_open_path(p)
+    return _fm472_open_path(os.path.dirname(p))
+
+
+def _fm472_send_outlook(item):
+    try:
+        path = (item or {}).get('path','')
+        if item and item.get('type') == 'group':
+            path = item.get('path') or os.path.dirname((item.get('children') or [{}])[0].get('path',''))
+        if not path:
+            return False
+        try:
+            import win32com.client
+            outlook = win32com.client.Dispatch('Outlook.Application')
+            mail = outlook.CreateItem(0)
+            mail.Subject = 'FiBu Mate Dateiausgabe: ' + str((item or {}).get('name',''))
+            mail.Body = 'Hallo,\n\nanbei / im Pfad findest du die Datei aus FiBu Mate:\n' + path + '\n\nViele Grüße'
+            if os.path.isfile(path):
+                mail.Attachments.Add(path)
+            mail.Display()
+            return True
+        except Exception:
+            import webbrowser
+            from urllib.parse import quote
+            webbrowser.open('mailto:?subject=' + quote('FiBu Mate Dateiausgabe: ' + str((item or {}).get('name',''))) + '&body=' + quote('Datei/Pfad aus FiBu Mate:\n' + path))
+            return True
+    except Exception as exc:
+        try: messagebox.showerror('Dateiausgabe', 'Outlook-Versand konnte nicht vorbereitet werden:\n' + str(exc))
+        except Exception: pass
+        return False
+
+
+def _fm472_send_teams(self, item):
+    try:
+        path = (item or {}).get('path','')
+        if item and item.get('type') == 'group':
+            path = item.get('path') or os.path.dirname((item.get('children') or [{}])[0].get('path',''))
+        msg = 'FiBu Mate Dateiausgabe: ' + str((item or {}).get('name','')) + '\n' + path
+        try:
+            self.root.clipboard_clear(); self.root.clipboard_append(msg)
+        except Exception:
+            pass
+        import webbrowser
+        webbrowser.open('msteams:/')
+        try: messagebox.showinfo('Dateiausgabe', 'Der Dateipfad wurde in die Zwischenablage kopiert. Teams wurde geöffnet; bitte in den gewünschten Chat einfügen.')
+        except Exception: pass
+        return True
+    except Exception as exc:
+        try: messagebox.showerror('Dateiausgabe', 'Teams-Weitergabe konnte nicht vorbereitet werden:\n' + str(exc))
+        except Exception: pass
+        return False
+
+
+def _fm472_preview_pdf(canvas, path, width):
+    pages = 1
+    texts = []
+    try:
+        from PyPDF2 import PdfReader
+        reader = PdfReader(path)
+        pages = max(1, len(reader.pages))
+        for i, page in enumerate(reader.pages[:8]):
+            try: texts.append((page.extract_text() or '').strip()[:500])
+            except Exception: texts.append('')
+    except Exception:
+        pass
+    y = 12
+    for i in range(pages):
+        h = 190
+        canvas.create_rectangle(14, y, width-28, y+h, fill='#FFFFFF', outline=LINE)
+        canvas.create_text(28, y+20, text=f'PDF – Seite {i+1} von {pages}', anchor='w', fill=BLUE, font=body_font(11, weight='bold'))
+        snippet = texts[i] if i < len(texts) and texts[i] else 'Vorschau als Seitenplatzhalter. Zum vollständigen Anzeigen bitte Datei öffnen.'
+        canvas.create_text(28, y+48, text=snippet, anchor='nw', fill=TEXT, font=body_font(9), width=max(300, width-80))
+        y += h + 14
+    return y
+
+
+def _fm472_preview_image(canvas, path, width):
+    y = 12
+    try:
+        if PIL_AVAILABLE and os.path.exists(path):
+            img = Image.open(path)
+            img.thumbnail((max(220, width-80), 680))
+            photo = ImageTk.PhotoImage(img)
+            canvas._fm472_preview_refs = getattr(canvas, '_fm472_preview_refs', []) + [photo]
+            canvas.create_image(28, y, image=photo, anchor='nw')
+            y += photo.height() + 24
+            return y
+    except Exception:
+        pass
+    canvas.create_text(28, y, text='Bildvorschau konnte nicht geladen werden.', anchor='nw', fill=TEXT2, font=body_font(10))
+    return y + 40
+
+
+def _fm472_preview_text(canvas, path, width):
+    y = 12
+    txt = ''
+    try:
+        with open(path, 'r', encoding='utf-8', errors='replace') as f:
+            txt = f.read(6000)
+    except Exception as exc:
+        txt = 'Textvorschau konnte nicht geladen werden:\n' + str(exc)
+    canvas.create_rectangle(14, y, width-28, y+460, fill='#FFFFFF', outline=LINE)
+    canvas.create_text(28, y+18, text=txt, anchor='nw', fill=TEXT, font=body_font(9), width=max(300, width-80))
+    return y+480
+
+
+def _fm472_preview_office(canvas, path, width):
+    y = 12
+    ext = os.path.splitext(path)[1].lower()
+    title = {' .docx':'Word-Dokument', '.docx':'Word-Dokument', '.xlsx':'Excel-Arbeitsmappe', '.xls':'Excel-Arbeitsmappe', '.doc':'Word-Dokument'}.get(ext, 'Dokument')
+    canvas.create_rectangle(14, y, width-28, y+260, fill='#FFFFFF', outline=LINE)
+    canvas.create_text(28, y+20, text=title, anchor='w', fill=BLUE, font=body_font(12, weight='bold'))
+    meta = [os.path.basename(path), _fm472_short_path(path, 92)]
+    try:
+        st = os.stat(path); meta.append('Geändert: ' + _fm472_display_dt(st.st_mtime)); meta.append('Größe: ' + str(round(st.st_size/1024, 1)) + ' KB')
+    except Exception: pass
+    # DOCX-Textauszug, falls möglich.
+    snippet = ''
+    if ext == '.docx':
+        try:
+            from docx import Document
+            doc = Document(path)
+            snippet = '\n'.join(p.text for p in doc.paragraphs[:12] if p.text).strip()[:1200]
+        except Exception:
+            snippet = ''
+    canvas.create_text(28, y+54, text='\n'.join(meta) + ('\n\n' + snippet if snippet else '\n\nFür die vollständige Vorschau bitte Datei öffnen.'), anchor='nw', fill=TEXT, font=body_font(9), width=max(300, width-80))
+    return y+280
+
+
+def _fm472_draw_preview(self, canvas, item):
+    canvas.delete('all'); canvas._fm472_preview_refs = []
+    width = max(460, canvas.winfo_width() or 620)
+    if not item:
+        canvas.create_text(18, 20, text='Bitte links eine Datei oder Sammelposition auswählen.', anchor='nw', fill=TEXT2, font=body_font(11))
+        canvas.configure(scrollregion=(0,0,width,80)); return
+    title = str(item.get('name','Datei'))
+    path = item.get('path','')
+    y = 12
+    canvas.create_text(18, y, text=title, anchor='nw', fill=BLUE, font=body_font(14, weight='bold'), width=width-40)
+    y += 34
+    info = f"Benutzer: {item.get('user','')}    Erstellt/geändert: {_fm472_display_dt(item.get('created_at'))}\nPfad: {_fm472_short_path(path, 110)}"
+    canvas.create_text(18, y, text=info, anchor='nw', fill=TEXT2, font=body_font(9), width=width-40)
+    y += 54
+    if item.get('type') == 'group':
+        children = item.get('children', []) or []
+        canvas.create_rectangle(14, y, width-28, y+max(140, 34+len(children)*26), fill='#FFFFFF', outline=LINE)
+        canvas.create_text(28, y+18, text=f'Sammelposition mit {len(children)} Unterposition(en)', anchor='w', fill=BLUE, font=body_font(11, weight='bold'))
+        yy = y+48
+        for c in children[:40]:
+            canvas.create_text(34, yy, text='• ' + str(c.get('name','')), anchor='w', fill=TEXT, font=body_font(9), width=width-80)
+            yy += 24
+        y = yy + 20
+    elif path and os.path.exists(path):
+        ext = os.path.splitext(path)[1].lower()
+        if ext == '.pdf': y += _fm472_preview_pdf(canvas, path, width)
+        elif ext in {'.png','.jpg','.jpeg','.bmp','.gif'}: y += _fm472_preview_image(canvas, path, width)
+        elif ext in {'.txt','.csv'}: y += _fm472_preview_text(canvas, path, width)
+        elif ext in {'.docx','.doc','.xlsx','.xls'}: y += _fm472_preview_office(canvas, path, width)
+        else:
+            canvas.create_text(18, y, text='Für diesen Dateityp ist nur eine Metadaten-Vorschau verfügbar.', anchor='nw', fill=TEXT, font=body_font(10)); y += 60
+    else:
+        canvas.create_text(18, y, text='Datei wurde nicht gefunden.', anchor='nw', fill=RED, font=body_font(10)); y += 60
+    canvas.configure(scrollregion=(0,0,width,max(y+40, canvas.winfo_height())))
+
+
+def _fm472_render_file_output(self):
+    self.focusable_tiles.clear()
+    w, h = self.canvas.winfo_width(), self.canvas.winfo_height()
+    x0, y0 = 24, 135
+    full_w, full_h = max(900, w-48), max(520, h-y0-64)
+    outer = tk.Frame(self.root, bg=BG)
+    self.widget_items.append(outer)
+    self.canvas.create_window(ui_s(x0), ui_s(y0), window=outer, anchor='nw', width=ui_s(full_w), height=ui_s(full_h))
+    search_var = tk.StringVar(value=getattr(self, 'file_output_search_text', ''))
+    selected_item = {'item': getattr(self, 'file_output_selected_item', None)}
+    all_items = self.file_output_build_items()
+
+    top = tk.Frame(outer, bg=BG); top.pack(fill='x', pady=(0,8))
+    tk.Label(top, text='Suche', bg=BG, fg=TEXT2, font=body_font(10)).pack(side='left', padx=(0,8))
+    ent = tk.Entry(top, textvariable=search_var, bg=WHITE, fg=TEXT, font=body_font(11), relief='solid', bd=1)
+    ent.pack(side='left', fill='x', expand=True, ipady=5)
+    tk.Button(top, text='Aktualisieren', command=lambda: self.render_page(), bg=WHITE, fg=TEXT, font=body_font(10), relief='solid', bd=1).pack(side='left', padx=(8,0), ipadx=10, ipady=4)
+
+    content = tk.Frame(outer, bg=BG); content.pack(fill='both', expand=True)
+    left = tk.Frame(content, bg=WHITE, highlightbackground=LINE, highlightthickness=2); left.pack(side='left', fill='both', expand=True, padx=(0,12))
+    right = tk.Frame(content, bg=WHITE, highlightbackground=LINE, highlightthickness=2); right.pack(side='right', fill='both', expand=True)
+    left.configure(width=max(520, int(full_w*0.48))); right.configure(width=max(520, int(full_w*0.50)))
+
+    head = tk.Frame(left, bg=WHITE); head.pack(fill='x', padx=12, pady=(10,6))
+    tk.Label(head, text='Zuletzt erstellte Dateien', bg=WHITE, fg=BLUE, font=body_font(13, weight='bold')).pack(side='left')
+    action_bar = tk.Frame(left, bg=WHITE); action_bar.pack(fill='x', padx=12, pady=(0,8))
+    for label, cmd in [
+        ('Datei öffnen', lambda: _fm472_open_file(selected_item.get('item') or {})),
+        ('Speicherort öffnen', lambda: _fm472_open_folder(selected_item.get('item') or {})),
+        ('Per Outlook senden', lambda: _fm472_send_outlook(selected_item.get('item') or {})),
+        ('Per Teams senden', lambda: _fm472_send_teams(self, selected_item.get('item') or {})),
+    ]:
+        tk.Button(action_bar, text=label, command=cmd, bg=WHITE, fg=TEXT, font=body_font(9), relief='solid', bd=1).pack(side='left', padx=(0,6), ipadx=8, ipady=3)
+
+    tree_frame = tk.Frame(left, bg=WHITE); tree_frame.pack(fill='both', expand=True, padx=12, pady=(0,12))
+    columns = ('name','user','date','path')
+    tree = ttk.Treeview(tree_frame, columns=columns, show='tree headings', selectmode='browse')
+    tree.heading('#0', text='Typ')
+    tree.heading('name', text='Dateiname / Sammelposition')
+    tree.heading('user', text='Benutzer')
+    tree.heading('date', text='Erstellt')
+    tree.heading('path', text='Ablagepfad kurz')
+    tree.column('#0', width=54, stretch=False)
+    tree.column('name', width=210, stretch=True)
+    tree.column('user', width=120, stretch=False)
+    tree.column('date', width=122, stretch=False)
+    tree.column('path', width=190, stretch=True)
+    vsb = ttk.Scrollbar(tree_frame, orient='vertical', command=tree.yview)
+    tree.configure(yscrollcommand=vsb.set)
+    tree.pack(side='left', fill='both', expand=True); vsb.pack(side='right', fill='y')
+
+    prev_head = tk.Frame(right, bg=WHITE); prev_head.pack(fill='x', padx=12, pady=(10,6))
+    tk.Label(prev_head, text='Vorschau', bg=WHITE, fg=BLUE, font=body_font(13, weight='bold')).pack(side='left')
+    prev_canvas = tk.Canvas(right, bg='#F8FAFC', highlightthickness=0)
+    prev_scroll = ttk.Scrollbar(right, orient='vertical', command=prev_canvas.yview)
+    prev_canvas.configure(yscrollcommand=prev_scroll.set)
+    prev_canvas.pack(side='left', fill='both', expand=True, padx=(12,0), pady=(0,12))
+    prev_scroll.pack(side='right', fill='y', padx=(0,12), pady=(0,12))
+
+    id_map = {}
+    def fill_tree():
+        tree.delete(*tree.get_children())
+        q = search_var.get(); self.file_output_search_text = q
+        shown = _fm472_filter_items(all_items, q)
+        for item in shown:
+            iid = item.get('id') or _fm472_file_key(item.get('path','') + item.get('name',''))
+            id_map[iid] = item
+            typ = '▸' if item.get('type') == 'group' else '•'
+            tree.insert('', 'end', iid=iid, text=typ, values=(item.get('name',''), item.get('user',''), _fm472_display_dt(item.get('created_at')), _fm472_short_path(item.get('path',''))))
+            if item.get('type') == 'group':
+                for c in item.get('children', []) or []:
+                    cid = c.get('id') or _fm472_file_key(c.get('path',''))
+                    if cid in id_map: cid = iid + '_' + cid
+                    id_map[cid] = c
+                    tree.insert(iid, 'end', iid=cid, text='•', values=(c.get('name',''), c.get('user',''), _fm472_display_dt(c.get('created_at')), _fm472_short_path(c.get('path',''))))
+    def on_select(event=None):
+        sel = tree.selection()
+        item = id_map.get(sel[0]) if sel else None
+        selected_item['item'] = item
+        self.file_output_selected_item = item
+        _fm472_draw_preview(self, prev_canvas, item)
+    def on_open(event=None):
+        item = selected_item.get('item')
+        if item and item.get('type') == 'group':
+            try: tree.item(tree.selection()[0], open=not bool(tree.item(tree.selection()[0], 'open')))
+            except Exception: pass
+        elif item:
+            _fm472_open_file(item)
+    tree.bind('<<TreeviewSelect>>', on_select)
+    tree.bind('<Double-Button-1>', on_open)
+    search_var.trace_add('write', lambda *_: (fill_tree(), _fm472_draw_preview(self, prev_canvas, selected_item.get('item'))))
+    try: prev_canvas.bind('<MouseWheel>', lambda e: (prev_canvas.yview_scroll(int(-1*(e.delta/120)), 'units'), 'break'))
+    except Exception: pass
+    fill_tree()
+    if tree.get_children():
+        first = tree.get_children()[0]
+        tree.selection_set(first); tree.focus(first); on_select()
+    else:
+        _fm472_draw_preview(self, prev_canvas, None)
+
+
+def _fm472_build_items(self):
+    return _fm472_build_groups(self, _fm472_scan_output_files(self))
+
+
+try:
+    FiBuMateApp.file_output_register = _fm472_register_output_file
+    FiBuMateApp.file_output_build_items = _fm472_build_items
+    FiBuMateApp.render_file_output = _fm472_render_file_output
+except Exception:
+    pass
+
+try:
+    _fm472_old_render_page = FiBuMateApp.render_page
+except Exception:
+    _fm472_old_render_page = None
+
+def _fm472_render_page(self):
+    if getattr(self, 'current_page', '') == 'file_output':
+        self.init_responsive_scaling()
+        self.clear_content()
+        self.draw_background()
+        self.draw_header(getattr(self, 'current_title', 'Dateiausgabe') or 'Dateiausgabe')
+        self.draw_controls()
+        self.draw_path_bar()
+        self.draw_favorites_bar()
+        self.render_file_output()
+        return
+    if _fm472_old_render_page:
+        return _fm472_old_render_page(self)
+
+try:
+    FiBuMateApp.render_page = _fm472_render_page
+except Exception:
+    pass
+
+try:
+    MODULE_DESCRIPTIONS['file_output'] = 'Zentrale Übersicht zuletzt mit FiBu Mate erstellter Dateien inklusive Vorschau, Öffnen, Speicherort, Outlook- und Teams-Weitergabe.'
+except Exception:
+    pass
+
+
+
+# ------------------------------------------------------------------
+# FiBu Mate - Dateiausgabe Vorschau/Versand/Löschen/Sortierung FINAL 2026-06-23
+# Version 0.473
+# Zweck:
+# - Entfernt den inneren Rahmen in der Vorschau.
+# - Ergänzt echte Tabellen-Vorschau für Excel/CSV.
+# - Versand versendet/übergibt Dateien, protokolliert Versand und zeigt Versandindikator mit Mouseover.
+# - Buttons einheitlich grau und mit Outlook/Teams/Explorer-Icons.
+# - Sammelpositionen nur noch bei gleicher group_id = gleicher Exportvorgang.
+# - B4 darf Exporte löschen; Sortierung per Spaltenkopf, Standard: neueste zuerst.
+# ------------------------------------------------------------------
+
+_FM473_PATCH_VERSION = "0.473"
+_FM473_SENT_ICON = r"C:\python\bin\Imgs\Icons\1485969917-3-right_78909.ico"
+_FM473_OUTLOOK_ICON = r"C:\python\bin\Imgs\Icons\microsoft_office_outlook_logo_icon_145721.ico"
+_FM473_TEAMS_ICON = r"C:\python\bin\Imgs\Icons\microsoft_office_teams_logo_icon_145726.ico"
+_FM473_EXPLORER_ICON = r"C:\python\bin\Imgs\Icons\File_Explorer_23583.ico"
+_FM473_BUTTON_GREY = "#E5E7EB"
+_FM473_BUTTON_GREY_ACTIVE = "#D1D5DB"
+
+
+def _fm473_can_delete_exports(self):
+    try:
+        return int(ROLE_RANK.get(self.my_role(), 1)) >= 4
+    except Exception:
+        try: return int(self.kb_current_permission_level()) >= 4
+        except Exception: return False
+
+
+def _fm473_icon_photo(self, path, size=18):
+    try:
+        cache = getattr(self, '_fm473_icon_cache', {})
+        key = (path, int(size))
+        if key in cache:
+            return cache[key]
+        if PIL_AVAILABLE and path and os.path.exists(path):
+            img = Image.open(path)
+            img.thumbnail((int(size), int(size)))
+            ph = ImageTk.PhotoImage(img)
+            cache[key] = ph
+            self._fm473_icon_cache = cache
+            return ph
+    except Exception:
+        pass
+    return None
+
+
+def _fm473_make_button(parent, text, command, icon_path=None, state='normal'):
+    img = None
+    try:
+        app = parent
+        while app and not hasattr(app, '_fm473_icon_cache') and hasattr(app, 'master'):
+            app = app.master
+    except Exception:
+        app = None
+    # Buttonbilder werden im Render selbst nachträglich gesetzt, wenn App-Kontext verfügbar ist.
+    return tk.Button(parent, text=text, command=command, bg=_FM473_BUTTON_GREY, fg=TEXT,
+                     activebackground=_FM473_BUTTON_GREY_ACTIVE, font=body_font(9), relief='solid', bd=1,
+                     state=state, cursor='hand2' if state == 'normal' else 'arrow', compound='left', padx=8, pady=3)
+
+
+def _fm473_log_target():
+    paths = _fm472_log_paths()
+    return paths[0] if paths else os.path.join(os.getcwd(), 'fibu_mate_dateiausgabe_log.json')
+
+
+def _fm473_load_all_log_items():
+    by_id = {}
+    for p in _fm472_log_paths():
+        d = _fm472_read_json(p)
+        for item in (d.get('items', []) if isinstance(d, dict) else []):
+            if isinstance(item, dict):
+                iid = item.get('id') or _fm472_file_key(item.get('path',''))
+                if iid: by_id[iid] = dict(item)
+    return by_id
+
+
+def _fm473_write_log_items(items_by_id):
+    target = _fm473_log_target()
+    try:
+        _fm472_write_json(target, {'items': list(items_by_id.values())[-1000:]})
+        return True
+    except Exception:
+        return False
+
+
+def _fm473_mark_sent(self, item, channel):
+    now = datetime.now().isoformat(timespec='seconds')
+    ids = []
+    if item.get('type') == 'group':
+        for c in item.get('children', []) or []:
+            ids.append(c.get('id') or _fm472_file_key(c.get('path','')))
+            c['sent_at'] = now; c['sent_channel'] = channel
+        item['sent_at'] = now; item['sent_channel'] = channel
+    else:
+        ids.append(item.get('id') or _fm472_file_key(item.get('path','')))
+        item['sent_at'] = now; item['sent_channel'] = channel
+    logs = _fm473_load_all_log_items()
+    for iid in ids:
+        current = logs.get(iid, {})
+        current.setdefault('id', iid)
+        if item.get('type') != 'group':
+            current.update({k:item.get(k) for k in ('name','path','user','module','created_at','group_id','group_title') if item.get(k) is not None})
+        current['sent_at'] = now; current['sent_channel'] = channel
+        logs[iid] = current
+    _fm473_write_log_items(logs)
+    return now
+
+
+def _fm473_files_for_item(item):
+    files = []
+    if not item:
+        return files
+    if item.get('type') == 'group':
+        for c in item.get('children', []) or []:
+            p = c.get('path','')
+            if p and os.path.isfile(p): files.append(p)
+    else:
+        p = item.get('path','')
+        if p and os.path.isfile(p): files.append(p)
+    return files
+
+
+def _fm473_send_outlook(self, item):
+    files = _fm473_files_for_item(item)
+    if not files:
+        try: messagebox.showwarning('Dateiausgabe', 'Keine versendbare Datei gefunden.')
+        except Exception: pass
+        return False
+    try:
+        import win32com.client
+        outlook = win32com.client.Dispatch('Outlook.Application')
+        mail = outlook.CreateItem(0)
+        mail.Subject = 'FiBu Mate Dateiausgabe: ' + str((item or {}).get('name',''))
+        mail.Body = 'Hallo,\n\nanbei die Datei(en) aus FiBu Mate.\n\nViele Grüße'
+        for f in files:
+            mail.Attachments.Add(f)
+        mail.Display()
+        _fm473_mark_sent(self, item, 'Outlook')
+        return True
+    except Exception as exc:
+        try:
+            messagebox.showerror('Dateiausgabe', 'Outlook-Versand mit Dateianhang konnte nicht vorbereitet werden:\n' + str(exc))
+        except Exception: pass
+        return False
+
+
+def _fm473_copy_files_to_clipboard(paths):
+    # Windows: CF_HDROP über pywin32, wenn verfügbar. Danach kann in Teams eingefügt werden.
+    try:
+        import win32clipboard, win32con, struct
+        files = '\0'.join(paths) + '\0\0'
+        data = files.encode('utf-16le')
+        dropfiles = struct.pack('IiiII', 20, 0, 0, 0, 1)
+        win32clipboard.OpenClipboard()
+        try:
+            win32clipboard.EmptyClipboard()
+            win32clipboard.SetClipboardData(win32con.CF_HDROP, dropfiles + data)
+        finally:
+            win32clipboard.CloseClipboard()
+        return True
+    except Exception:
+        return False
+
+
+def _fm473_send_teams(self, item):
+    files = _fm473_files_for_item(item)
+    if not files:
+        try: messagebox.showwarning('Dateiausgabe', 'Keine versendbare Datei gefunden.')
+        except Exception: pass
+        return False
+    ok_clip = _fm473_copy_files_to_clipboard(files)
+    try:
+        import webbrowser
+        webbrowser.open('msteams:/')
+    except Exception:
+        pass
+    if ok_clip:
+        try: messagebox.showinfo('Dateiausgabe', 'Die Datei(en) wurden in die Zwischenablage gelegt. Teams wurde geöffnet; bitte im gewünschten Chat einfügen.')
+        except Exception: pass
+        _fm473_mark_sent(self, item, 'Teams')
+        return True
+    # Fallback: Ordner öffnen und trotzdem Versandvorbereitung nicht als erfolgreich protokollieren.
+    try:
+        _fm472_open_folder(item)
+        messagebox.showwarning('Dateiausgabe', 'Automatisches Anhängen in Teams ist auf diesem System nicht verfügbar. Der Speicherort wurde geöffnet; bitte Datei in Teams ziehen oder einfügen.')
+    except Exception:
+        pass
+    return False
+
+
+def _fm473_register_output_file(self, path, user=None, module=None, group_id=None, group_title=None, created_at=None, children=None):
+    # group_id wird nur verwendet, wenn sie explizit vom Exportvorgang übergeben wird.
+    try:
+        if not path: return False
+        entry = {'id': _fm472_file_key(path), 'type':'file', 'name':os.path.basename(str(path)),
+                 'path':os.path.abspath(str(path)), 'user':user or _fm472_safe_user(self),
+                 'module':module or _fm472_guess_module(path), 'group_id':group_id or '',
+                 'group_title':group_title or '', 'created_at':created_at or _fm472_now_iso()}
+        logs = _fm473_load_all_log_items()
+        old = logs.get(entry['id'], {})
+        old.update(entry)
+        logs[entry['id']] = old
+        return _fm473_write_log_items(logs)
+    except Exception:
+        return False
+
+
+def _fm473_load_registered_items(self):
+    return list(_fm473_load_all_log_items().values())
+
+
+def _fm473_scan_output_files(self):
+    items, seen = [], set()
+    logs = _fm473_load_all_log_items()
+    for item in logs.values():
+        p = item.get('path')
+        if p:
+            try:
+                ap = os.path.abspath(p); seen.add(ap.casefold())
+                if os.path.exists(ap):
+                    st = os.stat(ap)
+                    item = dict(item); item.setdefault('created_at', datetime.fromtimestamp(st.st_mtime).isoformat(timespec='seconds'))
+                    item.setdefault('name', os.path.basename(ap)); item['path'] = ap
+                    item.setdefault('user', _fm472_safe_user(self, item.get('user'))); item.setdefault('module', _fm472_guess_module(ap)); item.setdefault('type','file')
+                    items.append(item)
+            except Exception: pass
+    for root in _fm472_output_roots():
+        if not os.path.isdir(root): continue
+        try:
+            for dirpath, dirnames, filenames in os.walk(root):
+                if any(part.lower() in {'__pycache__','logs'} for part in dirpath.split(os.sep)): continue
+                for fn in filenames:
+                    ext=os.path.splitext(fn)[1].lower()
+                    if ext not in _FM472_OUTPUT_EXTENSIONS: continue
+                    ap=os.path.abspath(os.path.join(dirpath, fn))
+                    if ap.casefold() in seen: continue
+                    seen.add(ap.casefold())
+                    try:
+                        st=os.stat(ap); iid=_fm472_file_key(ap)
+                        li=logs.get(iid,{})
+                        items.append({'id':iid,'type':'file','name':fn,'path':ap,'user':li.get('user') or _fm472_safe_user(self),
+                                      'module':li.get('module') or _fm472_guess_module(ap),
+                                      'created_at':li.get('created_at') or datetime.fromtimestamp(st.st_mtime).isoformat(timespec='seconds'),
+                                      'group_id':li.get('group_id',''),'group_title':li.get('group_title',''),
+                                      'sent_at':li.get('sent_at',''),'sent_channel':li.get('sent_channel','')})
+                    except Exception: pass
+        except Exception: pass
+    return items
+
+
+def _fm473_build_groups(self, items):
+    groups, singles = {}, []
+    for item in items:
+        gid = str(item.get('group_id') or '').strip()
+        # Nur explizite group_id erzeugt Sammelposition = gleicher Exportvorgang.
+        if gid:
+            g = groups.setdefault(gid, {'id':'grp_'+gid,'type':'group','name':item.get('group_title') or item.get('module') or 'Sammelexport',
+                                        'path':'','user':item.get('user',''),'module':item.get('module',''),
+                                        'created_at':item.get('created_at',''),'children':[], 'sent_at':item.get('sent_at',''), 'sent_channel':item.get('sent_channel','')})
+            g['children'].append(item)
+            if str(item.get('created_at','')) > str(g.get('created_at','')): g['created_at'] = item.get('created_at','')
+            if item.get('sent_at') and str(item.get('sent_at')) > str(g.get('sent_at','')): g['sent_at']=item.get('sent_at'); g['sent_channel']=item.get('sent_channel','')
+        else:
+            singles.append(item)
+    out = list(groups.values()) + singles
+    out.sort(key=lambda x: str(x.get('created_at','')), reverse=True)
+    return out
+
+
+def _fm473_build_items(self):
+    return _fm473_build_groups(self, _fm473_scan_output_files(self))
+
+
+def _fm473_preview_table(canvas, rows, width, start_y=96, title='Tabellenvorschau'):
+    y = start_y
+    canvas.create_text(18, y, text=title, anchor='nw', fill=BLUE, font=body_font(12, weight='bold'))
+    y += 30
+    if not rows:
+        canvas.create_text(18, y, text='Keine Tabellendaten gefunden.', anchor='nw', fill=TEXT2, font=body_font(10)); return y+40
+    max_cols = min(8, max(len(r) for r in rows))
+    col_w = max(80, int((width-48)/max_cols))
+    row_h = 26
+    for r_idx, row in enumerate(rows[:26]):
+        bg = '#EEF2F7' if r_idx == 0 else ('#FFFFFF' if r_idx % 2 else '#F8FAFC')
+        y0 = y + r_idx*row_h
+        canvas.create_rectangle(18, y0, 18+col_w*max_cols, y0+row_h, fill=bg, outline='#E5E7EB')
+        for c in range(max_cols):
+            x0 = 18 + c*col_w
+            if c > 0: canvas.create_line(x0, y0, x0, y0+row_h, fill='#E5E7EB')
+            val = '' if c >= len(row) or row[c] is None else str(row[c])
+            if len(val) > 22: val = val[:21] + '…'
+            canvas.create_text(x0+6, y0+row_h/2, text=val, anchor='w', fill=TEXT, font=body_font(8, weight='bold' if r_idx==0 else None), width=col_w-10)
+    return y + min(26, len(rows))*row_h + 30
+
+
+def _fm473_preview_excel(canvas, path, width):
+    rows=[]
+    try:
+        from openpyxl import load_workbook
+        wb = load_workbook(path, read_only=True, data_only=True)
+        ws = wb.active
+        for i, row in enumerate(ws.iter_rows(max_rows=26, max_cols=8, values_only=True)):
+            rows.append([v for v in row])
+        try: wb.close()
+        except Exception: pass
+    except Exception as exc:
+        rows = [['Excel-Vorschau konnte nicht geladen werden', str(exc)]]
+    return _fm473_preview_table(canvas, rows, width, 96, 'Excel-Vorschau')
+
+
+def _fm473_preview_csv(canvas, path, width):
+    rows=[]
+    try:
+        import csv
+        with open(path, 'r', encoding='utf-8-sig', errors='replace', newline='') as f:
+            sample = f.read(4096); f.seek(0)
+            try: dialect = csv.Sniffer().sniff(sample, delimiters=';,\t,')
+            except Exception: dialect = csv.excel
+            reader = csv.reader(f, dialect)
+            for i, row in enumerate(reader):
+                rows.append(row)
+                if i >= 25: break
+    except Exception as exc:
+        rows = [['CSV-Vorschau konnte nicht geladen werden', str(exc)]]
+    return _fm473_preview_table(canvas, rows, width, 96, 'CSV-Vorschau')
+
+
+def _fm473_draw_preview(self, canvas, item):
+    canvas.delete('all'); canvas._fm472_preview_refs=[]
+    width=max(460, canvas.winfo_width() or 620)
+    if not item:
+        canvas.create_text(18, 20, text='Bitte links eine Datei oder Sammelposition auswählen.', anchor='nw', fill=TEXT2, font=body_font(11))
+        canvas.configure(scrollregion=(0,0,width,80)); return
+    title=str(item.get('name','Datei')); path=item.get('path','')
+    y=12
+    canvas.create_text(18,y,text=title,anchor='nw',fill=BLUE,font=body_font(14,weight='bold'),width=width-40); y+=34
+    info=f"Benutzer: {item.get('user','')}    Erstellt/geändert: {_fm472_display_dt(item.get('created_at'))}"
+    if item.get('sent_at'): info += f"    Versand: {_fm472_display_dt(item.get('sent_at'))} ({item.get('sent_channel','')})"
+    info += f"\nPfad: {_fm472_short_path(path, 110)}"
+    canvas.create_text(18,y,text=info,anchor='nw',fill=TEXT2,font=body_font(9),width=width-40); y+=54
+    if item.get('type')=='group':
+        children=item.get('children',[]) or []
+        canvas.create_text(18,y,text=f'Sammelposition mit {len(children)} Unterposition(en)',anchor='nw',fill=BLUE,font=body_font(11,weight='bold')); y+=32
+        for c in children[:60]:
+            s='• '+str(c.get('name',''))
+            if c.get('sent_at'): s += '   ✓ Versand: ' + _fm472_display_dt(c.get('sent_at'))
+            canvas.create_text(28,y,text=s,anchor='nw',fill=TEXT,font=body_font(9),width=width-70); y+=24
+    elif path and os.path.exists(path):
+        ext=os.path.splitext(path)[1].lower()
+        if ext=='.pdf': y += _fm472_preview_pdf(canvas,path,width)
+        elif ext in {'.png','.jpg','.jpeg','.bmp','.gif'}: y += _fm472_preview_image(canvas,path,width)
+        elif ext in {'.xlsx','.xls'}: y = _fm473_preview_excel(canvas,path,width)
+        elif ext=='.csv': y = _fm473_preview_csv(canvas,path,width)
+        elif ext=='.txt': y += _fm472_preview_text(canvas,path,width)
+        elif ext in {'.docx','.doc'}: y += _fm472_preview_office(canvas,path,width)
+        else:
+            canvas.create_text(18,y,text='Für diesen Dateityp ist nur eine Metadaten-Vorschau verfügbar.',anchor='nw',fill=TEXT,font=body_font(10)); y+=60
+    else:
+        canvas.create_text(18,y,text='Datei wurde nicht gefunden.',anchor='nw',fill=RED,font=body_font(10)); y+=60
+    canvas.configure(scrollregion=(0,0,width,max(y+40,canvas.winfo_height())))
+
+
+def _fm473_delete_export(self, item):
+    if not _fm473_can_delete_exports(self):
+        return False
+    files = _fm473_files_for_item(item)
+    if not files:
+        try: messagebox.showwarning('Dateiausgabe', 'Keine löschbare Datei gefunden.')
+        except Exception: pass
+        return False
+    try:
+        if not messagebox.askyesno('Export löschen', 'Export wirklich löschen?\n\n' + str(item.get('name',''))):
+            return False
+    except Exception:
+        return False
+    errors=[]
+    for f in files:
+        try: os.remove(f)
+        except Exception as exc: errors.append(f'{os.path.basename(f)}: {exc}')
+    logs = _fm473_load_all_log_items()
+    for f in files:
+        logs.pop(_fm472_file_key(f), None)
+    _fm473_write_log_items(logs)
+    if errors:
+        try: messagebox.showwarning('Dateiausgabe', 'Einige Dateien konnten nicht gelöscht werden:\n' + '\n'.join(errors))
+        except Exception: pass
+    self.file_output_selected_item = None
+    self.render_page()
+    return not errors
+
+
+def _fm473_sort_items(items, column, descending):
+    def key(item):
+        if column == 'name': return str(item.get('name','')).casefold()
+        if column == 'user': return str(item.get('user','')).casefold()
+        if column == 'path': return str(item.get('path','')).casefold()
+        return str(item.get('created_at',''))
+    out = sorted(items, key=key, reverse=bool(descending))
+    for item in out:
+        if item.get('type') == 'group':
+            item['children'] = sorted(item.get('children',[]) or [], key=key, reverse=bool(descending))
+    return out
+
+
+def _fm473_render_file_output(self):
+    self.focusable_tiles.clear()
+    w,h=self.canvas.winfo_width(), self.canvas.winfo_height()
+    x0,y0=24,135; full_w,full_h=max(900,w-48),max(520,h-y0-64)
+    outer=tk.Frame(self.root,bg=BG); self.widget_items.append(outer)
+    self.canvas.create_window(ui_s(x0),ui_s(y0),window=outer,anchor='nw',width=ui_s(full_w),height=ui_s(full_h))
+    search_var=tk.StringVar(value=getattr(self,'file_output_search_text',''))
+    selected_item={'item':getattr(self,'file_output_selected_item',None)}
+    sort_state=getattr(self,'file_output_sort_state',{'column':'date','descending':True}) or {'column':'date','descending':True}
+    all_items=self.file_output_build_items()
+
+    top=tk.Frame(outer,bg=BG); top.pack(fill='x',pady=(0,8))
+    tk.Label(top,text='Suche',bg=BG,fg=TEXT2,font=body_font(10)).pack(side='left',padx=(0,8))
+    ent=tk.Entry(top,textvariable=search_var,bg=WHITE,fg=TEXT,font=body_font(11),relief='solid',bd=1); ent.pack(side='left',fill='x',expand=True,ipady=5)
+    tk.Button(top,text='Aktualisieren',command=lambda:self.render_page(),bg=_FM473_BUTTON_GREY,fg=TEXT,activebackground=_FM473_BUTTON_GREY_ACTIVE,font=body_font(10),relief='solid',bd=1).pack(side='left',padx=(8,0),ipadx=10,ipady=4)
+    content=tk.Frame(outer,bg=BG); content.pack(fill='both',expand=True)
+    left=tk.Frame(content,bg=WHITE,highlightbackground=LINE,highlightthickness=2); left.pack(side='left',fill='both',expand=True,padx=(0,12))
+    right=tk.Frame(content,bg=WHITE,highlightbackground=LINE,highlightthickness=2); right.pack(side='right',fill='both',expand=True)
+    left.configure(width=max(470,int(full_w*0.42))); right.configure(width=max(580,int(full_w*0.56)))
+    head=tk.Frame(left,bg=WHITE); head.pack(fill='x',padx=12,pady=(10,6))
+    tk.Label(head,text='Zuletzt erstellte Dateien',bg=WHITE,fg=BLUE,font=body_font(13,weight='bold')).pack(side='left')
+    action_bar=tk.Frame(left,bg=WHITE); action_bar.pack(fill='x',padx=12,pady=(0,8))
+    def add_btn(text, cmd, icon=None, enabled=True):
+        b=tk.Button(action_bar,text=text,command=cmd,bg=_FM473_BUTTON_GREY,fg=TEXT,activebackground=_FM473_BUTTON_GREY_ACTIVE,font=body_font(9),relief='solid',bd=1,state='normal' if enabled else 'disabled',compound='left',cursor='hand2' if enabled else 'arrow')
+        ph=_fm473_icon_photo(self, icon, 18) if icon else None
+        if ph: b.configure(image=ph); b._img=ph
+        b.pack(side='left',padx=(0,6),ipadx=8,ipady=3); return b
+    add_btn('Datei öffnen', lambda:_fm472_open_file(selected_item.get('item') or {}))
+    add_btn('Speicherort öffnen', lambda:_fm472_open_folder(selected_item.get('item') or {}), _FM473_EXPLORER_ICON)
+    add_btn('Outlook Versand', lambda:(_fm473_send_outlook(self, selected_item.get('item') or {}) and self.render_page()), _FM473_OUTLOOK_ICON)
+    add_btn('Teams Versand', lambda:(_fm473_send_teams(self, selected_item.get('item') or {}) and self.render_page()), _FM473_TEAMS_ICON)
+    add_btn('Export löschen', lambda:_fm473_delete_export(self, selected_item.get('item') or {}), None, _fm473_can_delete_exports(self))
+
+    tree_frame=tk.Frame(left,bg=WHITE); tree_frame.pack(fill='both',expand=True,padx=12,pady=(0,12))
+    columns=('name','user','date','path')
+    tree=ttk.Treeview(tree_frame,columns=columns,show='tree headings',selectmode='browse')
+    sent_img=_fm473_icon_photo(self,_FM473_SENT_ICON,16)
+    self._fm473_sent_img=sent_img
+    def heading_text(col,label):
+        marker=' ↓' if sort_state.get('column')==col and sort_state.get('descending',True) else (' ↑' if sort_state.get('column')==col else '')
+        return label+marker
+    def set_sort(col):
+        cur=getattr(self,'file_output_sort_state',{'column':'date','descending':True})
+        desc=not cur.get('descending',True) if cur.get('column')==col else (True if col=='date' else False)
+        self.file_output_sort_state={'column':col,'descending':desc}; self.render_page()
+    tree.heading('#0',text='')
+    tree.heading('name',text=heading_text('name','Dateiname / Sammelposition'),command=lambda:set_sort('name'))
+    tree.heading('user',text=heading_text('user','Benutzer'),command=lambda:set_sort('user'))
+    tree.heading('date',text=heading_text('date','Erstellt'),command=lambda:set_sort('date'))
+    tree.heading('path',text=heading_text('path','Ablagepfad kurz'),command=lambda:set_sort('path'))
+    tree.column('#0',width=24,minwidth=24,stretch=False,anchor='w'); tree.column('name',width=220,stretch=True); tree.column('user',width=120,stretch=False); tree.column('date',width=122,stretch=False); tree.column('path',width=190,stretch=True)
+    vsb=ttk.Scrollbar(tree_frame,orient='vertical',command=tree.yview); tree.configure(yscrollcommand=vsb.set)
+    tree.pack(side='left',fill='both',expand=True); vsb.pack(side='right',fill='y')
+    prev_head=tk.Frame(right,bg=WHITE); prev_head.pack(fill='x',padx=12,pady=(10,6))
+    tk.Label(prev_head,text='Vorschau',bg=WHITE,fg=BLUE,font=body_font(13,weight='bold')).pack(side='left')
+    prev_canvas=tk.Canvas(right,bg='#F8FAFC',highlightthickness=0,bd=0)
+    prev_scroll=ttk.Scrollbar(right,orient='vertical',command=prev_canvas.yview); prev_canvas.configure(yscrollcommand=prev_scroll.set)
+    prev_canvas.pack(side='left',fill='both',expand=True,padx=(12,0),pady=(0,12)); prev_scroll.pack(side='right',fill='y',padx=(0,12),pady=(0,12))
+    id_map={}; tooltip={'win':None}
+    def fill_tree():
+        tree.delete(*tree.get_children()); id_map.clear()
+        q=search_var.get(); self.file_output_search_text=q
+        shown=_fm472_filter_items(all_items,q)
+        shown=_fm473_sort_items(shown, sort_state.get('column','date'), sort_state.get('descending',True))
+        for item in shown:
+            iid=item.get('id') or _fm472_file_key(item.get('path','')+item.get('name',''))
+            id_map[iid]=item
+            typ='▸' if item.get('type')=='group' else ''
+            img=sent_img if item.get('sent_at') and sent_img else ''
+            tree.insert('', 'end', iid=iid, text=typ, image=img, values=(item.get('name',''), item.get('user',''), _fm472_display_dt(item.get('created_at')), _fm472_short_path(item.get('path',''))))
+            if item.get('type')=='group':
+                for c in item.get('children',[]) or []:
+                    cid=c.get('id') or _fm472_file_key(c.get('path',''))
+                    if cid in id_map: cid=iid+'_'+cid
+                    id_map[cid]=c
+                    cimg=sent_img if c.get('sent_at') and sent_img else ''
+                    tree.insert(iid,'end',iid=cid,text='',image=cimg,values=(c.get('name',''),c.get('user',''),_fm472_display_dt(c.get('created_at')),_fm472_short_path(c.get('path',''))))
+    def on_select(event=None):
+        sel=tree.selection(); item=id_map.get(sel[0]) if sel else None
+        selected_item['item']=item; self.file_output_selected_item=item; _fm473_draw_preview(self,prev_canvas,item)
+    def on_open(event=None):
+        item=selected_item.get('item')
+        if item and item.get('type')=='group':
+            try: tree.item(tree.selection()[0],open=not bool(tree.item(tree.selection()[0],'open')))
+            except Exception: pass
+        elif item: _fm472_open_file(item)
+    def hide_tip():
+        if tooltip.get('win'):
+            try: tooltip['win'].destroy()
+            except Exception: pass
+            tooltip['win']=None
+    def on_motion(ev):
+        row=tree.identify_row(ev.y); col=tree.identify_column(ev.x)
+        item=id_map.get(row) if row else None
+        if item and item.get('sent_at') and col=='#0':
+            if tooltip.get('row')==row and tooltip.get('win'): return
+            hide_tip(); tooltip['row']=row
+            tw=tk.Toplevel(tree); tw.wm_overrideredirect(True); tw.wm_geometry(f'+{tree.winfo_rootx()+ev.x+18}+{tree.winfo_rooty()+ev.y+18}')
+            tk.Label(tw,text='Versendet: '+_fm472_display_dt(item.get('sent_at'))+' '+str(item.get('sent_channel','')),bg='#FFF7CC',fg=TEXT,relief='solid',bd=1,font=body_font(9)).pack(ipadx=6,ipady=3)
+            tooltip['win']=tw
+        else:
+            hide_tip(); tooltip['row']=None
+    tree.bind('<<TreeviewSelect>>',on_select); tree.bind('<Double-Button-1>',on_open); tree.bind('<Motion>',on_motion); tree.bind('<Leave>',lambda e:hide_tip())
+    search_var.trace_add('write',lambda *_:(fill_tree(),_fm473_draw_preview(self,prev_canvas,selected_item.get('item'))))
+    try: prev_canvas.bind('<MouseWheel>',lambda e:(prev_canvas.yview_scroll(int(-1*(e.delta/120)),'units'),'break'))
+    except Exception: pass
+    fill_tree()
+    if tree.get_children():
+        first=tree.get_children()[0]; tree.selection_set(first); tree.focus(first); on_select()
+    else:
+        _fm473_draw_preview(self,prev_canvas,None)
+
+try:
+    FiBuMateApp.file_output_register = _fm473_register_output_file
+    FiBuMateApp.file_output_build_items = _fm473_build_items
+    FiBuMateApp.render_file_output = _fm473_render_file_output
+except Exception:
+    pass
+
+
+
+# ------------------------------------------------------------------
+# FiBu Mate - Dateiausgabe Layout/Exportpfade/Wissenszentrale/Userrechte FINAL 2026-06-23
+# Version 0.474
+# ------------------------------------------------------------------
+_FM474_PATCH_VERSION = "0.474"
+_FM474_STANDARD_EXPORT_DIR = os.path.join(NETWORK_ROOT, "Dateiausgabe")
+_FM474_WZ_EXPORT_DIR = os.path.join(NETWORK_ROOT, "Wissenszentrale")
+_FM474_BTN_GREY = "#D6DCE4"
+_FM474_BTN_GREY_ACTIVE = "#C8D0DA"
+
+try:
+    _FM473_BUTTON_GREY = _FM474_BTN_GREY
+    _FM473_BUTTON_GREY_ACTIVE = _FM474_BTN_GREY_ACTIVE
+except Exception:
+    pass
+
+def _fm474_ensure_dir(path):
+    try: os.makedirs(path, exist_ok=True)
+    except Exception: pass
+    return path
+
+def _fm474_standard_export_dir():
+    return _fm474_ensure_dir(_FM474_STANDARD_EXPORT_DIR)
+
+def _fm474_wz_export_dir():
+    return _fm474_ensure_dir(_FM474_WZ_EXPORT_DIR)
+
+def _fm474_output_roots():
+    roots=[]
+    for p in (_FM474_STANDARD_EXPORT_DIR, _FM474_WZ_EXPORT_DIR, os.path.join(SCRIPT_DIR, 'Dateiausgabe'), r'C:\python\Dateiausgabe'):
+        try:
+            ap=os.path.abspath(p)
+            if ap not in roots: roots.append(ap)
+        except Exception: pass
+    return roots
+
+def _fm474_primary_output_root():
+    return _fm474_standard_export_dir()
+
+try:
+    _fm472_output_roots = _fm474_output_roots
+    _fm472_primary_output_root = _fm474_primary_output_root
+except Exception:
+    pass
+
+def _fm474_install_export_dialog_defaults():
+    try:
+        import tkinter.filedialog as _fd
+        if getattr(_fd, '_fm474_export_defaults_installed', False): return
+        _fd._fm474_export_defaults_installed=True
+        _fd._fm474_orig_asksaveasfilename=_fd.asksaveasfilename
+        _fd._fm474_orig_asksaveasfile=_fd.asksaveasfile
+        _fd._fm474_orig_askdirectory=_fd.askdirectory
+        def _target(kwargs):
+            title=str(kwargs.get('title','')).casefold()
+            return _fm474_wz_export_dir() if ('wissens' in title or 'wz' in title) else _fm474_standard_export_dir()
+        def asksaveasfilename(*args, **kwargs):
+            kwargs.setdefault('initialdir', _target(kwargs)); return _fd._fm474_orig_asksaveasfilename(*args, **kwargs)
+        def asksaveasfile(*args, **kwargs):
+            kwargs.setdefault('initialdir', _target(kwargs)); return _fd._fm474_orig_asksaveasfile(*args, **kwargs)
+        def askdirectory(*args, **kwargs):
+            title=str(kwargs.get('title','')).casefold()
+            if any(x in title for x in ('export','ausgabe','speicher','ziel')): kwargs.setdefault('initialdir', _target(kwargs))
+            return _fd._fm474_orig_askdirectory(*args, **kwargs)
+        _fd.asksaveasfilename=asksaveasfilename; _fd.asksaveasfile=asksaveasfile; _fd.askdirectory=askdirectory
+    except Exception: pass
+_fm474_install_export_dialog_defaults()
+
+def _fm474_kb_export_dir(self):
+    return _fm474_wz_export_dir()
+
+def _fm474_export_word(self):
+    entry=self.kb_get_entry(getattr(self,'kb_selected_entry_id',None))
+    if not entry: return
+    try:
+        from docx import Document
+        import re as _re
+        out_dir=self.kb_export_dir(); doc=Document(); doc.add_heading(entry.get('title','Wissenseintrag'), level=1)
+        for label,val in [('Geändert', self.kb_display_date(entry.get('updated_at'))),('Benutzer',entry.get('user','')),('Status',entry.get('status','')),('Kategorien',', '.join(entry.get('categories',[]) or [])),('To-Do-Rhythmus',entry.get('rhythm',''))]:
+            if val: doc.add_paragraph(f'{label}: {val}')
+        doc.add_heading('Inhalt', level=2); doc.add_paragraph(entry.get('text',''))
+        doc.add_heading('Anhänge', level=2)
+        for a in entry.get('attachments',[]) or []: doc.add_paragraph(f"- {a.get('name','')} ({a.get('path','')})")
+        doc.add_heading('Kommentare', level=2)
+        for c in entry.get('comments',[]) or []: doc.add_paragraph(f"{self.kb_display_date(c.get('created_at'))} - {c.get('user','')}: {c.get('text','')}")
+        safe=_re.sub(r'[^A-Za-z0-9_äöüÄÖÜß-]+','_',entry.get('title','Wissenseintrag'))[:80].strip('_') or 'Wissenseintrag'
+        out=os.path.join(out_dir, f'{safe}.docx'); doc.save(out)
+        try: self.file_output_register(out, user=getattr(self,'current_user_display','') or getattr(self,'current_user_key',''), module='Wissenszentrale', created_at=datetime.now().isoformat(timespec='seconds'))
+        except Exception: pass
+        messagebox.showinfo('Wissenszentrale','Word-Export erstellt:\n'+out)
+    except Exception as exc:
+        messagebox.showerror('Wissenszentrale','Word-Export fehlgeschlagen:\n'+str(exc))
+
+try:
+    FiBuMateApp.kb_export_dir = _fm474_kb_export_dir
+    FiBuMateApp.kb_export_selected_to_word = _fm474_export_word
+except Exception: pass
+
+def _fm474_preview_table(canvas, rows, width, start_y=96, title='Tabellenvorschau'):
+    y=start_y
+    canvas.create_text(18,y,text=title,anchor='nw',fill=BLUE,font=body_font(12,weight='bold')); y+=30
+    if not rows:
+        canvas.create_text(18,y,text='Keine Tabellendaten gefunden.',anchor='nw',fill=TEXT2,font=body_font(10)); return y+40
+    max_cols=min(8, max(1, max(len(r) for r in rows)))
+    col_w=max(96, int(max(360,width-54)/max_cols)); row_h=30
+    def trim(v):
+        s='' if v is None else str(v).replace('\n',' ').replace('\r',' ').strip()
+        n=max(6,int((col_w-12)/7)); return s if len(s)<=n else s[:n-1]+'…'
+    for r_idx,row in enumerate(rows[:28]):
+        bg='#EEF2F7' if r_idx==0 else ('#FFFFFF' if r_idx%2 else '#F8FAFC')
+        y0=y+r_idx*row_h
+        for c in range(max_cols):
+            x0=18+c*col_w
+            canvas.create_rectangle(x0,y0,x0+col_w,y0+row_h,fill=bg,outline='#E5E7EB')
+            canvas.create_text(x0+6,y0+row_h/2,text=trim(row[c] if c<len(row) else ''),anchor='w',fill=TEXT,font=body_font(8,weight='bold' if r_idx==0 else None))
+    return y+min(28,len(rows))*row_h+30
+
+try: _fm473_preview_table = _fm474_preview_table
+except Exception: pass
+
+# Dateiausgabe-Render auf Basis v0.473 gezielt ersetzen: rechte Vorschau breiter, V als Überschrift entfernt, Buttons grau.
+try:
+    _fm474_old_render_file_output = FiBuMateApp.render_file_output
+except Exception:
+    _fm474_old_render_file_output = None
+
+def _fm474_render_file_output(self):
+    # v0.473-Renderer bleibt fachlich Basis; Konstanten/Roots/Vorschautabelle sind oben bereits überschrieben.
+    return _fm474_old_render_file_output(self) if _fm474_old_render_file_output else None
+
+# Nachgelagerte Tk-Widget-Korrektur für Dateiausgabe: wird nach Render ausgeführt.
+def _fm474_render_file_output_wrapper(self):
+    if _fm474_old_render_file_output:
+        result=_fm474_old_render_file_output(self)
+    else:
+        result=None
+    try:
+        # Alle normalen Dateiausgabe-Buttons auf Grau angleichen; Export löschen bleibt rot.
+        def walk(w):
+            for ch in w.winfo_children():
+                try:
+                    if isinstance(ch, tk.Button):
+                        txt=str(ch.cget('text'))
+                        if 'löschen' in txt.casefold():
+                            ch.configure(bg=RED, fg=WHITE, activebackground=darken(RED,0.08), activeforeground=WHITE)
+                        else:
+                            ch.configure(bg=_FM474_BTN_GREY, fg=TEXT, activebackground=_FM474_BTN_GREY_ACTIVE, activeforeground=TEXT)
+                except Exception: pass
+                walk(ch)
+        walk(self.root)
+    except Exception: pass
+    return result
+
+try: FiBuMateApp.render_file_output = _fm474_render_file_output_wrapper
+except Exception: pass
+
+# Benutzerverwaltung vollständig überschrieben: Wagnerm darf sich selbst bearbeiten und andere bis E4 stufen.
+def _fm474_render_users_menu(self):
+    zfont=self.zoomed_content_font
+    if not self.can_view_user_management(): self.render_menu_text('Keine Berechtigung für die Benutzerverwaltung.'); return
+    users=self.user_data.setdefault('users',{})
+    visible=[self.current_user_key] if self.my_role()==ROLE_E1 and self.current_user_key in users else sorted(users.keys())
+    w,h=self.canvas.winfo_width(),self.canvas.winfo_height(); top=132; vh=int(max(top+260,h-92)-top)
+    cont=tk.Frame(self.root,bg=BG); self.widget_items.append(cont); self.canvas.create_window(0,top,window=cont,anchor='nw',width=w,height=vh)
+    body=tk.Frame(cont,bg=BG); body.pack(fill='both',expand=True,padx=24)
+    footer=tk.Frame(body,bg=BG); footer.pack(side='bottom',fill='x',pady=(8,0))
+    try:
+        if self.my_role() in (ROLE_E3, ROLE_E4):
+            tk.Button(footer,text='Neuen Benutzer anlegen',command=lambda:_fm508_open_new_user_dialog(self),bg=BLUE,fg='white',font=('Segoe UI',10,'bold'),bd=0,padx=14,pady=8,cursor='hand2').pack(side='left',padx=(0,10),pady=(0,4))
+    except Exception:
+        pass
+    cv=tk.Canvas(body,bg=BG,highlightthickness=0,bd=0); sb=tk.Scrollbar(body,orient='vertical',command=cv.yview)
+    frame=tk.Frame(cv,bg=BG); win=cv.create_window((0,0),window=frame,anchor='nw'); cv.configure(yscrollcommand=sb.set); cv.pack(side='left',fill='both',expand=True); sb.pack(side='right',fill='y')
+    try: self.register_scroll_canvas(cv,sb)
+    except Exception: pass
+    def upd(e=None):
+        cv.itemconfigure(win,width=max(1,cv.winfo_width())); cv.configure(scrollregion=cv.bbox('all'))
+    frame.bind('<Configure>',upd); cv.bind('<Configure>',upd); cv.bind('<MouseWheel>',lambda e:self._route_mousewheel_to_canvas(e,cv))
+    tk.Label(frame,text='Benutzerverwaltung',font=zfont(('Segoe UI',15,'bold')),bg=BG,fg=TEXT).grid(row=0,column=0,columnspan=8,sticky='w',pady=(0,14))
+    for c,head in enumerate(['Benutzer','Anzeigename/Nachname','Vorname','E-Mail','Rolle','Passwort','','']):
+        tk.Label(frame,text=head,bg=BG,fg=TEXT,font=('Segoe UI',10,'bold')).grid(row=1,column=c,sticky='w',padx=(0,14))
+    is_super=self.current_user_key==SUPERUSER_KEY
+    def can_edit(k):
+        if is_super: return True
+        if k==SUPERUSER_KEY: return False
+        if k==self.current_user_key: return True
+        return self.my_role() in (ROLE_E3,ROLE_E4) and self.role_rank(users.get(k,{}).get('permission',ROLE_E1)) < self.role_rank(self.my_role())
+    def role_vals(k):
+        if is_super and k!=SUPERUSER_KEY: return ROLE_ORDER
+        if k==SUPERUSER_KEY: return [ROLE_E4]
+        return [r for r in ROLE_ORDER if self.role_rank(r)<=self.role_rank(self.my_role()) and r!=ROLE_E4]
+    def save_row(k,nv,fv,ev,rv):
+        if k not in users or not can_edit(k): return
+        data=users[k]; new_name=' '.join(nv.get().strip().split()) or data.get('display_name',k); new_key=normalize_username(new_name)
+        if k==SUPERUSER_KEY: new_key=SUPERUSER_KEY
+        if is_super and k!=SUPERUSER_KEY and new_key!=k:
+            if not new_key or new_key in users: messagebox.showwarning('FiBu Mate','Benutzername ungültig oder bereits vorhanden.'); return
+            data=users.pop(k); users[new_key]=data
+        data['display_name']=new_name; data['first_name']=fv.get().strip(); data['email']=ev.get().strip()
+        data['full_name']=' '.join(x for x in [data.get('first_name',''),data.get('display_name',new_key)] if x).strip() or data.get('display_name',new_key)
+        role=rv.get() or data.get('permission',ROLE_E1)
+        if role not in role_vals(new_key): messagebox.showwarning('FiBu Mate','Diese Rolle darf nicht vergeben werden.'); return
+        data['permission']=ROLE_E4 if new_key==SUPERUSER_KEY else role
+        self.ensure_permissions_defaults(); self.save_user_data(); messagebox.showinfo('FiBu Mate','Benutzerdaten wurden gespeichert.'); self.render_page()
+    def del_user(k):
+        if k in (SUPERUSER_KEY,self.current_user_key) or not can_edit(k): messagebox.showwarning('FiBu Mate','Dieser Benutzer kann nicht gelöscht werden.'); return
+        if messagebox.askyesno('Benutzer löschen',f"Benutzer wirklich löschen?\n\n{users.get(k,{}).get('display_name',k)}"):
+            users.pop(k,None); self.save_user_data(); self.render_page()
+    row=2
+    for k in visible:
+        u=users[k]; edit=can_edit(k); nv=tk.StringVar(value=u.get('display_name',k)); fv=tk.StringVar(value=u.get('first_name','')); ev=tk.StringVar(value=u.get('email','')); rv=tk.StringVar(value=u.get('permission',ROLE_E1))
+        tk.Label(frame,text=k,bg=BG,fg=TEXT2,font=('Segoe UI',10)).grid(row=row,column=0,sticky='w',padx=(0,14),pady=4)
+        tk.Entry(frame,textvariable=nv,font=('Segoe UI',10),width=22,bg='#E8EEF5',fg=TEXT,relief='solid',bd=1,state='normal' if edit and (is_super or k not in (self.current_user_key,SUPERUSER_KEY)) else 'disabled').grid(row=row,column=1,sticky='w',padx=(0,14),pady=4)
+        tk.Entry(frame,textvariable=fv,font=('Segoe UI',10),width=18,bg='#E8EEF5',fg=TEXT,relief='solid',bd=1,state='normal' if edit else 'disabled').grid(row=row,column=2,sticky='w',padx=(0,14),pady=4)
+        tk.Entry(frame,textvariable=ev,font=('Segoe UI',10),width=32,bg='#E8EEF5',fg=TEXT,relief='solid',bd=1,state='normal' if edit else 'disabled').grid(row=row,column=3,sticky='w',padx=(0,14),pady=4)
+        ttk.Combobox(frame,textvariable=rv,values=role_vals(k),state='readonly' if edit and (is_super or k!=SUPERUSER_KEY) else 'disabled',font=('Segoe UI',10),width=24).grid(row=row,column=4,sticky='w',padx=(0,14),pady=4)
+        tk.Label(frame,text='aktiv' if u.get('auth',{}).get('enabled') else 'nicht aktiv',bg=BG,fg=TEXT2,font=('Segoe UI',10)).grid(row=row,column=5,sticky='w',padx=(0,14),pady=4)
+        tk.Button(frame,text='Speichern',command=lambda k=k,nv=nv,fv=fv,ev=ev,rv=rv:save_row(k,nv,fv,ev,rv),bg=BLUE if edit else GREY_DISABLED,fg='white',bd=0,width=9,padx=10,pady=5,state='normal' if edit else 'disabled').grid(row=row,column=6,sticky='w',padx=(18,10),pady=4)
+        ok=edit and k not in (self.current_user_key,SUPERUSER_KEY) and self.my_role() in (ROLE_E3,ROLE_E4)
+        tk.Button(frame,text='Löschen',command=lambda k=k:del_user(k),bg=RED if ok else GREY_DISABLED,fg='white',bd=0,width=9,padx=10,pady=5,state='normal' if ok else 'disabled').grid(row=row,column=7,sticky='w',padx=(0,8),pady=4)
+        row+=1
+    upd()
+
+try: FiBuMateApp.render_users_menu = _fm474_render_users_menu
+except Exception: pass
+
+
+
+# ------------------------------------------------------------------
+# FiBu Mate - Wissenszentrale-Löschen + Dateiausgabe-Farb/Iconfix FINAL 2026-06-23
+# Version 0.475
+# Zweck:
+# - Wissenszentrale: Löschen entfernt Einträge endgültig aus zentraler und lokaler JSON statt über Merge wiederherzustellen.
+# - Dateiausgabe: erste Spalte linksbündig, keine überlaufenden Punkte/Icons.
+# - Dateiausgabe: Aktionsbuttons final einheitlich grau, nur Export löschen bleibt rot.
+# ------------------------------------------------------------------
+_FM475_PATCH_VERSION = "0.475"
+_FM475_BUTTON_GREY = "#D6DCE4"
+_FM475_BUTTON_GREY_ACTIVE = "#C8D0DA"
+_FM475_DELETE_RED = RED
+_FM475_TREE_ICON_COL_W = 24
+
+try:
+    _FM473_BUTTON_GREY = _FM475_BUTTON_GREY
+    _FM473_BUTTON_GREY_ACTIVE = _FM475_BUTTON_GREY_ACTIVE
+    _FM474_BTN_GREY = _FM475_BUTTON_GREY
+    _FM474_BTN_GREY_ACTIVE = _FM475_BUTTON_GREY_ACTIVE
+except Exception:
+    pass
+
+
+def _fm475_wz_entry_paths():
+    paths = []
+    candidates = []
+    try: candidates.append(_wz441_entries_g())
+    except Exception: pass
+    try: candidates.append(_wz441_entries_l())
+    except Exception: pass
+    try: candidates.append(os.path.join(NETWORK_ROOT, 'Fibu_Mate_Doc', 'Database', 'Wissenszentrale', 'knowledge_entries.json'))
+    except Exception: pass
+    candidates.append(r'C:\python\knowledge_entries.json')
+    for p in candidates:
+        try:
+            if p and p not in paths:
+                paths.append(p)
+        except Exception:
+            pass
+    return paths
+
+
+def _fm475_write_entries_replace(entries):
+    """Schreibt den übergebenen Eintragsbestand bewusst ersetzend.
+    Wichtig fürs Löschen: Die bisherige Merge-Speicherlogik darf gelöschte Einträge nicht aus einer zweiten Quelle zurückholen.
+    """
+    ok = False
+    errors = []
+    payload = {'entries': list(entries or [])}
+    for path in _fm475_wz_entry_paths():
+        try:
+            folder = os.path.dirname(path)
+            if folder:
+                os.makedirs(folder, exist_ok=True)
+            tmp = path + '.tmp'
+            with open(tmp, 'w', encoding='utf-8') as f:
+                json.dump(payload, f, ensure_ascii=False, indent=2)
+            os.replace(tmp, path)
+            ok = True
+        except Exception as exc:
+            errors.append(f'{path}: {exc}')
+    try:
+        if '_WZ441_ENTRIES_CACHE' in globals():
+            _WZ441_ENTRIES_CACHE['ts'] = 0.0
+            _WZ441_ENTRIES_CACHE['sig'] = ''
+            _WZ441_ENTRIES_CACHE['entries'] = list(entries or [])
+    except Exception:
+        pass
+    if not ok:
+        raise RuntimeError('\n'.join(errors) or 'Keine Wissenszentrale-Speicherdatei konnte geschrieben werden.')
+    return True
+
+
+def _fm475_delete_entry(self, entry_id=None):
+    entry_id = entry_id or getattr(self, 'kb_selected_entry_id', None)
+    if not entry_id:
+        try: messagebox.showwarning('Wissenszentrale', 'Bitte zuerst einen Eintrag auswählen.')
+        except Exception: pass
+        return False
+    try:
+        if not _fm471_can_delete_entry(self):
+            messagebox.showwarning('Wissenszentrale', 'Keine Berechtigung zum Löschen dieses Eintrags.')
+            return False
+    except Exception:
+        pass
+    entries = self.kb_load_entries()
+    target = None
+    remaining = []
+    for e in entries:
+        if e.get('id') == entry_id:
+            target = e
+        else:
+            remaining.append(e)
+    if not target:
+        try: messagebox.showwarning('Wissenszentrale', 'Der ausgewählte Eintrag wurde nicht gefunden.')
+        except Exception: pass
+        return False
+    try:
+        title = str(target.get('title') or 'Wissenseintrag')
+        if not messagebox.askyesno('Eintrag löschen', f'Eintrag wirklich löschen?\n\n{title}'):
+            return False
+    except Exception:
+        return False
+    try:
+        _fm475_write_entries_replace(remaining)
+        try:
+            if hasattr(self, 'kb_autosave_entry_id') and self.kb_autosave_entry_id == entry_id:
+                self.kb_autosave_entry_id = None
+            self.kb_selected_entry_id = None
+            self.kb_edit_entry_id = None
+            self.knowledge_view = 'all'
+            self.knowledge_unsaved = False
+        except Exception:
+            pass
+        try: messagebox.showinfo('Wissenszentrale', 'Eintrag wurde gelöscht.')
+        except Exception: pass
+        self.render_page()
+        return True
+    except Exception as exc:
+        try: messagebox.showerror('Wissenszentrale', 'Eintrag konnte nicht gelöscht werden:\n' + str(exc))
+        except Exception: pass
+        return False
+
+
+def _fm475_delete_button(parent, self, entry_id=None):
+    try:
+        can_delete = _fm471_can_delete_entry(self)
+    except Exception:
+        can_delete = False
+    return tk.Button(parent, text=f'{_FM471_DELETE_SYMBOL} Löschen', command=(lambda eid=entry_id: _fm475_delete_entry(self, eid)) if can_delete else (lambda: None),
+                     bg=('#FEE2E2' if can_delete else '#E5E7EB'), fg=(TEXT if can_delete else '#7A7F87'),
+                     activebackground=('#FECACA' if can_delete else '#E5E7EB'), font=body_font(9, weight='bold'), relief='solid', bd=1,
+                     state=('normal' if can_delete else 'disabled'), cursor=('hand2' if can_delete else 'arrow'))
+
+try:
+    _fm471_delete_entry = _fm475_delete_entry
+    _fm471_delete_button = _fm475_delete_button
+    FiBuMateApp.kb_delete_entry = _fm475_delete_entry
+except Exception:
+    pass
+
+
+def _fm475_normalize_dateiausgabe_buttons(root):
+    """Setzt im aktuell gerenderten Dateiausgabe-Bereich alle Aktionsbuttons konsistent.
+    Export löschen bleibt bewusst rot; alle anderen Buttons werden grau.
+    """
+    def walk(widget):
+        for child in widget.winfo_children():
+            try:
+                if isinstance(child, tk.Button):
+                    txt = str(child.cget('text') or '')
+                    if 'löschen' in txt.casefold():
+                        child.configure(bg=_FM475_DELETE_RED, fg=WHITE, activebackground=darken(_FM475_DELETE_RED, 0.08), activeforeground=WHITE,
+                                        relief='solid', bd=1, highlightthickness=0)
+                    else:
+                        child.configure(bg=_FM475_BUTTON_GREY, fg=TEXT, activebackground=_FM475_BUTTON_GREY_ACTIVE, activeforeground=TEXT,
+                                        relief='solid', bd=1, highlightthickness=0)
+            except Exception:
+                pass
+            walk(child)
+    try:
+        walk(root)
+    except Exception:
+        pass
+
+
+def _fm475_normalize_treeviews(root):
+    def walk(widget):
+        for child in widget.winfo_children():
+            try:
+                if isinstance(child, ttk.Treeview):
+                    try: child.heading('#0', text='')
+                    except Exception: pass
+                    try: child.column('#0', width=_FM475_TREE_ICON_COL_W, minwidth=_FM475_TREE_ICON_COL_W, stretch=False, anchor='w')
+                    except Exception: pass
+            except Exception:
+                pass
+            walk(child)
+    try:
+        walk(root)
+    except Exception:
+        pass
+
+try:
+    _fm475_previous_render_file_output = FiBuMateApp.render_file_output
+except Exception:
+    _fm475_previous_render_file_output = None
+
+
+def _fm475_render_file_output(self):
+    result = None
+    if _fm475_previous_render_file_output:
+        result = _fm475_previous_render_file_output(self)
+    try:
+        _fm475_normalize_dateiausgabe_buttons(self.root)
+        _fm475_normalize_treeviews(self.root)
+        try:
+            self.root.after(50, lambda: (_fm475_normalize_dateiausgabe_buttons(self.root), _fm475_normalize_treeviews(self.root)))
+        except Exception:
+            pass
+    except Exception:
+        pass
+    return result
+
+try:
+    FiBuMateApp.render_file_output = _fm475_render_file_output
+except Exception:
+    pass
+
+
+
+# ------------------------------------------------------------------
+# FiBu Mate - Dateiausgabe echte Dokumentvorschau + Teams-Popup FINAL 2026-06-23
+# Version 0.476
+# ------------------------------------------------------------------
+_FM476_PATCH_VERSION = "0.476"
+_FM476_PREVIEW_CACHE_DIR = os.path.join(os.environ.get('LOCALAPPDATA') or os.path.join(os.path.expanduser('~'), 'AppData', 'Local'), 'FiBuMate', 'PreviewCache')
+
+
+def _fm476_msg(canvas, y, width, title, lines, color=TEXT2):
+    canvas.create_text(18, y, text=title, anchor='nw', fill=BLUE if color != RED else RED, font=body_font(12, weight='bold'), width=max(280, width-45)); y += 30
+    for line in lines:
+        canvas.create_text(18, y, text=str(line), anchor='nw', fill=color, font=body_font(10), width=max(280, width-45)); y += 24
+    return max(70, y - 96 + 10)
+
+
+def _fm476_cache_pdf_for_word(path):
+    try: os.makedirs(_FM476_PREVIEW_CACHE_DIR, exist_ok=True)
+    except Exception: pass
+    try:
+        st=os.stat(path); key=hashlib.sha1((os.path.abspath(path)+str(st.st_mtime_ns)+str(st.st_size)).encode('utf-8',errors='ignore')).hexdigest()
+    except Exception:
+        key=hashlib.sha1(os.path.abspath(str(path)).encode('utf-8',errors='ignore')).hexdigest()
+    out=os.path.join(_FM476_PREVIEW_CACHE_DIR, key+'.pdf')
+    if os.path.exists(out) and os.path.getsize(out)>0: return out
+    # Primär Windows/Word COM
+    if sys.platform.startswith('win'):
+        word=None; doc=None
+        try:
+            import win32com.client
+            word=win32com.client.DispatchEx('Word.Application'); word.Visible=False; word.DisplayAlerts=0
+            doc=word.Documents.Open(os.path.abspath(path), ReadOnly=True, AddToRecentFiles=False)
+            doc.ExportAsFixedFormat(OutputFileName=os.path.abspath(out), ExportFormat=17, OpenAfterExport=False)
+            try: doc.Close(False)
+            except Exception: pass
+            try: word.Quit()
+            except Exception: pass
+            if os.path.exists(out) and os.path.getsize(out)>0: return out
+        except Exception:
+            try:
+                if doc: doc.Close(False)
+            except Exception: pass
+            try:
+                if word: word.Quit()
+            except Exception: pass
+    # Fallback LibreOffice
+    try:
+        import subprocess, shutil
+        exe=shutil.which('soffice') or shutil.which('libreoffice')
+        if exe:
+            subprocess.run([exe,'--headless','--convert-to','pdf','--outdir',_FM476_PREVIEW_CACHE_DIR,os.path.abspath(path)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=45)
+            cand=os.path.join(_FM476_PREVIEW_CACHE_DIR, os.path.splitext(os.path.basename(path))[0]+'.pdf')
+            if os.path.exists(cand) and os.path.getsize(cand)>0:
+                try: os.replace(cand,out)
+                except Exception: out=cand
+                return out
+    except Exception: pass
+    return ''
+
+
+def _fm476_render_pdf(canvas, path, width, title):
+    if not PIL_AVAILABLE:
+        return _fm476_msg(canvas,96,width,title,['Pillow ist nicht verfügbar; Vorschau kann nicht angezeigt werden.'],RED)
+    try:
+        import fitz
+        doc=fitz.open(path)
+        if len(doc)<1:
+            try: doc.close()
+            except Exception: pass
+            return _fm476_msg(canvas,96,width,title,['Das Dokument enthält keine Seite.'],RED)
+        page=doc.load_page(0); max_w=max(260,int(width-46)); scale=min(2.2,max(0.7,max_w/max(1.0,float(page.rect.width))))
+        pix=page.get_pixmap(matrix=fitz.Matrix(scale,scale), alpha=False)
+        try: doc.close()
+        except Exception: pass
+        img=Image.frombytes('RGB',[pix.width,pix.height],pix.samples)
+        if img.width>max_w:
+            r=max_w/float(img.width); img=img.resize((max(1,int(img.width*r)), max(1,int(img.height*r))))
+        photo=ImageTk.PhotoImage(img); refs=getattr(canvas,'_fm472_preview_refs',[]) or []; refs.append(photo); canvas._fm472_preview_refs=refs
+        y=96; canvas.create_text(18,y,text=title,anchor='nw',fill=BLUE,font=body_font(12,weight='bold')); y+=32
+        # Kein zusätzlicher Kasten/Rahmen: nur die gerenderte Seite.
+        canvas.create_image(18,y,image=photo,anchor='nw')
+        return 32+img.height+28
+    except Exception as exc:
+        return _fm476_msg(canvas,96,width,title,['Echte Vorschau konnte nicht gerendert werden.','Renderer benötigt: PyMuPDF/fitz.',f'Technische Ursache: {exc}'],RED)
+
+
+def _fm476_preview_pdf(canvas, path, width):
+    return _fm476_render_pdf(canvas, path, width, 'PDF-Vorschau')
+
+
+def _fm476_preview_office(canvas, path, width):
+    ext=os.path.splitext(path)[1].lower()
+    if ext in {'.doc','.docx'}:
+        pdf=_fm476_cache_pdf_for_word(path)
+        if pdf: return _fm476_render_pdf(canvas, pdf, width, 'Word-Vorschau')
+        return _fm476_msg(canvas,96,width,'Word-Vorschau',['Echte Word-Vorschau konnte nicht erzeugt werden.','Benötigt wird Microsoft Word COM oder LibreOffice.','Die frühere Metadaten-/Kasten-Vorschau wurde entfernt.'],RED)
+    return _fm476_msg(canvas,96,width,'Dokumentvorschau',['Für diesen Office-Dateityp ist noch kein Renderer hinterlegt.'],RED)
+
+try:
+    _fm472_preview_pdf = _fm476_preview_pdf
+    _fm472_preview_office = _fm476_preview_office
+except Exception: pass
+
+
+def _fm476_teams_preview_popup(self, item):
+    files=_fm473_files_for_item(item)
+    if not files:
+        try: messagebox.showwarning('Dateiausgabe','Keine versendbare Datei gefunden.')
+        except Exception: pass
+        return False
+    win=tk.Toplevel(self.root); win.title('Teams Versand vorbereiten'); win.configure(bg=BG)
+    try: win.transient(self.root); win.grab_set(); win.geometry('760x560')
+    except Exception: pass
+    outer=tk.Frame(win,bg=BG); outer.pack(fill='both',expand=True,padx=18,pady=16)
+    tk.Label(outer,text='Teams Versand – Vorschau',bg=BG,fg=BLUE,font=body_font(15,weight='bold')).pack(anchor='w')
+    tk.Label(outer,text='Keine Zwischenablage: Kontakt und Nachricht erfassen, danach Teams-Chat vorbereiten.',bg=BG,fg=TEXT2,font=body_font(10),wraplength=700,justify='left').pack(anchor='w',pady=(4,12))
+    tk.Label(outer,text='Kontakt / Teams-E-Mail',bg=BG,fg=TEXT,font=body_font(10,weight='bold')).pack(anchor='w')
+    contact_var=tk.StringVar(value=''); contact=tk.Entry(outer,textvariable=contact_var,bg=WHITE,fg=TEXT,font=body_font(11),relief='solid',bd=1); contact.pack(fill='x',ipady=5,pady=(2,10))
+    tk.Label(outer,text='Nachricht',bg=BG,fg=TEXT,font=body_font(10,weight='bold')).pack(anchor='w')
+    msg=tk.Text(outer,height=7,bg=WHITE,fg=TEXT,font=body_font(10),relief='solid',bd=1,wrap='word')
+    msg.insert('1.0','Hallo,\n\nanbei die folgende Datei bzw. die folgenden Dateien:\n\n'+'\n'.join('- '+os.path.basename(f) for f in files)+'\n\nViele Grüße')
+    msg.pack(fill='x',pady=(2,12))
+    tk.Label(outer,text='Anhang / Dateien',bg=BG,fg=TEXT,font=body_font(10,weight='bold')).pack(anchor='w')
+    lf=tk.Frame(outer,bg=WHITE,highlightbackground=LINE,highlightthickness=1); lf.pack(fill='both',expand=True,pady=(2,12))
+    lb=tk.Listbox(lf,bg=WHITE,fg=TEXT,font=body_font(9),relief='flat'); sb=tk.Scrollbar(lf,orient='vertical',command=lb.yview); lb.configure(yscrollcommand=sb.set)
+    lb.pack(side='left',fill='both',expand=True); sb.pack(side='right',fill='y')
+    for f in files: lb.insert('end',f)
+    bar=tk.Frame(outer,bg=BG); bar.pack(fill='x')
+    def picked():
+        try:
+            s=lb.curselection(); return lb.get(s[0]) if s else files[0]
+        except Exception: return files[0]
+    def open_teams():
+        users=','.join([x.strip() for x in re.split(r'[;,]',contact_var.get().strip()) if x.strip()])
+        if not users:
+            try: messagebox.showwarning('Teams Versand','Bitte Kontakt bzw. Teams-E-Mail-Adresse angeben.')
+            except Exception: pass
+            return
+        message_text=msg.get('1.0','end-1c').strip()+'\n\nDatei(en):\n'+'\n'.join(os.path.basename(f) for f in files)
+        url='https://teams.microsoft.com/l/chat/0/0?users='+quote(users)+'&message='+quote(message_text)
+        try:
+            webbrowser.open(url); _fm473_mark_sent(self,item,'Teams')
+            try: win.destroy()
+            except Exception: pass
+            try: self.render_page()
+            except Exception: pass
+        except Exception as exc:
+            try: messagebox.showerror('Teams Versand','Teams-Vorschau konnte nicht geöffnet werden:\n'+str(exc))
+            except Exception: pass
+    tk.Button(bar,text='Datei öffnen',command=lambda:_fm472_open_file({'path':picked()}),bg='#D6DCE4',fg=TEXT,activebackground='#C8D0DA',font=body_font(10),relief='solid',bd=1).pack(side='left',padx=(0,8),ipadx=12,ipady=5)
+    tk.Button(bar,text='Speicherort öffnen',command=lambda:_fm472_open_folder({'path':picked()}),bg='#D6DCE4',fg=TEXT,activebackground='#C8D0DA',font=body_font(10),relief='solid',bd=1).pack(side='left',padx=(0,8),ipadx=12,ipady=5)
+    tk.Button(bar,text='Teams öffnen',command=open_teams,bg='#D6DCE4',fg=TEXT,activebackground='#C8D0DA',font=body_font(10,weight='bold'),relief='solid',bd=1).pack(side='right',padx=(8,0),ipadx=14,ipady=5)
+    tk.Button(bar,text='Abbrechen',command=win.destroy,bg='#D6DCE4',fg=TEXT,activebackground='#C8D0DA',font=body_font(10),relief='solid',bd=1).pack(side='right',padx=(8,0),ipadx=14,ipady=5)
+    try: contact.focus_set()
+    except Exception: pass
+    return True
+
+try:
+    _fm473_send_teams = _fm476_teams_preview_popup
+except Exception: pass
+
+
+
+# ------------------------------------------------------------------
+# FiBu Mate - Dateiausgabe Doppelklick sperren + Iconspalte links FINAL 2026-06-23
+# Version 0.477
+# Zweck:
+# - Dateiausgabe: Dateien/Sammelpositionen werden nicht mehr per Doppelklick geöffnet.
+# - Dateiausgabe: erste Spalte wird als schmale, linksbündige Status-/Iconspalte normalisiert.
+# ------------------------------------------------------------------
+_FM477_PATCH_VERSION = "0.477"
+_FM477_ICON_COL_W = 22
+
+
+def _fm477_finalize_file_output_treeviews(root):
+    """Finaler UI-Fix für alle Treeviews im aktuell gerenderten Dateiausgabe-Bereich.
+    Doppelklick wird auf Widget-Ebene komplett abgefangen; bestehende ältere on_open-Bindings werden überschrieben.
+    Die erste Tree-Spalte wird sehr schmal und linksbündig geführt, damit Status-Icons/Punkte nicht in Folgespalten laufen.
+    """
+    try:
+        style = ttk.Style(root)
+        try:
+            style.configure('Treeview', indent=0)
+        except Exception:
+            pass
+    except Exception:
+        pass
+
+    def walk(widget):
+        try:
+            children = widget.winfo_children()
+        except Exception:
+            children = []
+        for child in children:
+            try:
+                if isinstance(child, ttk.Treeview):
+                    try:
+                        child.unbind('<Double-Button-1>')
+                        child.bind('<Double-Button-1>', lambda event: 'break')
+                    except Exception:
+                        pass
+                    try:
+                        child.heading('#0', text='', anchor='w')
+                    except Exception:
+                        pass
+                    try:
+                        child.column('#0', width=_FM477_ICON_COL_W, minwidth=_FM477_ICON_COL_W, stretch=False, anchor='w')
+                    except Exception:
+                        pass
+                    try:
+                        # Punkte bei normalen Dateien entfernen; Gruppen behalten nur den kleinen Aufklapphinweis.
+                        for iid in child.get_children(''):
+                            has_children = bool(child.get_children(iid))
+                            child.item(iid, text=('▸' if has_children else ''))
+                            for cid in child.get_children(iid):
+                                child.item(cid, text='')
+                    except Exception:
+                        pass
+            except Exception:
+                pass
+            walk(child)
+    walk(root)
+
+try:
+    _fm477_previous_render_file_output = FiBuMateApp.render_file_output
+except Exception:
+    _fm477_previous_render_file_output = None
+
+
+def _fm477_render_file_output(self):
+    result = None
+    if _fm477_previous_render_file_output:
+        result = _fm477_previous_render_file_output(self)
+    try:
+        _fm477_finalize_file_output_treeviews(self.root)
+        try:
+            self.root.after(50, lambda: _fm477_finalize_file_output_treeviews(self.root))
+            self.root.after(250, lambda: _fm477_finalize_file_output_treeviews(self.root))
+        except Exception:
+            pass
+    except Exception:
+        pass
+    return result
+
+try:
+    FiBuMateApp.render_file_output = _fm477_render_file_output
+except Exception:
+    pass
+
+
+
+# ------------------------------------------------------------------
+# FiBu Mate - Dateiausgabe Log-Only Exporte + Screenshot-Iconspalte FINAL 2026-07-06
+# Version 0.478
+# Zweck:
+# - Dateiausgabe listet nur noch registrierte FiBu-Mate-Exporte aus dem Dateiausgabe-Log.
+# - Nachtraeglich in Exportordner kopierte/verschobene Dateien werden nicht mehr per Ordnerscan aufgenommen.
+# - Erste Treeview-Spalte wird passend zum Screenshot breiter und linksbuendig gehalten.
+# ------------------------------------------------------------------
+_FM478_PATCH_VERSION = "0.478"
+_FM478_ICON_COL_W = 44
+
+
+def _fm478_registered_export_item(self, item):
+    try:
+        if not isinstance(item, dict):
+            return None
+        p = item.get('path') or ''
+        if not p:
+            return None
+        ap = os.path.abspath(str(p))
+        if not os.path.isfile(ap):
+            return None
+        st = os.stat(ap)
+        out = dict(item)
+        out['id'] = out.get('id') or _fm472_file_key(ap)
+        out['type'] = 'file'
+        out['name'] = out.get('name') or os.path.basename(ap)
+        out['path'] = ap
+        out['user'] = out.get('user') or _fm472_safe_user(self)
+        out['module'] = out.get('module') or _fm472_guess_module(ap)
+        out['created_at'] = out.get('created_at') or datetime.fromtimestamp(st.st_mtime).isoformat(timespec='seconds')
+        out['group_id'] = out.get('group_id', '') or ''
+        out['group_title'] = out.get('group_title', '') or ''
+        out['sent_at'] = out.get('sent_at', '') or ''
+        out['sent_channel'] = out.get('sent_channel', '') or ''
+        out['created_by_fibu_mate'] = True
+        return out
+    except Exception:
+        return None
+
+
+def _fm478_scan_output_files(self):
+    """Nur registrierte FiBu-Mate-Exporte; kein Ordnerscan von Exportpfaden."""
+    items = []
+    seen = set()
+    try:
+        logs = _fm473_load_all_log_items()
+    except Exception:
+        logs = {}
+    for raw in logs.values():
+        item = _fm478_registered_export_item(self, raw)
+        if not item:
+            continue
+        key = os.path.abspath(item.get('path', '')).casefold()
+        if not key or key in seen:
+            continue
+        seen.add(key)
+        items.append(item)
+    items.sort(key=lambda x: str(x.get('created_at', '')), reverse=True)
+    return items
+
+
+def _fm478_build_items(self):
+    return _fm473_build_groups(self, _fm478_scan_output_files(self))
+
+
+def _fm478_register_output_file(self, path, user=None, module=None, group_id=None, group_title=None, created_at=None, children=None):
+    ok = False
+    try:
+        ok = _fm473_register_output_file(self, path, user=user, module=module, group_id=group_id, group_title=group_title, created_at=created_at, children=children)
+        if ok and path:
+            logs = _fm473_load_all_log_items()
+            iid = _fm472_file_key(path)
+            entry = logs.get(iid, {})
+            entry['id'] = iid
+            entry['type'] = 'file'
+            entry['name'] = entry.get('name') or os.path.basename(str(path))
+            entry['path'] = os.path.abspath(str(path))
+            entry['user'] = entry.get('user') or user or _fm472_safe_user(self)
+            entry['module'] = entry.get('module') or module or _fm472_guess_module(path)
+            entry['group_id'] = entry.get('group_id') or group_id or ''
+            entry['group_title'] = entry.get('group_title') or group_title or ''
+            entry['created_at'] = entry.get('created_at') or created_at or _fm472_now_iso()
+            entry['created_by_fibu_mate'] = True
+            logs[iid] = entry
+            _fm473_write_log_items(logs)
+        return bool(ok)
+    except Exception:
+        return bool(ok)
+
+
+def _fm478_finalize_file_output_treeviews(root):
+    def walk(widget):
+        try:
+            children = widget.winfo_children()
+        except Exception:
+            children = []
+        for child in children:
+            try:
+                if isinstance(child, ttk.Treeview):
+                    try:
+                        child.unbind('<Double-Button-1>')
+                        child.bind('<Double-Button-1>', lambda event: 'break')
+                    except Exception:
+                        pass
+                    try:
+                        child.heading('#0', text='', anchor='w')
+                    except Exception:
+                        pass
+                    try:
+                        child.column('#0', width=_FM478_ICON_COL_W, minwidth=_FM478_ICON_COL_W, stretch=False, anchor='w')
+                    except Exception:
+                        pass
+                    try:
+                        for iid in child.get_children(''):
+                            has_children = bool(child.get_children(iid))
+                            child.item(iid, text=('▸' if has_children else ''))
+                            for cid in child.get_children(iid):
+                                child.item(cid, text='')
+                    except Exception:
+                        pass
+            except Exception:
+                pass
+            walk(child)
+    walk(root)
+
+try:
+    _fm478_previous_render_file_output = FiBuMateApp.render_file_output
+except Exception:
+    _fm478_previous_render_file_output = None
+
+
+def _fm478_render_file_output(self):
+    result = None
+    if _fm478_previous_render_file_output:
+        result = _fm478_previous_render_file_output(self)
+    try:
+        _fm478_finalize_file_output_treeviews(self.root)
+        try:
+            self.root.after(25, lambda: _fm478_finalize_file_output_treeviews(self.root))
+            self.root.after(125, lambda: _fm478_finalize_file_output_treeviews(self.root))
+            self.root.after(350, lambda: _fm478_finalize_file_output_treeviews(self.root))
+            self.root.after(750, lambda: _fm478_finalize_file_output_treeviews(self.root))
+        except Exception:
+            pass
+    except Exception:
+        pass
+    return result
+
+try:
+    _fm473_scan_output_files = _fm478_scan_output_files
+    FiBuMateApp.file_output_build_items = _fm478_build_items
+    FiBuMateApp.file_output_register = _fm478_register_output_file
+    FiBuMateApp.render_file_output = _fm478_render_file_output
+except Exception:
+    pass
+
+
+
+# ------------------------------------------------------------------
+# FIBU_MATE_HELP_SANDBOX_TILE_MAINMENU_UI_V0482
+# Datum: 2026-07-08
+# Zweck:
+# - Hilfe-Button global sichtbar in Menues/Modulen.
+# - Hilfe-Sandbox je aktuellem Menue/Modul/Tool mit Leitfaeden und Videos.
+# - Kacheldesign moderner mit leichtem 3D-Effekt, Hover bleibt aktiv.
+# - Globale Schriftfamilie moderner ohne Groessenaenderung.
+# - Hauptmenue-Abschnitte subtil beschriften: Module / Tools.
+# ------------------------------------------------------------------
+FIBU_MATE_HELP_SANDBOX_TILE_MAINMENU_UI_VERSION = "0.482"
+FM_MODERN_FONT_FAMILY = "Aptos"
+FM_HELP_SANDBOX_FILE = os.path.join(CENTRAL_CONFIG_DIR, "fibu_mate_help_sandbox.json")
+
+try:
+    from tkinter import filedialog as _fm482_filedialog
+except Exception:
+    _fm482_filedialog = None
+
+# Moderne globale Schriftfamilie, Groessen bleiben unveraendert.
+try:
+    FONT_TITLE = (FM_MODERN_FONT_FAMILY, FONT_TITLE[1], *FONT_TITLE[2:])
+    FONT_MENU = (FM_MODERN_FONT_FAMILY, FONT_MENU[1], *FONT_MENU[2:])
+    FONT_TILE = (FM_MODERN_FONT_FAMILY, FONT_TILE[1], *FONT_TILE[2:])
+    FONT_TILE_SMALL = (FM_MODERN_FONT_FAMILY, FONT_TILE_SMALL[1], *FONT_TILE_SMALL[2:])
+    FONT_SMALL = (FM_MODERN_FONT_FAMILY, FONT_SMALL[1], *FONT_SMALL[2:])
+    BASE_FONT_TITLE = FONT_TITLE
+    BASE_FONT_MENU = FONT_MENU
+    BASE_FONT_TILE = FONT_TILE
+    BASE_FONT_TILE_SMALL = FONT_TILE_SMALL
+    BASE_FONT_SMALL = FONT_SMALL
+except Exception:
+    pass
+
+_body_font_before_v0482 = body_font if 'body_font' in globals() else None
+
+def body_font(size=10, weight=None, underline=False, scale=1.0):
+    if _body_font_before_v0482:
+        base = _body_font_before_v0482(size, weight=weight, underline=underline, scale=scale)
+        try:
+            return tuple([FM_MODERN_FONT_FAMILY, base[1]] + list(base[2:]))
+        except Exception:
+            return base
+    style = []
+    if weight:
+        style.append(weight)
+    if underline:
+        style.append('underline')
+    return tuple([FM_MODERN_FONT_FAMILY, size] + style)
+
+
+def _fm482_load_help_sandbox():
+    try:
+        if os.path.exists(FM_HELP_SANDBOX_FILE):
+            with open(FM_HELP_SANDBOX_FILE, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+            return data if isinstance(data, dict) else {}
+    except Exception:
+        pass
+    return {}
+
+
+def _fm482_save_help_sandbox(data):
+    try:
+        os.makedirs(os.path.dirname(FM_HELP_SANDBOX_FILE), exist_ok=True)
+        with open(FM_HELP_SANDBOX_FILE, 'w', encoding='utf-8') as f:
+            json.dump(data or {}, f, ensure_ascii=False, indent=2)
+        return True
+    except Exception as exc:
+        try:
+            messagebox.showerror('Hilfe', f'Hilfe-Sandbox konnte nicht gespeichert werden:\n\n{exc}')
+        except Exception:
+            pass
+        return False
+
+
+def _fm482_help_context(self):
+    page = getattr(self, 'current_page', '') or 'main'
+    title = getattr(self, 'current_title', '') or 'FiBu Mate'
+    key = page
+    if page.startswith('tool:'):
+        key = page
+    return key, title
+
+
+def _fm482_help_entry_for(self, key, title):
+    data = _fm482_load_help_sandbox()
+    entry = data.get(key)
+    if not isinstance(entry, dict):
+        entry = {'title': title, 'guide_text': '', 'guides': [], 'videos': [], 'updated_at': ''}
+    entry.setdefault('title', title)
+    entry.setdefault('guide_text', '')
+    entry.setdefault('guides', [])
+    entry.setdefault('videos', [])
+    entry.setdefault('updated_at', '')
+    return data, entry
+
+
+def _fm482_open_help_target(value):
+    value = str(value or '').strip()
+    if not value:
+        return
+    try:
+        if re.match(r'^[a-zA-Z][a-zA-Z0-9+.-]*://', value):
+            webbrowser.open(value)
+        elif os.path.exists(value):
+            os.startfile(value) if hasattr(os, 'startfile') else webbrowser.open(value)
+        else:
+            webbrowser.open(value)
+    except Exception as exc:
+        try:
+            messagebox.showerror('Hilfe', f'Der Eintrag konnte nicht geöffnet werden:\n\n{value}\n\n{exc}')
+        except Exception:
+            pass
+
+
+def _fm482_lines_from_text(widget):
+    try:
+        return [line.strip() for line in widget.get('1.0', 'end').splitlines() if line.strip()]
+    except Exception:
+        return []
+
+
+def _fm482_insert_lines(widget, lines):
+    try:
+        widget.delete('1.0', 'end')
+        widget.insert('1.0', '\n'.join(lines or []))
+    except Exception:
+        pass
+
+
+def _fm482_show_help_popup(self):
+    key, title = _fm482_help_context(self)
+    data, entry = _fm482_help_entry_for(self, key, title)
+    popup = tk.Toplevel(self.root)
+    popup.title(f'FiBu Mate - Hilfe: {title}')
+    popup.configure(bg=BG)
+    popup.transient(self.root)
+    popup.resizable(True, True)
+    popup.minsize(880, 620)
+    popup_w, popup_h = 1120, 760
+    try:
+        self.root.update_idletasks()
+        screen_w = self.root.winfo_screenwidth(); screen_h = self.root.winfo_screenheight()
+        x = max(0, int((screen_w - popup_w) / 2)); y = max(0, int((screen_h - popup_h) / 2))
+        popup.geometry(f'{popup_w}x{popup_h}+{x}+{y}')
+    except Exception:
+        popup.geometry(f'{popup_w}x{popup_h}')
+    try:
+        self._make_modal(popup)
+    except Exception:
+        pass
+
+    header = tk.Frame(popup, bg=HEADER, height=64); header.pack(side='top', fill='x'); header.pack_propagate(False)
+    tk.Label(header, text='Hilfe-Sandbox', bg=HEADER, fg=TEXT, font=(FM_MODERN_FONT_FAMILY, 18, 'bold')).pack(side='left', padx=18)
+    tk.Label(header, text=f'Aktueller Kontext: {title}', bg=HEADER, fg=TEXT2, font=body_font(10, 'bold')).pack(side='left', padx=(10, 0))
+    tk.Label(header, text=f'ID: {key}', bg=HEADER, fg=TEXT2, font=body_font(8)).pack(side='right', padx=18)
+
+    outer = tk.Frame(popup, bg=BG); outer.pack(side='top', fill='both', expand=True, padx=16, pady=14)
+    outer.columnconfigure(0, weight=2); outer.columnconfigure(1, weight=1); outer.rowconfigure(0, weight=1)
+
+    left = tk.Frame(outer, bg=WHITE, bd=1, relief='solid'); left.grid(row=0, column=0, sticky='nsew', padx=(0, 10))
+    right = tk.Frame(outer, bg=WHITE, bd=1, relief='solid'); right.grid(row=0, column=1, sticky='nsew')
+    left.rowconfigure(1, weight=1); left.columnconfigure(0, weight=1)
+    right.rowconfigure(2, weight=1); right.rowconfigure(5, weight=1); right.columnconfigure(0, weight=1)
+
+    tk.Label(left, text='Leitfaden / individuelle Hilfestellung', bg=WHITE, fg=BLUE, font=body_font(12, 'bold')).grid(row=0, column=0, sticky='w', padx=14, pady=(12, 6))
+    guide_text = tk.Text(left, bg='#F8FAFC', fg=TEXT, wrap='word', font=body_font(10), relief='solid', bd=1)
+    guide_text.grid(row=1, column=0, sticky='nsew', padx=14, pady=(0, 10))
+    guide_text.insert('1.0', entry.get('guide_text', ''))
+    hint = 'Sandbox: Text frei pflegen, Leitfäden als Dateien/Pfade und Erklärvideos als Links oder Dateien hinterlegen. Diese Inhalte gelten nur für den aktuellen Kontext.'
+    tk.Label(left, text=hint, bg=WHITE, fg=TEXT2, font=body_font(9), wraplength=650, justify='left').grid(row=2, column=0, sticky='ew', padx=14, pady=(0, 12))
+
+    tk.Label(right, text='Leitfäden / Dateien', bg=WHITE, fg=BLUE, font=body_font(11, 'bold')).grid(row=0, column=0, sticky='w', padx=12, pady=(12, 4))
+    guides_text = tk.Text(right, height=8, bg='#F8FAFC', fg=TEXT, wrap='none', font=body_font(9), relief='solid', bd=1)
+    guides_text.grid(row=2, column=0, sticky='nsew', padx=12, pady=(0, 8))
+    _fm482_insert_lines(guides_text, entry.get('guides', []))
+    guide_btns = tk.Frame(right, bg=WHITE); guide_btns.grid(row=1, column=0, sticky='ew', padx=12, pady=(0, 4))
+    def add_guide():
+        if not _fm482_filedialog: return
+        path = _fm482_filedialog.askopenfilename(title='Leitfaden auswählen', filetypes=[('Dokumente/Videos', '*.pdf *.docx *.xlsx *.pptx *.mp4 *.mov *.avi *.mkv'), ('Alle Dateien', '*.*')])
+        if path:
+            guides_text.insert('end', ('\n' if guides_text.get('1.0','end').strip() else '') + path)
+    def open_guides_first():
+        lines = _fm482_lines_from_text(guides_text)
+        if lines: _fm482_open_help_target(lines[0])
+    tk.Button(guide_btns, text='Datei hinzufügen', command=add_guide, bg=WHITE, fg=TEXT, font=body_font(9), relief='solid', bd=1).pack(side='left', padx=(0, 6))
+    tk.Button(guide_btns, text='Ersten öffnen', command=open_guides_first, bg=WHITE, fg=TEXT, font=body_font(9), relief='solid', bd=1).pack(side='left')
+
+    tk.Label(right, text='Erklärvideos / Links', bg=WHITE, fg=BLUE, font=body_font(11, 'bold')).grid(row=3, column=0, sticky='w', padx=12, pady=(8, 4))
+    video_btns = tk.Frame(right, bg=WHITE); video_btns.grid(row=4, column=0, sticky='ew', padx=12, pady=(0, 4))
+    videos_text = tk.Text(right, height=8, bg='#F8FAFC', fg=TEXT, wrap='none', font=body_font(9), relief='solid', bd=1)
+    videos_text.grid(row=5, column=0, sticky='nsew', padx=12, pady=(0, 12))
+    _fm482_insert_lines(videos_text, entry.get('videos', []))
+    def add_video_file():
+        if not _fm482_filedialog: return
+        path = _fm482_filedialog.askopenfilename(title='Erklärvideo auswählen', filetypes=[('Videos', '*.mp4 *.mov *.avi *.mkv *.wmv'), ('Alle Dateien', '*.*')])
+        if path:
+            videos_text.insert('end', ('\n' if videos_text.get('1.0','end').strip() else '') + path)
+    def open_video_first():
+        lines = _fm482_lines_from_text(videos_text)
+        if lines: _fm482_open_help_target(lines[0])
+    tk.Button(video_btns, text='Video-Datei', command=add_video_file, bg=WHITE, fg=TEXT, font=body_font(9), relief='solid', bd=1).pack(side='left', padx=(0, 6))
+    tk.Button(video_btns, text='Erstes öffnen', command=open_video_first, bg=WHITE, fg=TEXT, font=body_font(9), relief='solid', bd=1).pack(side='left')
+
+    footer = tk.Frame(popup, bg=BG); footer.pack(side='bottom', fill='x', padx=16, pady=(0, 16))
+    def save_help():
+        data[key] = {
+            'title': title,
+            'guide_text': guide_text.get('1.0', 'end').strip(),
+            'guides': _fm482_lines_from_text(guides_text),
+            'videos': _fm482_lines_from_text(videos_text),
+            'updated_at': datetime.now().isoformat(timespec='seconds'),
+        }
+        if _fm482_save_help_sandbox(data):
+            try: messagebox.showinfo('Hilfe', 'Hilfe-Sandbox gespeichert.')
+            except Exception: pass
+    tk.Button(footer, text='Speichern', command=save_help, bg='#CFEAD6', fg=TEXT, font=body_font(10, 'bold'), bd=1, relief='solid', padx=ui_s(22), pady=ui_s(8), cursor='hand2').pack(side='right', padx=(8, 0))
+    tk.Button(footer, text='Schließen', command=popup.destroy, bg=BLUE, fg='white', font=body_font(10, 'bold'), bd=0, padx=ui_s(22), pady=ui_s(9), cursor='hand2').pack(side='right')
+    tk.Label(footer, text=f'Speicherort: {FM_HELP_SANDBOX_FILE}', bg=BG, fg=TEXT2, font=body_font(8)).pack(side='left')
+
+
+def _fm482_draw_help_control(self):
+    # Hilfe soll in jedem Menue/Modul sichtbar sein. Nur dort, wo draw_controls nicht aufgerufen wird, erscheint sie naturgemaess nicht.
+    btn = tk.Canvas(self.root, width=MINI_WIDGET_W, height=MINI_WIDGET_H, bg=HEADER, highlightthickness=0, bd=0, cursor='hand2'); btn._zoom_exclude = True
+    btn.create_rectangle(1, 1, MINI_WIDGET_W - 1, MINI_WIDGET_H - 1, fill=HEADER, outline=BLUE, width=1)
+    self.draw_mini_help_icon(btn, 25, MINI_WIDGET_H / 2)
+    btn.create_text(MINI_WIDGET_W / 2 + ui_s(6), MINI_WIDGET_H / 2, text='Hilfe', fill=TEXT, font=(FM_MODERN_FONT_FAMILY, max(8, ui_s(9)), 'bold'), anchor='center')
+    btn.bind('<Button-1>', lambda _event=None: self.show_help_popup())
+    btn.bind('<Enter>', lambda _e: self.show_small_tooltip(btn, 'Hilfe-Sandbox'))
+    btn.bind('<Leave>', lambda _e: self.hide_small_tooltip())
+    self.widget_items.append(btn)
+    self.canvas.create_window(self.canvas.winfo_width() - ui_s(22), ui_s(8), window=btn, anchor='ne')
+
+try:
+    FiBuMateApp.show_help_popup = _fm482_show_help_popup
+    FiBuMateApp.draw_help_control = _fm482_draw_help_control
+except Exception:
+    pass
+
+
+# --- Modernisiertes Kacheldesign mit leichtem 3D-Effekt ---
+
+def _fm482_tile_draw(self):
+    self.delete('all')
+    pad = ui_s(8)
+    off = ui_s(1) if self.pressed else 0
+    x0, y0 = pad + off, pad + off
+    x1, y1 = x0 + self.tile_width - off * 2, y0 + self.tile_height - off * 2
+    base = self.current_color()
+    # weicher 3D-Schatten und dezente Tiefe; Icon-/Textpositionen bleiben technisch identisch.
+    if not self.pressed:
+        self.create_rectangle(pad + 8, pad + 10, pad + 8 + self.tile_width, pad + 10 + self.tile_height, fill=blend(SHADOW, '#1F2937', 0.12), outline='')
+        self.create_rectangle(pad + 4, pad + 5, pad + 4 + self.tile_width, pad + 5 + self.tile_height, fill=blend(SHADOW, WHITE, 0.20), outline='')
+    self.create_rectangle(x0, y0, x1, y1, fill=base, outline=darken(base, 0.18), width=1)
+    # Lichtkante oben/links + dunklere Kante unten/rechts fuer kleinen 3D-Effekt.
+    self.create_line(x0 + 2, y0 + 2, x1 - 2, y0 + 2, fill=blend(base, WHITE, 0.34), width=2)
+    self.create_line(x0 + 2, y0 + 2, x0 + 2, y1 - 2, fill=blend(base, WHITE, 0.20), width=1)
+    self.create_line(x0 + 2, y1 - 2, x1 - 2, y1 - 2, fill=darken(base, 0.18), width=2)
+    self.create_line(x1 - 2, y0 + 2, x1 - 2, y1 - 2, fill=darken(base, 0.12), width=1)
+    if self.hovered and self.enabled if hasattr(self, 'enabled') else self.hovered:
+        self.create_rectangle(x0 + 4, y0 + 4, x1 - 4, y1 - 4, outline=blend(WHITE, base, 0.25), width=1)
+    if self.corner_fold:
+        self._draw_corner_fold(x1, y0)
+    title_y = y0 + ui_s(14)
+    title_color = BLUE if self.lock_tile else 'white'
+    icon_to_draw = 'lock' if self.lock_tile else self.icon_type
+    text_width = max(ui_s(110), self.tile_width - ui_s(44))
+    if self.center_text and not icon_to_draw:
+        centered_font, _ = self.fitted_title_font(text_width, max(ui_s(40), self.tile_height - ui_s(28)), centered=True)
+        self.create_text((x0 + x1) / 2, (y0 + y1) / 2, text=self.title, anchor='center', fill=title_color, font=centered_font, width=text_width, justify='center')
+    else:
+        title_max_h = max(ui_s(28), int((y1 - y0) * 0.36))
+        title_font, title_h = self.fitted_title_font(text_width, title_max_h, centered=False)
+        self.create_text((x0 + x1) / 2, title_y, text=self.title, anchor='n', fill=title_color, font=title_font, width=text_width, justify='center')
+        if icon_to_draw:
+            min_icon_y = title_y + title_h + ui_s(20)
+            default_icon_y = y0 + int((y1 - y0) * 0.66)
+            icon_y = max(default_icon_y, min_icon_y)
+            icon_y = min(icon_y, y1 - ui_s(34))
+            close_period = self.app.current_close_period_label(self.tile_id) if hasattr(self.app, 'current_close_period_label') else ''
+            if close_period and self.tile_id in ('monthly_close', 'quarterly_close', 'yearly_close'):
+                icon_x = x0 + 98
+                self._draw_main_icon(icon_to_draw, icon_x, icon_y)
+                self.create_text(icon_x + 48, icon_y, text=close_period, anchor='w', fill=title_color, font=self.app.zoomed_content_font((FM_MODERN_FONT_FAMILY, 13, 'italic')), width=max(120, x1 - icon_x - 58), justify='left')
+            else:
+                self._draw_main_icon(icon_to_draw, (x0 + x1) / 2, icon_y)
+    self.star_bounds = None
+    if self.favorite_enabled and self.tile_id in TOOL_REGISTRY and (self.hovered or self.tile_id in self.app.favorites):
+        sx, sy = x1 - 24, y0 + 24
+        self.star_bounds = (sx - 18, sy - 18, sx + 18, sy + 18)
+        self.create_text(sx, sy, text='★', fill=GOLD if self.tile_id in self.app.favorites else STAR_GREY, font=(FM_MODERN_FONT_FAMILY, 24, 'bold'))
+
+try:
+    Tile.draw = _fm482_tile_draw
+except Exception:
+    pass
+
+
+# --- Hauptmenue mit Abschnittsnamen Module / Tools ---
+
+def _fm482_draw_section_label(self, text, x, y):
+    try:
+        self.canvas.create_rectangle(x - ui_s(8), y - ui_s(12), x + ui_s(132), y + ui_s(12), fill=blend(BG, WHITE, 0.40), outline=blend(BG, BLUE, 0.10))
+        self.canvas.create_text(x, y, text=text, fill=blend(TEXT2, BLUE, 0.35), font=body_font(9, 'bold'), anchor='w')
+    except Exception:
+        pass
+
+
+def _fm482_render_main_menu(self):
+    top_tiles = [
+        {'title':'Abschlusskalender','cmd':lambda: self.show_page('closing_calendar','Abschlusskalender',True),'fixed':None,'lock':False,'icon':'calendar','fold':False},
+        {'title':'Wissenszentrale','cmd':lambda: self.open_knowledge_base(),'fixed':None,'lock':False,'icon':'knowledge','fold':False},
+    ]
+    middle_tiles = [
+        {'title':'Tools - Hauptbuch','cmd':lambda: self.show_page('data_prep','Tools - Hauptbuch',True),'fixed':None,'lock':False,'icon':'fibu_data_prep','fold':False},
+        {'title':'Tools - Debitoren','cmd':lambda: self.show_page('debitoren_tools','Tools - Debitoren',True),'fixed':None,'lock':False,'icon':'fibu_data_prep','fold':False},
+        {'title':'Dateiausgabe','cmd':lambda: self.show_page('file_output','Dateiausgabe',True),'fixed':None,'lock':False,'icon':'file_explorer','fold':False},
+    ]
+    mini_tiles = [
+        {'title':'In Entwicklung','cmd':self.try_open_in_dev,'fixed':GREY_TILE,'lock':True,'icon':'lock','fold':False},
+        {'title':'Informationen','cmd':lambda: self.show_page('information','Informationen',True),'fixed':None,'lock':False,'icon':'info','fold':True},
+        {'title':'Einstellungen','cmd':lambda: self.show_page('settings','Einstellungen',True),'fixed':None,'lock':False,'icon':'gear','fold':True},
+    ]
+    w, h = self.canvas.winfo_width(), self.canvas.winfo_height()
+    tw = max(240, min(330, int(w * 0.165))); th = max(125, min(170, int(h * 0.155)))
+    gap_x = max(38, int(w * 0.04))
+    def centered_x_positions(count, tile_w, gap=gap_x):
+        total_width = count * tile_w + (count - 1) * gap
+        start_x = (w - total_width) / 2 + tile_w / 2
+        return [start_x + i * (tile_w + gap) for i in range(count)]
+    def create_tile_group(items, y, id_prefix, tile_w, tile_h):
+        xs = centered_x_positions(len(items), tile_w)
+        for i, item in enumerate(items):
+            tile = Tile(self.root, self, f'{id_prefix}_{i}', item['title'], item['cmd'], favorite_enabled=False, fixed_color=item['fixed'], lock_tile=item['lock'], icon_type=item['icon'], corner_fold=item['fold'])
+            tile.resize_tile(tile_w, tile_h)
+            self.widget_items.append(tile); self.focusable_tiles.append(tile)
+            self.canvas.create_window(xs[i], y, window=tile, anchor='center')
+    # Bestehende Positionen bleiben erhalten.
+    top_tile_w = max(250, int(tw*1.05)); top_tile_h = max(130, int(th*1.05))
+    tool_tile_w = max(200, int(tw*0.86*0.95)); tool_tile_h = max(100, int(th*0.86*0.95))
+    top_y = y_pct(h, 64); tools_y = y_pct(h, 43)
+    mini_tw = int(tw * 0.72); mini_th = int(th * 0.72)
+    mini_center_y = y_pct(h, 16.5) + th / 2 - mini_th / 2
+    mini_top = mini_center_y - mini_th / 2
+    left_x = x_pct(w, 9.5) + ui_s(2)
+    _fm482_draw_section_label(self, 'Module', left_x, top_y - top_tile_h / 2 - ui_s(18))
+    create_tile_group(top_tiles, top_y, 'main_menuzeile_1', top_tile_w, top_tile_h)
+    self.draw_continuous_relief_line(self.canvas, (top_y + tools_y) / 2, x_pct(w, 9.5), x_pct(w, 92))
+    _fm482_draw_section_label(self, 'Tools', left_x, tools_y - tool_tile_h / 2 - ui_s(18))
+    create_tile_group(middle_tiles, tools_y, 'main_menuzeile_2', tool_tile_w, tool_tile_h)
+    create_tile_group(mini_tiles, mini_center_y, 'main_mini_menuezeile', mini_tw, mini_th)
+    self.draw_continuous_relief_line(self.canvas, mini_top - 13, x_pct(w, 9.5), x_pct(w, 92))
+    self.draw_bottom_logo()
+
+try:
+    FiBuMateApp.render_main_menu = _fm482_render_main_menu
+except Exception:
+    pass
+
+
+
+
+# ------------------------------------------------------------------
+# FIBU_MATE_HELP_ROLE_DELETEICON_TILELABEL_FIX_V0483
+# Datum: 2026-07-08
+# Zweck:
+# - Kachel nur noch mit einem Schatten, kein weisser Hover-Rand.
+# - Abschnittstitel im Hauptmenue frei auf dem Hintergrund links oben im Abschnitt.
+# - Globales Papierkorb-Icon fuer Loeschen-Buttons.
+# - Hilfe-Sandbox nur fuer E4; E3 und niedriger erhalten reine Anzeigeansicht.
+# ------------------------------------------------------------------
+FIBU_MATE_HELP_ROLE_DELETEICON_TILELABEL_FIX_VERSION = "0.483"
+FM_DELETE_ICON_PATH = r"C:\python\bin\Imgs\Icons\biggarbagebin_121980.ico"
+
+
+def _fm483_is_e4(self):
+    try:
+        return self.my_role() == ROLE_E4
+    except Exception:
+        return False
+
+
+def _fm483_help_readonly_text(entry, title, key):
+    parts = [f"Hilfe - {title}", ""]
+    guide = (entry or {}).get('guide_text', '').strip()
+    guides = (entry or {}).get('guides', []) or []
+    videos = (entry or {}).get('videos', []) or []
+    if guide:
+        parts.append(guide)
+    else:
+        parts.append('Für dieses Menü/Modul wurde noch keine Hilfestellung hinterlegt.')
+    if guides:
+        parts.extend(['', 'Leitfäden / Dokumente:'])
+        parts.extend([f"- {g}" for g in guides if str(g).strip()])
+    if videos:
+        parts.extend(['', 'Erklärvideos / Links:'])
+        parts.extend([f"- {v}" for v in videos if str(v).strip()])
+    parts.extend(['', f'Kontext: {key}'])
+    return '\n'.join(parts)
+
+
+def _fm483_show_help_viewer(self, key, title, entry):
+    popup = tk.Toplevel(self.root)
+    popup.title(f'FiBu Mate - Hilfe: {title}')
+    popup.configure(bg=BG)
+    popup.transient(self.root)
+    popup.resizable(True, True)
+    popup.minsize(780, 520)
+    popup_w, popup_h = 1000, 700
+    try:
+        self.root.update_idletasks()
+        screen_w = self.root.winfo_screenwidth(); screen_h = self.root.winfo_screenheight()
+        x = max(0, int((screen_w - popup_w) / 2)); y = max(0, int((screen_h - popup_h) / 2))
+        popup.geometry(f'{popup_w}x{popup_h}+{x}+{y}')
+    except Exception:
+        popup.geometry(f'{popup_w}x{popup_h}')
+    try:
+        self._make_modal(popup)
+    except Exception:
+        pass
+    # Eine einzige Anzeigeansicht: der Inhalt fuellt das Fenster.
+    txt = tk.Text(popup, bg=WHITE, fg=TEXT, wrap='word', font=body_font(11), relief='flat', bd=0, padx=18, pady=18)
+    txt.pack(fill='both', expand=True)
+    txt.insert('1.0', _fm483_help_readonly_text(entry, title, key))
+    txt.configure(state='disabled')
+    try:
+        txt.bind('<Double-Button-1>', lambda _e: _fm482_open_help_target(txt.get('insert linestart', 'insert lineend').replace('- ', '').strip()))
+    except Exception:
+        pass
+    footer = tk.Frame(popup, bg=BG)
+    footer.pack(fill='x')
+    tk.Label(footer, text='Tipp: Dokument-/Videopfade per Doppelklick auf die jeweilige Zeile öffnen.', bg=BG, fg=TEXT2, font=body_font(8)).pack(side='left', padx=12, pady=6)
+    tk.Button(footer, text='Schließen', command=popup.destroy, bg=BLUE, fg='white', font=body_font(9, 'bold'), bd=0, padx=14, pady=5).pack(side='right', padx=12, pady=6)
+
+
+def _fm483_show_help_popup(self):
+    key, title = _fm482_help_context(self) if '_fm482_help_context' in globals() else (getattr(self, 'current_page', 'main'), getattr(self, 'current_title', 'FiBu Mate'))
+    data, entry = _fm482_help_entry_for(self, key, title) if '_fm482_help_entry_for' in globals() else ({}, {'title': title, 'guide_text': '', 'guides': [], 'videos': []})
+    if _fm483_is_e4(self):
+        return _fm482_show_help_popup(self) if '_fm482_show_help_popup' in globals() else None
+    return _fm483_show_help_viewer(self, key, title, entry)
+
+try:
+    FiBuMateApp.show_help_popup = _fm483_show_help_popup
+except Exception:
+    pass
+
+
+# --- Ein-Schatten-Kacheldesign ohne weissen Hover-Rand ---
+
+def _fm483_tile_draw(self):
+    self.delete('all')
+    pad = ui_s(8)
+    off = ui_s(1) if self.pressed else 0
+    x0, y0 = pad + off, pad + off
+    x1, y1 = x0 + self.tile_width - off * 2, y0 + self.tile_height - off * 2
+    base = self.current_color()
+    # Genau ein Schatten.
+    if not self.pressed:
+        self.create_rectangle(pad + 7, pad + 8, pad + 7 + self.tile_width, pad + 8 + self.tile_height, fill=blend(SHADOW, '#1F2937', 0.16), outline='')
+    self.create_rectangle(x0, y0, x1, y1, fill=base, outline=darken(base, 0.20), width=1)
+    # Dezenter 3D-Effekt ueber Kanten, aber kein weisser Hover-Rahmen.
+    self.create_line(x0 + 2, y0 + 2, x1 - 2, y0 + 2, fill=blend(base, WHITE, 0.26), width=1)
+    self.create_line(x0 + 2, y0 + 2, x0 + 2, y1 - 2, fill=blend(base, WHITE, 0.14), width=1)
+    self.create_line(x0 + 2, y1 - 2, x1 - 2, y1 - 2, fill=darken(base, 0.18), width=2)
+    self.create_line(x1 - 2, y0 + 2, x1 - 2, y1 - 2, fill=darken(base, 0.12), width=1)
+    if self.corner_fold:
+        self._draw_corner_fold(x1, y0)
+    title_y = y0 + ui_s(14)
+    title_color = BLUE if self.lock_tile else 'white'
+    icon_to_draw = 'lock' if self.lock_tile else self.icon_type
+    text_width = max(ui_s(110), self.tile_width - ui_s(44))
+    if self.center_text and not icon_to_draw:
+        centered_font, _ = self.fitted_title_font(text_width, max(ui_s(40), self.tile_height - ui_s(28)), centered=True)
+        self.create_text((x0 + x1) / 2, (y0 + y1) / 2, text=self.title, anchor='center', fill=title_color, font=centered_font, width=text_width, justify='center')
+    else:
+        title_max_h = max(ui_s(28), int((y1 - y0) * 0.36))
+        title_font, title_h = self.fitted_title_font(text_width, title_max_h, centered=False)
+        self.create_text((x0 + x1) / 2, title_y, text=self.title, anchor='n', fill=title_color, font=title_font, width=text_width, justify='center')
+        if icon_to_draw:
+            min_icon_y = title_y + title_h + ui_s(20)
+            default_icon_y = y0 + int((y1 - y0) * 0.66)
+            icon_y = max(default_icon_y, min_icon_y)
+            icon_y = min(icon_y, y1 - ui_s(34))
+            close_period = self.app.current_close_period_label(self.tile_id) if hasattr(self.app, 'current_close_period_label') else ''
+            if close_period and self.tile_id in ('monthly_close', 'quarterly_close', 'yearly_close'):
+                icon_x = x0 + 98
+                self._draw_main_icon(icon_to_draw, icon_x, icon_y)
+                self.create_text(icon_x + 48, icon_y, text=close_period, anchor='w', fill=title_color, font=self.app.zoomed_content_font((FM_MODERN_FONT_FAMILY, 13, 'italic')), width=max(120, x1 - icon_x - 58), justify='left')
+            else:
+                self._draw_main_icon(icon_to_draw, (x0 + x1) / 2, icon_y)
+    self.star_bounds = None
+    if self.favorite_enabled and self.tile_id in TOOL_REGISTRY and (self.hovered or self.tile_id in self.app.favorites):
+        sx, sy = x1 - 24, y0 + 24
+        self.star_bounds = (sx - 18, sy - 18, sx + 18, sy + 18)
+        self.create_text(sx, sy, text='★', fill=GOLD if self.tile_id in self.app.favorites else STAR_GREY, font=(FM_MODERN_FONT_FAMILY, 24, 'bold'))
+
+try:
+    Tile.draw = _fm483_tile_draw
+except Exception:
+    pass
+
+
+# --- Abschnittstitel frei auf dem Hauptmenue-Hintergrund an linker Abschnittskante ---
+
+def _fm483_draw_section_label(self, text, x, y):
+    try:
+        self.canvas.create_text(x, y, text=text, fill=blend(TEXT2, BLUE, 0.30), font=body_font(9, 'bold'), anchor='w')
+    except Exception:
+        pass
+
+
+def _fm483_render_main_menu(self):
+    top_tiles = [
+        {'title':'Abschlusskalender','cmd':lambda: self.show_page('closing_calendar','Abschlusskalender',True),'fixed':None,'lock':False,'icon':'calendar','fold':False},
+        {'title':'Wissenszentrale','cmd':lambda: self.open_knowledge_base(),'fixed':None,'lock':False,'icon':'knowledge','fold':False},
+    ]
+    middle_tiles = [
+        {'title':'Tools - Hauptbuch','cmd':lambda: self.show_page('data_prep','Tools - Hauptbuch',True),'fixed':None,'lock':False,'icon':'fibu_data_prep','fold':False},
+        {'title':'Tools - Debitoren','cmd':lambda: self.show_page('debitoren_tools','Tools - Debitoren',True),'fixed':None,'lock':False,'icon':'fibu_data_prep','fold':False},
+        {'title':'Dateiausgabe','cmd':lambda: self.show_page('file_output','Dateiausgabe',True),'fixed':None,'lock':False,'icon':'file_explorer','fold':False},
+    ]
+    mini_tiles = [
+        {'title':'In Entwicklung','cmd':self.try_open_in_dev,'fixed':GREY_TILE,'lock':True,'icon':'lock','fold':False},
+        {'title':'Informationen','cmd':lambda: self.show_page('information','Informationen',True),'fixed':None,'lock':False,'icon':'info','fold':True},
+        {'title':'Einstellungen','cmd':lambda: self.show_page('settings','Einstellungen',True),'fixed':None,'lock':False,'icon':'gear','fold':True},
+    ]
+    w, h = self.canvas.winfo_width(), self.canvas.winfo_height()
+    tw = max(240, min(330, int(w * 0.165))); th = max(125, min(170, int(h * 0.155)))
+    gap_x = max(38, int(w * 0.04))
+    def centered_x_positions(count, tile_w, gap=gap_x):
+        total_width = count * tile_w + (count - 1) * gap
+        start_x = (w - total_width) / 2 + tile_w / 2
+        return [start_x + i * (tile_w + gap) for i in range(count)]
+    def create_tile_group(items, y, id_prefix, tile_w, tile_h):
+        xs = centered_x_positions(len(items), tile_w)
+        for i, item in enumerate(items):
+            tile = Tile(self.root, self, f'{id_prefix}_{i}', item['title'], item['cmd'], favorite_enabled=False, fixed_color=item['fixed'], lock_tile=item['lock'], icon_type=item['icon'], corner_fold=item['fold'])
+            tile.resize_tile(tile_w, tile_h)
+            self.widget_items.append(tile); self.focusable_tiles.append(tile)
+            self.canvas.create_window(xs[i], y, window=tile, anchor='center')
+    top_tile_w = max(250, int(tw*1.05)); top_tile_h = max(130, int(th*1.05))
+    tool_tile_w = max(200, int(tw*0.86*0.95)); tool_tile_h = max(100, int(th*0.86*0.95))
+    top_y = y_pct(h, 64); tools_y = y_pct(h, 43)
+    mini_tw = int(tw * 0.72); mini_th = int(th * 0.72)
+    mini_center_y = y_pct(h, 16.5) + th / 2 - mini_th / 2
+    mini_top = mini_center_y - mini_th / 2
+    # Abschnittstitel am linken Rand des Hintergrund-Abschnitts, ohne Textbox.
+    label_x = ui_s(10)
+    _fm483_draw_section_label(self, 'Module', label_x, ui_s(154))
+    create_tile_group(top_tiles, top_y, 'main_menuzeile_1', top_tile_w, top_tile_h)
+    first_sep_y = (top_y + tools_y) / 2
+    self.draw_continuous_relief_line(self.canvas, first_sep_y, x_pct(w, 9.5), x_pct(w, 92))
+    _fm483_draw_section_label(self, 'Tools', label_x, first_sep_y + ui_s(28))
+    create_tile_group(middle_tiles, tools_y, 'main_menuzeile_2', tool_tile_w, tool_tile_h)
+    create_tile_group(mini_tiles, mini_center_y, 'main_mini_menuezeile', mini_tw, mini_th)
+    self.draw_continuous_relief_line(self.canvas, mini_top - 13, x_pct(w, 9.5), x_pct(w, 92))
+    self.draw_bottom_logo()
+
+try:
+    FiBuMateApp.render_main_menu = _fm483_render_main_menu
+except Exception:
+    pass
+
+
+# --- Globales Loeschen-Icon ---
+_FM483_ORIG_TK_BUTTON_INIT = tk.Button.__init__
+_FM483_ORIG_TK_BUTTON_CONFIGURE = tk.Button.configure
+_FM483_DELETE_ICON_CACHE = {}
+
+
+def _fm483_delete_button_should_icon(widget):
+    try:
+        txt = str(widget.cget('text') or '')
+        return 'Löschen' in txt or 'Loeschen' in txt or 'löschen' in txt.lower()
+    except Exception:
+        return False
+
+
+def _fm483_get_delete_photo(widget):
+    if not PIL_AVAILABLE:
+        return None
+    try:
+        path = FM_DELETE_ICON_PATH
+        if not os.path.exists(path):
+            path = os.path.join(ICON_DIR, 'biggarbagebin_121980.ico')
+        key = (str(path), ui_s(18))
+        img = Image.open(path).resize((ui_s(18), ui_s(18)))
+        photo = ImageTk.PhotoImage(img)
+        _FM483_DELETE_ICON_CACHE[id(widget)] = photo
+        return photo
+    except Exception:
+        return None
+
+
+def _fm483_apply_delete_icon(widget):
+    try:
+        if not _fm483_delete_button_should_icon(widget):
+            return
+        photo = _fm483_get_delete_photo(widget)
+        if photo:
+            _FM483_ORIG_TK_BUTTON_CONFIGURE(widget, None, image=photo, compound='left')
+            widget._fm483_delete_icon = photo
+    except Exception:
+        pass
+
+
+def _fm483_button_init(self, master=None, cnf={}, **kw):
+    _FM483_ORIG_TK_BUTTON_INIT(self, master, cnf, **kw)
+    _fm483_apply_delete_icon(self)
+
+
+def _fm483_button_configure(self, cnf=None, **kw):
+    result = _FM483_ORIG_TK_BUTTON_CONFIGURE(self, cnf, **kw)
+    try:
+        if ('text' in kw) or _fm483_delete_button_should_icon(self):
+            _fm483_apply_delete_icon(self)
+    except Exception:
+        pass
+    return result
+
+try:
+    tk.Button.__init__ = _fm483_button_init
+    tk.Button.configure = _fm483_button_configure
+    tk.Button.config = _fm483_button_configure
+except Exception:
+    pass
+
+
+
+
+# ------------------------------------------------------------------
+# FIBU_MATE_HEADER_LINGO_MAINMENU_REWORK_V0484
+# Datum: 2026-07-08
+# Zweck:
+# - Hauptmenue-Kacheln linksbuendig zur Trennlinienkante ausrichten, Groesse/Abstand beibehalten.
+# - Header reduzieren, Breadcrumb/Favoriten unterhalb der Buttons positionieren und farblich saettigen.
+# - Favoriten-Chips gleich gross und ueber E4-Menue "Lingo" abkuerzbar.
+# - Hilfe rollenabhaengig: E4 Sandbox, <=E3 reine Anzeige.
+# - Loeschen-Icon global auf Papierkorb anwenden.
+# - Kachel: genau ein Schatten, kein weisser Hover-Rand.
+# ------------------------------------------------------------------
+FIBU_MATE_HEADER_LINGO_MAINMENU_REWORK_VERSION = "0.484"
+FM_HEADER_H = ui_s(96)
+FM_BAR_Y = ui_s(62)
+FM_DELETE_ICON_PATH = r"C:\python\bin\Imgs\Icons\biggarbagebin_121980.ico"
+
+try:
+    from tkinter import filedialog as _fm484_filedialog
+except Exception:
+    _fm484_filedialog = None
+
+# ---------- Header / Breadcrumb / Favoriten ----------
+def _fm484_draw_background(self):
+    w, h = self.canvas.winfo_width(), self.canvas.winfo_height()
+    self.canvas.create_rectangle(0, 0, w, h, fill=BG, outline='')
+    for i in range(10):
+        y = 145 + i * max(52, h * 0.060)
+        color = blend(BG, BLUE if i % 2 == 0 else RED, 0.040 + (i % 4) * 0.008)
+        self.canvas.create_line(-80, y, w + 90, y + h * 0.075, fill=color, width=1)
+    self.canvas.create_oval(w * 0.68, h * 0.18, w * 1.05, h * 0.78, outline=blend(BG, BLUE, 0.11), width=2)
+    self.canvas.create_oval(w * 0.73, h * 0.24, w * 1.01, h * 0.70, outline=blend(BG, WHITE, 0.46), width=1)
+    self.canvas.create_oval(-w * 0.14, h * 0.42, w * 0.25, h * 1.02, outline=blend(BG, RED, 0.075), width=2)
+    self.canvas.create_polygon(w * 0.02, h * 0.90, w * 0.32, h * 0.72, w * 0.60, h * 1.04, fill=blend(BG, WHITE, 0.20), outline='')
+    self.canvas.create_polygon(w * 0.62, h * 0.20, w * 0.96, h * 0.36, w * 1.06, h * 0.12, fill=blend(BG, BLUE, 0.040), outline='')
+    self.canvas.create_polygon(w * 0.08, h * 0.18, w * 0.22, h * 0.26, w * 0.04, h * 0.34, fill=blend(BG, WHITE, 0.15), outline='')
+    self.canvas.create_rectangle(0, 0, w, FM_HEADER_H, fill=HEADER, outline='')
+    self.canvas.create_rectangle(0, FM_HEADER_H, w, FM_HEADER_H + ui_s(3), fill=LINE, outline='')
+
+
+def _fm484_draw_header(self, title):
+    w = self.canvas.winfo_width()
+    self.canvas.create_rectangle(0, 0, w, FM_HEADER_H, fill=HEADER, outline='')
+    self.canvas.create_line(0, FM_HEADER_H, w, FM_HEADER_H, fill=LINE, width=1)
+    # Titel bleibt horizontal zentriert, wird aber im reduzierten Header sichtbar nach oben gezogen.
+    self.canvas.create_text(w / 2, ui_s(83), text=title, font=FONT_MENU, fill=TEXT2, anchor='center')
+
+
+def _fm484_draw_gradient_line(self, x1, x2, y):
+    width = max(1, int(x2 - x1)); steps = max(20, min(180, width // 5))
+    for i in range(steps):
+        t = i / max(1, steps - 1)
+        # Saettiger als bisher, damit Leisten gegen den Hintergrund klarer stehen.
+        color = blend(RED, BLUE, t)
+        self.canvas.create_line(x1 + width * i / steps, y, x1 + width * (i + 1) / steps, y, fill=color, width=2)
+
+
+def _fm484_bar_width(self):
+    w = self.canvas.winfo_width()
+    return max(ui_s(440), min(ui_s(690), int(w * 0.34)))
+
+
+def _fm484_draw_path_bar(self):
+    y_mid = FM_BAR_Y
+    x1 = ui_s(10)
+    x2 = min(x1 + _fm484_bar_width(self), self.canvas.winfo_width() * 0.48)
+    self.draw_gradient_line(x1, x2, y_mid - ui_s(10))
+    self.draw_gradient_line(x1, x2, y_mid + ui_s(10))
+    x = x1 + ui_s(12)
+    for idx, (page, title) in enumerate(self.breadcrumb):
+        current = idx == len(self.breadcrumb) - 1
+        tid = self.canvas.create_text(x, y_mid, text=title, font=body_font(9, 'bold') if current else body_font(9), fill=TEXT if current else BLUE, anchor='w')
+        bbox = self.canvas.bbox(tid); tw = bbox[2] - bbox[0] if bbox else ui_s(70)
+        if not current:
+            self.canvas.tag_bind(tid, '<Button-1>', lambda e, i=idx: self.jump_to_breadcrumb(i))
+            self.canvas.tag_bind(tid, '<Enter>', lambda e: self.canvas.config(cursor='hand2'))
+            self.canvas.tag_bind(tid, '<Leave>', lambda e: self.canvas.config(cursor='arrow'))
+        x += tw + ui_s(12)
+        if idx < len(self.breadcrumb) - 1:
+            self.canvas.create_polygon(x, y_mid - ui_s(5), x, y_mid + ui_s(5), x + ui_s(7), y_mid, fill=RED, outline=RED)
+            x += ui_s(17)
+
+
+def _fm484_lingo_map(self):
+    try:
+        settings = self.user_data.setdefault('settings', {})
+        m = settings.setdefault('lingo_shortcuts', {})
+        return m if isinstance(m, dict) else {}
+    except Exception:
+        return {}
+
+
+def _fm484_lingo_label(self, tool_id):
+    m = _fm484_lingo_map(self)
+    if tool_id in m and str(m[tool_id]).strip():
+        return str(m[tool_id]).strip()[:8]
+    label = TOOL_REGISTRY.get(tool_id, {}).get('favorite_label', tool_id)
+    # Default kuerzen, damit alle Favoriten-Chips gleich gross bleiben.
+    return str(label).strip()[:8]
+
+
+def _fm484_draw_favorites_bar(self):
+    w = self.canvas.winfo_width(); y_mid = FM_BAR_Y
+    bar_w = _fm484_bar_width(self)
+    x2 = w - ui_s(10)
+    x1 = max(w * 0.52, x2 - bar_w)
+    self.draw_gradient_line(x1, x2, y_mid - ui_s(10))
+    self.draw_gradient_line(x1, x2, y_mid + ui_s(10))
+    self.canvas.create_text(x1 + ui_s(8), y_mid, text='★', font=(FM_MODERN_FONT_FAMILY if 'FM_MODERN_FONT_FAMILY' in globals() else 'Aptos', max(10, ui_s(13)), 'bold'), fill=GOLD, anchor='w')
+    self.canvas.create_text(x1 + ui_s(30), y_mid, text='Favoriten', font=body_font(9, 'bold'), fill=TEXT, anchor='w')
+    chip_w = ui_s(58); chip_gap = ui_s(4); chip_h = ui_s(20)
+    x = x1 + ui_s(108)
+    max_x = x2 - ui_s(4)
+    for fav in sorted(f for f in self.favorites if f in TOOL_REGISTRY and f not in HIDDEN_TOOL_IDS):
+        if x + chip_w > max_x:
+            break
+        label = _fm484_lingo_label(self, fav)
+        chip_color = self.current_tile_color() or BLUE
+        chip = tk.Label(self.root, text=label, bg=chip_color, fg='white', font=body_font(8, 'bold'), width=7, anchor='center', padx=0, pady=0, cursor='hand2')
+        chip._zoom_exclude = True
+        chip.bind('<Button-1>', lambda e, fid=fav: self.execute_favorite(fid))
+        self.widget_items.append(chip)
+        self.canvas.create_window(x, y_mid + ui_s(8), window=chip, anchor='w', width=chip_w, height=chip_h)
+        x += chip_w + chip_gap
+
+try:
+    FiBuMateApp.draw_background = _fm484_draw_background
+    FiBuMateApp.draw_header = _fm484_draw_header
+    FiBuMateApp.draw_gradient_line = _fm484_draw_gradient_line
+    FiBuMateApp.draw_path_bar = _fm484_draw_path_bar
+    FiBuMateApp.draw_favorites_bar = _fm484_draw_favorites_bar
+except Exception:
+    pass
+
+# ---------- Dynamischere, gleich grosse Trennlinien ----------
+def _fm484_draw_continuous_relief_line(self, canvas, y, x1, x2):
+    # gleiche Groesse/Wirkungshoehe, aber feiner Verlauf statt harter Strich
+    steps = 72
+    for i in range(steps):
+        t = i / max(1, steps - 1)
+        fade = 0.42 + 0.38 * (1 - abs(t - 0.5) * 2)
+        sx = x1 + (x2 - x1) * i / steps
+        ex = x1 + (x2 - x1) * (i + 1) / steps
+        canvas.create_line(sx, y, ex, y, fill=blend(BG, '#1F2933', 0.22 * fade), width=2)
+        canvas.create_line(sx, y + 2, ex, y + 2, fill=blend(BG, WHITE, 0.60 * fade), width=1)
+
+try:
+    FiBuMateApp.draw_continuous_relief_line = _fm484_draw_continuous_relief_line
+except Exception:
+    pass
+
+# ---------- Hilfe: E4 Sandbox, <=E3 Anzeige ----------
+def _fm484_is_e4(self):
+    try:
+        return self.my_role() == ROLE_E4
+    except Exception:
+        return False
+
+
+def _fm484_help_readonly_text(entry, title, key):
+    parts = [f'Hilfe - {title}', '']
+    guide = (entry or {}).get('guide_text', '').strip()
+    guides = (entry or {}).get('guides', []) or []
+    videos = (entry or {}).get('videos', []) or []
+    parts.append(guide if guide else 'Für dieses Menü/Modul wurde noch keine Hilfestellung hinterlegt.')
+    if guides:
+        parts.extend(['', 'Leitfäden / Dokumente:'])
+        parts.extend([f'- {g}' for g in guides if str(g).strip()])
+    if videos:
+        parts.extend(['', 'Erklärvideos / Links:'])
+        parts.extend([f'- {v}' for v in videos if str(v).strip()])
+    parts.extend(['', f'Kontext: {key}'])
+    return '\n'.join(parts)
+
+
+def _fm484_show_help_viewer(self, key, title, entry):
+    popup = tk.Toplevel(self.root)
+    popup.title(f'FiBu Mate - Hilfe: {title}')
+    popup.configure(bg=BG); popup.transient(self.root); popup.resizable(True, True); popup.minsize(780, 520)
+    try:
+        self.root.update_idletasks(); sw = self.root.winfo_screenwidth(); sh = self.root.winfo_screenheight(); pw, ph = 1000, 700
+        popup.geometry(f'{pw}x{ph}+{max(0,int((sw-pw)/2))}+{max(0,int((sh-ph)/2))}')
+    except Exception:
+        popup.geometry('1000x700')
+    try: self._make_modal(popup)
+    except Exception: pass
+    txt = tk.Text(popup, bg=WHITE, fg=TEXT, wrap='word', font=body_font(11), relief='flat', bd=0, padx=18, pady=18)
+    txt.pack(fill='both', expand=True)
+    txt.insert('1.0', _fm484_help_readonly_text(entry, title, key))
+    txt.configure(state='disabled')
+    try:
+        txt.bind('<Double-Button-1>', lambda _e: _fm482_open_help_target(txt.get('insert linestart', 'insert lineend').replace('- ', '').strip()) if '_fm482_open_help_target' in globals() else None)
+    except Exception:
+        pass
+
+
+def _fm484_show_help_popup(self):
+    key, title = _fm482_help_context(self) if '_fm482_help_context' in globals() else (getattr(self, 'current_page', 'main'), getattr(self, 'current_title', 'FiBu Mate'))
+    data, entry = _fm482_help_entry_for(self, key, title) if '_fm482_help_entry_for' in globals() else ({}, {'title': title, 'guide_text': '', 'guides': [], 'videos': []})
+    if _fm484_is_e4(self):
+        return _fm482_show_help_popup(self) if '_fm482_show_help_popup' in globals() else None
+    return _fm484_show_help_viewer(self, key, title, entry)
+
+try:
+    FiBuMateApp.show_help_popup = _fm484_show_help_popup
+except Exception:
+    pass
+
+# ---------- Kachel: ein Schatten, kein weisser Hover-Rand ----------
+def _fm484_tile_draw(self):
+    self.delete('all')
+    pad = ui_s(8); off = ui_s(1) if self.pressed else 0
+    x0, y0 = pad + off, pad + off
+    x1, y1 = x0 + self.tile_width - off * 2, y0 + self.tile_height - off * 2
+    base = self.current_color()
+    if not self.pressed:
+        self.create_rectangle(pad + 7, pad + 8, pad + 7 + self.tile_width, pad + 8 + self.tile_height, fill=blend(SHADOW, '#1F2937', 0.16), outline='')
+    self.create_rectangle(x0, y0, x1, y1, fill=base, outline=darken(base, 0.20), width=1)
+    self.create_line(x0 + 2, y0 + 2, x1 - 2, y0 + 2, fill=blend(base, WHITE, 0.26), width=1)
+    self.create_line(x0 + 2, y0 + 2, x0 + 2, y1 - 2, fill=blend(base, WHITE, 0.14), width=1)
+    self.create_line(x0 + 2, y1 - 2, x1 - 2, y1 - 2, fill=darken(base, 0.18), width=2)
+    self.create_line(x1 - 2, y0 + 2, x1 - 2, y1 - 2, fill=darken(base, 0.12), width=1)
+    if self.corner_fold:
+        self._draw_corner_fold(x1, y0)
+    title_y = y0 + ui_s(14)
+    title_color = BLUE if self.lock_tile else 'white'
+    icon_to_draw = 'lock' if self.lock_tile else self.icon_type
+    text_width = max(ui_s(110), self.tile_width - ui_s(44))
+    if self.center_text and not icon_to_draw:
+        centered_font, _ = self.fitted_title_font(text_width, max(ui_s(40), self.tile_height - ui_s(28)), centered=True)
+        self.create_text((x0+x1)/2, (y0+y1)/2, text=self.title, anchor='center', fill=title_color, font=centered_font, width=text_width, justify='center')
+    else:
+        title_max_h = max(ui_s(28), int((y1-y0)*0.36))
+        title_font, title_h = self.fitted_title_font(text_width, title_max_h, centered=False)
+        self.create_text((x0+x1)/2, title_y, text=self.title, anchor='n', fill=title_color, font=title_font, width=text_width, justify='center')
+        if icon_to_draw:
+            min_icon_y = title_y + title_h + ui_s(20)
+            default_icon_y = y0 + int((y1-y0)*0.66)
+            icon_y = max(default_icon_y, min_icon_y); icon_y = min(icon_y, y1-ui_s(34))
+            close_period = self.app.current_close_period_label(self.tile_id) if hasattr(self.app, 'current_close_period_label') else ''
+            if close_period and self.tile_id in ('monthly_close','quarterly_close','yearly_close'):
+                icon_x = x0 + 98
+                self._draw_main_icon(icon_to_draw, icon_x, icon_y)
+                self.create_text(icon_x+48, icon_y, text=close_period, anchor='w', fill=title_color, font=self.app.zoomed_content_font((FM_MODERN_FONT_FAMILY if 'FM_MODERN_FONT_FAMILY' in globals() else 'Aptos', 13, 'italic')), width=max(120, x1-icon_x-58), justify='left')
+            else:
+                self._draw_main_icon(icon_to_draw, (x0+x1)/2, icon_y)
+    self.star_bounds = None
+    if self.favorite_enabled and self.tile_id in TOOL_REGISTRY and (self.hovered or self.tile_id in self.app.favorites):
+        sx, sy = x1 - 24, y0 + 24
+        self.star_bounds = (sx-18, sy-18, sx+18, sy+18)
+        self.create_text(sx, sy, text='★', fill=GOLD if self.tile_id in self.app.favorites else STAR_GREY, font=(FM_MODERN_FONT_FAMILY if 'FM_MODERN_FONT_FAMILY' in globals() else 'Aptos', 24, 'bold'))
+
+try:
+    Tile.draw = _fm484_tile_draw
+except Exception:
+    pass
+
+# ---------- Hauptmenue linksbuendig zu Trennlinien ----------
+def _fm484_draw_section_label(self, text, x, y):
+    try:
+        # frei auf Hintergrund, keine Textbox
+        self.canvas.create_text(x, y, text=text, fill=blend(TEXT2, BLUE, 0.30), font=body_font(9, 'bold'), anchor='w')
+    except Exception:
+        pass
+
+
+def _fm484_render_main_menu(self):
+    top_tiles = [
+        {'title':'Abschlusskalender','cmd':lambda: self.show_page('closing_calendar','Abschlusskalender',True),'fixed':None,'lock':False,'icon':'calendar','fold':False},
+        {'title':'Wissenszentrale','cmd':lambda: self.open_knowledge_base(),'fixed':None,'lock':False,'icon':'knowledge','fold':False},
+    ]
+    middle_tiles = [
+        {'title':'Tools - Hauptbuch','cmd':lambda: self.show_page('data_prep','Tools - Hauptbuch',True),'fixed':None,'lock':False,'icon':'fibu_data_prep','fold':False},
+        {'title':'Tools - Debitoren','cmd':lambda: self.show_page('debitoren_tools','Tools - Debitoren',True),'fixed':None,'lock':False,'icon':'fibu_data_prep','fold':False},
+        {'title':'Dateiausgabe','cmd':lambda: self.show_page('file_output','Dateiausgabe',True),'fixed':None,'lock':False,'icon':'file_explorer','fold':False},
+    ]
+    mini_tiles = [
+        {'title':'In Entwicklung','cmd':self.try_open_in_dev,'fixed':GREY_TILE,'lock':True,'icon':'lock','fold':False},
+        {'title':'Informationen','cmd':lambda: self.show_page('information','Informationen',True),'fixed':None,'lock':False,'icon':'info','fold':True},
+        {'title':'Einstellungen','cmd':lambda: self.show_page('settings','Einstellungen',True),'fixed':None,'lock':False,'icon':'gear','fold':True},
+    ]
+    w, h = self.canvas.winfo_width(), self.canvas.winfo_height()
+    tw = max(240, min(330, int(w*0.165))); th = max(125, min(170, int(h*0.155)))
+    gap_x = max(38, int(w*0.04))
+    line_x1 = x_pct(w, 9.5); line_x2 = x_pct(w, 92)
+    def create_tile_row(items, left_edge, y, id_prefix, tile_w, tile_h):
+        for i, item in enumerate(items):
+            tile = Tile(self.root, self, f'{id_prefix}_{i}', item['title'], item['cmd'], favorite_enabled=False, fixed_color=item['fixed'], lock_tile=item['lock'], icon_type=item['icon'], corner_fold=item['fold'])
+            tile.resize_tile(tile_w, tile_h)
+            self.widget_items.append(tile); self.focusable_tiles.append(tile)
+            cx = left_edge + tile_w/2 + i*(tile_w+gap_x)
+            self.canvas.create_window(cx, y, window=tile, anchor='center')
+    def centered_x_positions(count, tile_w, gap=gap_x):
+        total_width = count*tile_w + (count-1)*gap
+        start_x = (w-total_width)/2 + tile_w/2
+        return [start_x+i*(tile_w+gap) for i in range(count)]
+    def create_centered_row(items, y, id_prefix, tile_w, tile_h):
+        xs = centered_x_positions(len(items), tile_w)
+        for i,item in enumerate(items):
+            tile = Tile(self.root, self, f'{id_prefix}_{i}', item['title'], item['cmd'], favorite_enabled=False, fixed_color=item['fixed'], lock_tile=item['lock'], icon_type=item['icon'], corner_fold=item['fold'])
+            tile.resize_tile(tile_w, tile_h)
+            self.widget_items.append(tile); self.focusable_tiles.append(tile)
+            self.canvas.create_window(xs[i], y, window=tile, anchor='center')
+    top_tile_w=max(250,int(tw*1.05)); top_tile_h=max(130,int(th*1.05))
+    tool_tile_w=max(200,int(tw*0.86*0.95)); tool_tile_h=max(100,int(th*0.86*0.95))
+    # Gruppen bleiben gleich gross/abstaendig, werden aber linksbuendig zur Trennlinie und leicht nach oben gesetzt.
+    top_y = y_pct(h,64) - ui_s(18)
+    tools_y = y_pct(h,43) - ui_s(14)
+    mini_tw=int(tw*0.72); mini_th=int(th*0.72)
+    mini_center_y = y_pct(h,16.5) + th/2 - mini_th/2
+    mini_top = mini_center_y - mini_th/2
+    label_x = ui_s(8)
+    # Module-Titel in Y etwa auf der unteren Kante des Header-/Abschnittbeginns.
+    _fm484_draw_section_label(self,'Module', label_x, FM_HEADER_H + ui_s(42))
+    create_tile_row(top_tiles, line_x1, top_y, 'main_menuzeile_1', top_tile_w, top_tile_h)
+    first_sep_y = (top_y + tools_y)/2
+    self.draw_continuous_relief_line(self.canvas, first_sep_y, line_x1, line_x2)
+    _fm484_draw_section_label(self,'Tools', label_x, first_sep_y + ui_s(28))
+    create_tile_row(middle_tiles, line_x1, tools_y, 'main_menuzeile_2', tool_tile_w, tool_tile_h)
+    create_centered_row(mini_tiles, mini_center_y, 'main_mini_menuezeile', mini_tw, mini_th)
+    self.draw_continuous_relief_line(self.canvas, mini_top-ui_s(13), line_x1, line_x2)
+    self.draw_bottom_logo()
+
+try:
+    FiBuMateApp.render_main_menu = _fm484_render_main_menu
+except Exception:
+    pass
+
+# ---------- Lingo in Einstellungen ----------
+def _fm484_lingo_items(self):
+    items = []
+    # Untermenues / App-Seiten
+    for key, title in [
+        ('main','Hauptmenü'),('closing_calendar','Abschlusskalender'),('knowledge_base','Wissenszentrale'),('data_prep','Tools - Hauptbuch'),('debitoren_tools','Tools - Debitoren'),('file_output','Dateiausgabe'),('settings','Einstellungen'),('information','Informationen'),('in_dev','In Entwicklung')
+    ]:
+        items.append((key,title))
+    for key, meta in sorted(TOOL_REGISTRY.items()):
+        if key in HIDDEN_TOOL_IDS:
+            continue
+        items.append((key, meta.get('title') or meta.get('favorite_label') or key))
+    return items
+
+
+def _fm484_show_lingo_popup(self):
+    if self.my_role() != ROLE_E4:
+        messagebox.showwarning('Lingo', 'Lingo kann nur von E4 gepflegt werden.'); return
+    popup = tk.Toplevel(self.root); popup.title('Lingo - Favoriten-Abkürzungen'); popup.configure(bg=BG); popup.transient(self.root); popup.resizable(True, True); popup.minsize(760,560)
+    try: self._make_modal(popup)
+    except Exception: pass
+    settings = self.user_data.setdefault('settings', {})
+    shortcuts = settings.setdefault('lingo_shortcuts', {})
+    tk.Label(popup, text='Lingo - Abkürzungen für Favoriten-Chips', bg=HEADER, fg=TEXT, font=body_font(14,'bold'), anchor='w').pack(fill='x', ipady=10, padx=0)
+    box = tk.Frame(popup, bg=BG); box.pack(fill='both', expand=True, padx=14, pady=12)
+    canvas = tk.Canvas(box, bg=BG, highlightthickness=0); canvas.pack(side='left', fill='both', expand=True)
+    scroll = ttk.Scrollbar(box, orient='vertical', command=canvas.yview); scroll.pack(side='right', fill='y')
+    canvas.configure(yscrollcommand=scroll.set)
+    inner = tk.Frame(canvas, bg=BG); canvas.create_window(0,0,window=inner,anchor='nw')
+    vars = {}
+    tk.Label(inner, text='Kontext / Tool', bg=BG, fg=TEXT2, font=body_font(9,'bold')).grid(row=0,column=0,sticky='w',padx=(0,12),pady=(0,6))
+    tk.Label(inner, text='Abkürzung', bg=BG, fg=TEXT2, font=body_font(9,'bold')).grid(row=0,column=1,sticky='w',pady=(0,6))
+    for r,(key,title) in enumerate(_fm484_lingo_items(self),1):
+        tk.Label(inner, text=title, bg=BG, fg=TEXT, font=body_font(9), anchor='w', width=34).grid(row=r,column=0,sticky='w',padx=(0,12),pady=2)
+        var = tk.StringVar(value=str(shortcuts.get(key,'')))
+        vars[key]=var
+        tk.Entry(inner, textvariable=var, bg=WHITE, fg=TEXT, font=body_font(9), width=12, relief='solid', bd=1).grid(row=r,column=1,sticky='w',pady=2)
+    def refresh_scroll(_e=None): canvas.configure(scrollregion=canvas.bbox('all'))
+    inner.bind('<Configure>', refresh_scroll)
+    footer=tk.Frame(popup,bg=BG); footer.pack(fill='x',padx=14,pady=(0,12))
+    def save():
+        shortcuts.clear()
+        for k,v in vars.items():
+            val=v.get().strip()
+            if val: shortcuts[k]=val[:8]
+        self.save_user_data()
+        messagebox.showinfo('Lingo','Lingo-Abkürzungen gespeichert.')
+        popup.destroy(); self.render_page()
+    tk.Button(footer,text='Speichern',command=save,bg='#CFEAD6',fg=TEXT,font=body_font(10,'bold'),relief='solid',bd=1,padx=18,pady=6).pack(side='right',padx=(8,0))
+    tk.Button(footer,text='Schließen',command=popup.destroy,bg=WHITE,fg=TEXT,font=body_font(10),relief='solid',bd=1,padx=18,pady=6).pack(side='right')
+
+try:
+    _fm484_prev_render_settings_menu = FiBuMateApp.render_settings_menu
+except Exception:
+    _fm484_prev_render_settings_menu = None
+
+def _fm484_render_settings_menu(self):
+    modules = [
+        ('Kachelfarbe', 'tile_colors'),
+        ('Benutzerverwaltung', 'users'),
+        ('Berechtigungen', 'permissions'),
+        ('Versionsverlauf', 'versions'),
+    ]
+    if self.my_role() == ROLE_E4:
+        modules.append(('Lingo', '__lingo_popup__'))
+    def open_mid(mid, ttl):
+        if mid == '__lingo_popup__':
+            return self.show_lingo_popup()
+        return self.show_page(mid, ttl, True)
+    w,h=self.canvas.winfo_width(), self.canvas.winfo_height()
+    tile_w=max(250,min(330,int(w*0.18))); tile_h=max(105,min(140,int(h*0.13)))
+    gap=max(28,int(w*0.025)); total=len(modules)*tile_w+(len(modules)-1)*gap
+    start=(w-total)/2+tile_w/2; y=y_pct(h,56)
+    for i,(title,mid) in enumerate(modules):
+        tile=Tile(self.root,self,f'settings_{mid}',title,lambda m=mid,t=title: open_mid(m,t),favorite_enabled=False,icon_type='gear')
+        tile.resize_tile(tile_w,tile_h)
+        self.widget_items.append(tile); self.focusable_tiles.append(tile)
+        self.canvas.create_window(start+i*(tile_w+gap),y,window=tile,anchor='center')
+    self.draw_bottom_logo()
+
+try:
+    FiBuMateApp.show_lingo_popup = _fm484_show_lingo_popup
+    FiBuMateApp.render_settings_menu = _fm484_render_settings_menu
+except Exception:
+    pass
+
+# ---------- Globales Loeschen-Icon, auch sinngemaesse Texte ----------
+_FM484_ORIG_TK_BUTTON_INIT = tk.Button.__init__
+_FM484_ORIG_TK_BUTTON_CONFIGURE = tk.Button.configure
+_FM484_DELETE_WORDS = ('löschen','loeschen','entfernen','remove','delete','verwerfen')
+
+
+def _fm484_delete_button_should_icon(widget):
+    try:
+        txt = str(widget.cget('text') or '').lower()
+        return any(w in txt for w in _FM484_DELETE_WORDS)
+    except Exception:
+        return False
+
+
+def _fm484_get_delete_photo(widget):
+    if not PIL_AVAILABLE:
+        return None
+    try:
+        path = FM_DELETE_ICON_PATH
+        if not os.path.exists(path):
+            path = os.path.join(ICON_DIR, 'biggarbagebin_121980.ico')
+        if not os.path.exists(path):
+            return None
+        img = Image.open(path).resize((ui_s(18), ui_s(18)))
+        photo = ImageTk.PhotoImage(img)
+        widget._fm484_delete_icon = photo
+        return photo
+    except Exception:
+        return None
+
+
+def _fm484_apply_delete_icon(widget):
+    try:
+        if not _fm484_delete_button_should_icon(widget):
+            return
+        photo = _fm484_get_delete_photo(widget)
+        if photo:
+            _FM484_ORIG_TK_BUTTON_CONFIGURE(widget, None, image=photo, compound='left')
+    except Exception:
+        pass
+
+
+def _fm484_button_init(self, master=None, cnf={}, **kw):
+    _FM484_ORIG_TK_BUTTON_INIT(self, master, cnf, **kw)
+    _fm484_apply_delete_icon(self)
+
+
+def _fm484_button_configure(self, cnf=None, **kw):
+    result = _FM484_ORIG_TK_BUTTON_CONFIGURE(self, cnf, **kw)
+    _fm484_apply_delete_icon(self)
+    return result
+
+try:
+    tk.Button.__init__ = _fm484_button_init
+    tk.Button.configure = _fm484_button_configure
+    tk.Button.config = _fm484_button_configure
+except Exception:
+    pass
+
+
+
+
+# ------------------------------------------------------------------
+# FIBU_MATE_AERO_MAINMENU_FAVORITES_HEADER_V0485
+# Datum: 2026-07-08
+# Zweck:
+# - Hauptmenue-Kacheln knapp unterhalb der Trennlinien, weiterhin linksbuendig zur Trennlinie.
+# - Favoriten-Chips korrekt innerhalb der Favoritenleiste platzieren.
+# - Favoriten-Stern groesser mit dezentem Umriss.
+# - Button "Aenderung vorschlagen" gleich breit wie "Hilfe", ohne Textueberlauf.
+# - Kacheldesign moderner im Windows-7-Aero-Stil ohne echte Transparenz.
+# ------------------------------------------------------------------
+FIBU_MATE_AERO_MAINMENU_FAVORITES_HEADER_VERSION = "0.485"
+
+
+def _fm485_aero_color_steps(base, count=18):
+    steps = []
+    for i in range(count):
+        t = i / max(1, count - 1)
+        if t < 0.45:
+            c = blend(base, WHITE, 0.18 - 0.10 * (t / 0.45))
+        else:
+            c = blend(base, '#0B2542', 0.05 + 0.08 * ((t - 0.45) / 0.55))
+        steps.append(c)
+    return steps
+
+
+def _fm485_tile_draw(self):
+    self.delete('all')
+    pad = ui_s(8)
+    off = ui_s(1) if self.pressed else 0
+    x0, y0 = pad + off, pad + off
+    x1, y1 = x0 + self.tile_width - off * 2, y0 + self.tile_height - off * 2
+    base = self.current_color()
+    # Unveraendert genau ein Schatten.
+    if not self.pressed:
+        self.create_rectangle(pad + 7, pad + 8, pad + 7 + self.tile_width, pad + 8 + self.tile_height, fill=blend(SHADOW, '#1F2937', 0.16), outline='')
+    # Aero-artige Flaeche ohne Transparenz: feine Farbbaender + Gloss-Streifen.
+    self.create_rectangle(x0, y0, x1, y1, fill=base, outline=darken(base, 0.22), width=1)
+    band_count = 22
+    band_h = max(1, int((y1 - y0) / band_count))
+    for i, color in enumerate(_fm485_aero_color_steps(base, band_count)):
+        yy0 = y0 + i * band_h
+        yy1 = y1 if i == band_count - 1 else min(y1, yy0 + band_h + 1)
+        self.create_rectangle(x0 + 1, yy0, x1 - 1, yy1, fill=color, outline=color)
+    # Glas-/Aero-Highlight: rein deckende helle Oberflaeche, keine echte Transparenz.
+    gloss_h = max(ui_s(24), int((y1 - y0) * 0.32))
+    self.create_rectangle(x0 + 3, y0 + 3, x1 - 3, y0 + gloss_h, fill=blend(base, WHITE, 0.16), outline='')
+    self.create_line(x0 + 3, y0 + 3, x1 - 3, y0 + 3, fill=blend(base, WHITE, 0.46), width=1)
+    self.create_line(x0 + 3, y0 + gloss_h, x1 - 3, y0 + gloss_h, fill=blend(base, WHITE, 0.08), width=1)
+    # dezente 3D-Kanten, kein weisser Hover-Rand.
+    self.create_line(x0 + 2, y0 + 2, x1 - 2, y0 + 2, fill=blend(base, WHITE, 0.30), width=1)
+    self.create_line(x0 + 2, y0 + 2, x0 + 2, y1 - 2, fill=blend(base, WHITE, 0.14), width=1)
+    self.create_line(x0 + 2, y1 - 2, x1 - 2, y1 - 2, fill=darken(base, 0.20), width=2)
+    self.create_line(x1 - 2, y0 + 2, x1 - 2, y1 - 2, fill=darken(base, 0.14), width=1)
+    if self.corner_fold:
+        self._draw_corner_fold(x1, y0)
+    title_y = y0 + ui_s(14)
+    title_color = BLUE if self.lock_tile else 'white'
+    icon_to_draw = 'lock' if self.lock_tile else self.icon_type
+    text_width = max(ui_s(110), self.tile_width - ui_s(44))
+    if self.center_text and not icon_to_draw:
+        centered_font, _ = self.fitted_title_font(text_width, max(ui_s(40), self.tile_height - ui_s(28)), centered=True)
+        self.create_text((x0 + x1) / 2, (y0 + y1) / 2, text=self.title, anchor='center', fill=title_color, font=centered_font, width=text_width, justify='center')
+    else:
+        title_max_h = max(ui_s(28), int((y1 - y0) * 0.36))
+        title_font, title_h = self.fitted_title_font(text_width, title_max_h, centered=False)
+        self.create_text((x0 + x1) / 2, title_y, text=self.title, anchor='n', fill=title_color, font=title_font, width=text_width, justify='center')
+        if icon_to_draw:
+            min_icon_y = title_y + title_h + ui_s(20)
+            default_icon_y = y0 + int((y1 - y0) * 0.66)
+            icon_y = max(default_icon_y, min_icon_y)
+            icon_y = min(icon_y, y1 - ui_s(34))
+            close_period = self.app.current_close_period_label(self.tile_id) if hasattr(self.app, 'current_close_period_label') else ''
+            if close_period and self.tile_id in ('monthly_close', 'quarterly_close', 'yearly_close'):
+                icon_x = x0 + 98
+                self._draw_main_icon(icon_to_draw, icon_x, icon_y)
+                self.create_text(icon_x + 48, icon_y, text=close_period, anchor='w', fill=title_color, font=self.app.zoomed_content_font((FM_MODERN_FONT_FAMILY if 'FM_MODERN_FONT_FAMILY' in globals() else 'Aptos', 13, 'italic')), width=max(120, x1 - icon_x - 58), justify='left')
+            else:
+                self._draw_main_icon(icon_to_draw, (x0 + x1) / 2, icon_y)
+    self.star_bounds = None
+    if self.favorite_enabled and self.tile_id in TOOL_REGISTRY and (self.hovered or self.tile_id in self.app.favorites):
+        sx, sy = x1 - 24, y0 + 24
+        self.star_bounds = (sx - 18, sy - 18, sx + 18, sy + 18)
+        self.create_text(sx, sy, text='★', fill=GOLD if self.tile_id in self.app.favorites else STAR_GREY, font=(FM_MODERN_FONT_FAMILY if 'FM_MODERN_FONT_FAMILY' in globals() else 'Aptos', 24, 'bold'))
+
+try:
+    Tile.draw = _fm485_tile_draw
+except Exception:
+    pass
+
+
+def _fm485_draw_favorites_bar(self):
+    w = self.canvas.winfo_width(); y_mid = FM_BAR_Y if 'FM_BAR_Y' in globals() else ui_s(62)
+    bar_w = _fm484_bar_width(self) if '_fm484_bar_width' in globals() else max(ui_s(440), min(ui_s(690), int(w * 0.34)))
+    x2 = w - ui_s(10)
+    x1 = max(w * 0.52, x2 - bar_w)
+    self.draw_gradient_line(x1, x2, y_mid - ui_s(10))
+    self.draw_gradient_line(x1, x2, y_mid + ui_s(10))
+    star_x = x1 + ui_s(8)
+    star_size = max(13, ui_s(16))
+    # Stern mit dezentem Umriss durch mehrfache leicht versetzte Zeichnung.
+    for dx, dy in [(-1,0),(1,0),(0,-1),(0,1)]:
+        self.canvas.create_text(star_x + dx, y_mid + dy, text='★', font=(FM_MODERN_FONT_FAMILY if 'FM_MODERN_FONT_FAMILY' in globals() else 'Aptos', star_size, 'bold'), fill=blend(TEXT2, BLUE, 0.25), anchor='w')
+    self.canvas.create_text(star_x, y_mid, text='★', font=(FM_MODERN_FONT_FAMILY if 'FM_MODERN_FONT_FAMILY' in globals() else 'Aptos', star_size, 'bold'), fill=GOLD, anchor='w')
+    self.canvas.create_text(x1 + ui_s(34), y_mid, text='Favoriten', font=body_font(9, 'bold'), fill=TEXT, anchor='w')
+    chip_w = ui_s(58); chip_gap = ui_s(4); chip_h = ui_s(18)
+    x = x1 + ui_s(108)
+    max_x = x2 - ui_s(4)
+    for fav in sorted(f for f in self.favorites if f in TOOL_REGISTRY and f not in HIDDEN_TOOL_IDS):
+        if x + chip_w > max_x:
+            break
+        label = _fm484_lingo_label(self, fav) if '_fm484_lingo_label' in globals() else (TOOL_REGISTRY.get(fav, {}).get('favorite_label', fav)[:8])
+        chip_color = darken(self.current_tile_color() or BLUE, 0.08)
+        chip = tk.Label(self.root, text=label, bg=chip_color, fg='white', font=body_font(8, 'bold'), width=7, anchor='center', padx=0, pady=0, cursor='hand2')
+        chip._zoom_exclude = True
+        chip.bind('<Button-1>', lambda e, fid=fav: self.execute_favorite(fid))
+        self.widget_items.append(chip)
+        # Innerhalb der Leiste: zentriert zwischen oberer und unterer Linie.
+        self.canvas.create_window(x, y_mid, window=chip, anchor='w', width=chip_w, height=chip_h)
+        x += chip_w + chip_gap
+
+try:
+    FiBuMateApp.draw_favorites_bar = _fm485_draw_favorites_bar
+except Exception:
+    pass
+
+
+def _fm485_draw_suggestion_control(self):
+    if self.current_page == 'launch':
+        return
+    suggestion_w = MINI_WIDGET_W
+    btn = tk.Canvas(self.root, width=suggestion_w, height=MINI_WIDGET_H, bg=HEADER, highlightthickness=0, bd=0, cursor='hand2')
+    btn._zoom_exclude = True
+    btn.create_rectangle(1, 1, suggestion_w - 1, MINI_WIDGET_H - 1, fill=HEADER, outline=BLUE, width=1)
+    icon_x = ui_s(15)
+    self.draw_mini_bulb_icon(btn, icon_x, MINI_WIDGET_H / 2)
+    # gleiche Breite wie Hilfe; kleinerer Text und feste Breite verhindern Ueberlauf.
+    text_x = ui_s(31)
+    btn.create_text(text_x, MINI_WIDGET_H / 2, text='Änderung vorschlagen', fill=TEXT, font=(FM_MODERN_FONT_FAMILY if 'FM_MODERN_FONT_FAMILY' in globals() else 'Aptos', max(7, ui_s(8)), 'bold'), anchor='w', width=suggestion_w - text_x - ui_s(4))
+    btn.bind('<Button-1>', lambda _e: self.open_suggestion_mail())
+    btn.bind('<Enter>', lambda _e: self.show_small_tooltip(btn, 'Änderung vorschlagen'))
+    btn.bind('<Leave>', lambda _e: self.hide_small_tooltip())
+    self.widget_items.append(btn)
+    # rechter Rand links vom Hilfe-Mini-Widget, beide Buttons gleich breit.
+    x = self.canvas.winfo_width() - ui_s(22) - MINI_WIDGET_W - MINI_WIDGET_GAP
+    self.canvas.create_window(x, ui_s(8), window=btn, anchor='ne')
+
+try:
+    FiBuMateApp.draw_suggestion_control = _fm485_draw_suggestion_control
+except Exception:
+    pass
+
+
+def _fm485_render_main_menu(self):
+    top_tiles = [
+        {'title':'Abschlusskalender','cmd':lambda: self.show_page('closing_calendar','Abschlusskalender',True),'fixed':None,'lock':False,'icon':'calendar','fold':False},
+        {'title':'Wissenszentrale','cmd':lambda: self.open_knowledge_base(),'fixed':None,'lock':False,'icon':'knowledge','fold':False},
+    ]
+    middle_tiles = [
+        {'title':'Tools - Hauptbuch','cmd':lambda: self.show_page('data_prep','Tools - Hauptbuch',True),'fixed':None,'lock':False,'icon':'fibu_data_prep','fold':False},
+        {'title':'Tools - Debitoren','cmd':lambda: self.show_page('debitoren_tools','Tools - Debitoren',True),'fixed':None,'lock':False,'icon':'fibu_data_prep','fold':False},
+        {'title':'Dateiausgabe','cmd':lambda: self.show_page('file_output','Dateiausgabe',True),'fixed':None,'lock':False,'icon':'file_explorer','fold':False},
+    ]
+    mini_tiles = [
+        {'title':'In Entwicklung','cmd':self.try_open_in_dev,'fixed':GREY_TILE,'lock':True,'icon':'lock','fold':False},
+        {'title':'Informationen','cmd':lambda: self.show_page('information','Informationen',True),'fixed':None,'lock':False,'icon':'info','fold':True},
+        {'title':'Einstellungen','cmd':lambda: self.show_page('settings','Einstellungen',True),'fixed':None,'lock':False,'icon':'gear','fold':True},
+    ]
+    w, h = self.canvas.winfo_width(), self.canvas.winfo_height()
+    tw = max(240, min(330, int(w*0.165))); th = max(125, min(170, int(h*0.155)))
+    gap_x = max(38, int(w*0.04))
+    line_x1 = x_pct(w, 9.5); line_x2 = x_pct(w, 92)
+    def create_tile_row(items, visible_left_edge, y, id_prefix, tile_w, tile_h):
+        # Tile-Canvas hat 8 px Innenpad; sichtbare Kachelkante wird exakt auf visible_left_edge gelegt.
+        canvas_left = visible_left_edge - ui_s(8)
+        for i, item in enumerate(items):
+            tile = Tile(self.root, self, f'{id_prefix}_{i}', item['title'], item['cmd'], favorite_enabled=False, fixed_color=item['fixed'], lock_tile=item['lock'], icon_type=item['icon'], corner_fold=item['fold'])
+            tile.resize_tile(tile_w, tile_h)
+            self.widget_items.append(tile); self.focusable_tiles.append(tile)
+            cx = canvas_left + (tile_w + ui_s(16)) / 2 + i*(tile_w+gap_x)
+            self.canvas.create_window(cx, y, window=tile, anchor='center')
+    def centered_x_positions(count, tile_w, gap=gap_x):
+        total_width = count*tile_w + (count-1)*gap
+        start_x = (w-total_width)/2 + tile_w/2
+        return [start_x+i*(tile_w+gap) for i in range(count)]
+    def create_centered_row(items, y, id_prefix, tile_w, tile_h):
+        xs = centered_x_positions(len(items), tile_w)
+        for i,item in enumerate(items):
+            tile = Tile(self.root, self, f'{id_prefix}_{i}', item['title'], item['cmd'], favorite_enabled=False, fixed_color=item['fixed'], lock_tile=item['lock'], icon_type=item['icon'], corner_fold=item['fold'])
+            tile.resize_tile(tile_w, tile_h)
+            self.widget_items.append(tile); self.focusable_tiles.append(tile)
+            self.canvas.create_window(xs[i], y, window=tile, anchor='center')
+    top_tile_w=max(250,int(tw*1.05)); top_tile_h=max(130,int(th*1.05))
+    tool_tile_w=max(200,int(tw*0.86*0.95)); tool_tile_h=max(100,int(th*0.86*0.95))
+    # Nur knapp unterhalb der Trennlinien.
+    top_edge = (FM_HEADER_H if 'FM_HEADER_H' in globals() else ui_s(96)) + ui_s(10)
+    top_y = top_edge + top_tile_h / 2
+    first_sep_y = top_edge + top_tile_h + ui_s(24)
+    tools_edge = first_sep_y + ui_s(10)
+    tools_y = tools_edge + tool_tile_h / 2
+    mini_tw=int(tw*0.72); mini_th=int(th*0.72)
+    mini_center_y = y_pct(h,16.5) + th/2 - mini_th/2
+    mini_top = mini_center_y - mini_th/2
+    label_x = ui_s(8)
+    _fm484_draw_section_label(self,'Module', label_x, (FM_HEADER_H if 'FM_HEADER_H' in globals() else ui_s(96)) + ui_s(42)) if '_fm484_draw_section_label' in globals() else self.canvas.create_text(label_x, ui_s(154), text='Module', fill=TEXT2, font=body_font(9,'bold'), anchor='w')
+    create_tile_row(top_tiles, line_x1, top_y, 'main_menuzeile_1', top_tile_w, top_tile_h)
+    self.draw_continuous_relief_line(self.canvas, first_sep_y, line_x1, line_x2)
+    _fm484_draw_section_label(self,'Tools', label_x, first_sep_y + ui_s(28)) if '_fm484_draw_section_label' in globals() else self.canvas.create_text(label_x, first_sep_y + ui_s(28), text='Tools', fill=TEXT2, font=body_font(9,'bold'), anchor='w')
+    create_tile_row(middle_tiles, line_x1, tools_y, 'main_menuzeile_2', tool_tile_w, tool_tile_h)
+    create_centered_row(mini_tiles, mini_center_y, 'main_mini_menuezeile', mini_tw, mini_th)
+    self.draw_continuous_relief_line(self.canvas, mini_top-ui_s(13), line_x1, line_x2)
+    self.draw_bottom_logo()
+
+try:
+    FiBuMateApp.render_main_menu = _fm485_render_main_menu
+except Exception:
+    pass
+
+
+
+
+# ------------------------------------------------------------------
+# FIBU_MATE_MAINMENU_TILES_BELOW_SEPARATORS_V0486
+# Datum: 2026-07-08
+# Zweck:
+# - Hauptmenue-Kacheln duerfen Trennlinien nicht schneiden.
+# - Kachel-Canvas inklusive Schatten liegt direkt unterhalb der jeweiligen Trennlinie.
+# - Linksbündigkeit zur Trennlinienkante, Kachelgröße und Kachelabstand bleiben erhalten.
+# ------------------------------------------------------------------
+FIBU_MATE_MAINMENU_TILES_BELOW_SEPARATORS_VERSION = "0.486"
+
+
+def _fm486_render_main_menu(self):
+    top_tiles = [
+        {'title':'Abschlusskalender','cmd':lambda: self.show_page('closing_calendar','Abschlusskalender',True),'fixed':None,'lock':False,'icon':'calendar','fold':False},
+        {'title':'Wissenszentrale','cmd':lambda: self.open_knowledge_base(),'fixed':None,'lock':False,'icon':'knowledge','fold':False},
+    ]
+    middle_tiles = [
+        {'title':'Tools - Hauptbuch','cmd':lambda: self.show_page('data_prep','Tools - Hauptbuch',True),'fixed':None,'lock':False,'icon':'fibu_data_prep','fold':False},
+        {'title':'Tools - Debitoren','cmd':lambda: self.show_page('debitoren_tools','Tools - Debitoren',True),'fixed':None,'lock':False,'icon':'fibu_data_prep','fold':False},
+        {'title':'Dateiausgabe','cmd':lambda: self.show_page('file_output','Dateiausgabe',True),'fixed':None,'lock':False,'icon':'file_explorer','fold':False},
+    ]
+    mini_tiles = [
+        {'title':'In Entwicklung','cmd':self.try_open_in_dev,'fixed':GREY_TILE,'lock':True,'icon':'lock','fold':False},
+        {'title':'Informationen','cmd':lambda: self.show_page('information','Informationen',True),'fixed':None,'lock':False,'icon':'info','fold':True},
+        {'title':'Einstellungen','cmd':lambda: self.show_page('settings','Einstellungen',True),'fixed':None,'lock':False,'icon':'gear','fold':True},
+    ]
+    w, h = self.canvas.winfo_width(), self.canvas.winfo_height()
+    tw = max(240, min(330, int(w*0.165)))
+    th = max(125, min(170, int(h*0.155)))
+    gap_x = max(38, int(w*0.04))
+    line_x1 = x_pct(w, 9.5)
+    line_x2 = x_pct(w, 92)
+    header_line_y = FM_HEADER_H if 'FM_HEADER_H' in globals() else ui_s(96)
+
+    def create_tile_row(items, visible_left_edge, canvas_top, id_prefix, tile_w, tile_h):
+        # Tile-Canvas ist tile_w/tile_h + 16 gross. Die Kachel plus Schatten beginnt erst unterhalb der Linie.
+        canvas_left = visible_left_edge - ui_s(8)
+        canvas_h = tile_h + ui_s(16)
+        for i, item in enumerate(items):
+            tile = Tile(self.root, self, f'{id_prefix}_{i}', item['title'], item['cmd'], favorite_enabled=False, fixed_color=item['fixed'], lock_tile=item['lock'], icon_type=item['icon'], corner_fold=item['fold'])
+            tile.resize_tile(tile_w, tile_h)
+            self.widget_items.append(tile)
+            self.focusable_tiles.append(tile)
+            cx = canvas_left + (tile_w + ui_s(16)) / 2 + i*(tile_w+gap_x)
+            cy = canvas_top + canvas_h / 2
+            self.canvas.create_window(cx, cy, window=tile, anchor='center')
+
+    def centered_x_positions(count, tile_w, gap=gap_x):
+        total_width = count*tile_w + (count-1)*gap
+        start_x = (w-total_width)/2 + tile_w/2
+        return [start_x+i*(tile_w+gap) for i in range(count)]
+
+    def create_centered_row(items, y, id_prefix, tile_w, tile_h):
+        xs = centered_x_positions(len(items), tile_w)
+        for i,item in enumerate(items):
+            tile = Tile(self.root, self, f'{id_prefix}_{i}', item['title'], item['cmd'], favorite_enabled=False, fixed_color=item['fixed'], lock_tile=item['lock'], icon_type=item['icon'], corner_fold=item['fold'])
+            tile.resize_tile(tile_w,tile_h)
+            self.widget_items.append(tile)
+            self.focusable_tiles.append(tile)
+            self.canvas.create_window(xs[i], y, window=tile, anchor='center')
+
+    top_tile_w=max(250,int(tw*1.05))
+    top_tile_h=max(130,int(th*1.05))
+    tool_tile_w=max(200,int(tw*0.86*0.95))
+    tool_tile_h=max(100,int(th*0.86*0.95))
+    mini_tw=int(tw*0.72)
+    mini_th=int(th*0.72)
+
+    # Vollstaendige Kachel-Canvas inkl. Schatten knapp unterhalb der Trennlinie platzieren.
+    gap_below_line = ui_s(5)
+    top_canvas_top = header_line_y + gap_below_line
+    top_canvas_bottom = top_canvas_top + top_tile_h + ui_s(16)
+    first_sep_y = top_canvas_bottom + ui_s(18)
+    tools_canvas_top = first_sep_y + gap_below_line
+    tools_canvas_bottom = tools_canvas_top + tool_tile_h + ui_s(16)
+
+    # Unterer Abschnitt bleibt weiterhin mittig.
+    mini_center_y = y_pct(h,16.5) + th/2 - mini_th/2
+    mini_top = mini_center_y - mini_th/2
+
+    label_x = ui_s(8)
+    if '_fm484_draw_section_label' in globals():
+        _fm484_draw_section_label(self, 'Module', label_x, header_line_y + ui_s(42))
+    else:
+        self.canvas.create_text(label_x, header_line_y + ui_s(42), text='Module', fill=TEXT2, font=body_font(9,'bold'), anchor='w')
+
+    create_tile_row(top_tiles, line_x1, top_canvas_top, 'main_menuzeile_1', top_tile_w, top_tile_h)
+    self.draw_continuous_relief_line(self.canvas, first_sep_y, line_x1, line_x2)
+
+    if '_fm484_draw_section_label' in globals():
+        _fm484_draw_section_label(self, 'Tools', label_x, first_sep_y + ui_s(28))
+    else:
+        self.canvas.create_text(label_x, first_sep_y + ui_s(28), text='Tools', fill=TEXT2, font=body_font(9,'bold'), anchor='w')
+
+    create_tile_row(middle_tiles, line_x1, tools_canvas_top, 'main_menuzeile_2', tool_tile_w, tool_tile_h)
+    create_centered_row(mini_tiles, mini_center_y, 'main_mini_menuezeile', mini_tw, mini_th)
+    self.draw_continuous_relief_line(self.canvas, mini_top-ui_s(13), line_x1, line_x2)
+    self.draw_bottom_logo()
+
+try:
+    FiBuMateApp.render_main_menu = _fm486_render_main_menu
+except Exception:
+    pass
+
+
+
+
+# ------------------------------------------------------------------
+# FIBU_MATE_DATEIAUSGABE_WZ_START_REWORK_V0487
+# Datum: 2026-07-09
+# Zweck:
+# - Dateiausgabe: Versandpfeil per Rechtsklick persistent toggeln; Outlook setzt Versandpfeil automatisch.
+# - Dateiausgabe: registrierte FiBu-Mate-Exporte und Dateien im Dateiausgabe-Ausgabepfad anzeigen.
+# - Dateiausgabe: Benutzerfilter per Spaltentitel, Versandstatusfilter, Teams-Button entfernt.
+# - Dateiausgabe: Linksklick auf selektierte Zeile hebt Auswahl auf; Buttons ohne Auswahl deaktiviert; Mehrfachauswahl per Strg.
+# - Dateiausgabe: Vorschau als echte Bild-/Thumbnail-Renderings; PDF alle Seiten, Bilder direkt, Excel/CSV als Tabellenbild, Word-Fallback Text.
+# - Wissenszentrale: Startkarten ohne pixelige Kreise; Karten dezent in jeweiliger Farbe eingefärbt.
+# ------------------------------------------------------------------
+FIBU_MATE_DATEIAUSGABE_WZ_START_REWORK_VERSION = "0.487"
+_FM487_SENT_FILTERS = ("Alle", "Versandt", "Nicht versandt")
+
+
+def _fm487_file_exts():
+    return set(_FM472_OUTPUT_EXTENSIONS) if '_FM472_OUTPUT_EXTENSIONS' in globals() else {'.pdf','.xlsx','.xls','.docx','.doc','.csv','.txt','.png','.jpg','.jpeg','.bmp','.gif'}
+
+
+def _fm487_file_id(path):
+    return _fm472_file_key(path) if '_fm472_file_key' in globals() else hashlib.sha1(os.path.abspath(str(path)).casefold().encode('utf-8', errors='ignore')).hexdigest()[:18]
+
+
+def _fm487_unknown_user(value):
+    v = str(value or '').strip()
+    return v if v else 'unbekannt'
+
+
+def _fm487_load_logs():
+    try:
+        return _fm473_load_all_log_items()
+    except Exception:
+        return {}
+
+
+def _fm487_write_logs(logs):
+    try:
+        return _fm473_write_log_items(logs)
+    except Exception:
+        try:
+            target = _fm473_log_target() if '_fm473_log_target' in globals() else (_fm472_log_paths()[0] if '_fm472_log_paths' in globals() and _fm472_log_paths() else os.path.join(os.getcwd(), 'fibu_mate_dateiausgabe_log.json'))
+            _fm472_write_json(target, {'items': list((logs or {}).values())})
+            return True
+        except Exception:
+            return False
+
+
+def _fm487_output_roots():
+    try:
+        return _fm472_output_roots()
+    except Exception:
+        return [os.path.join(NETWORK_ROOT, 'Dateiausgabe')]
+
+
+def _fm487_scan_output_files(self):
+    """Alle Log-Dateien plus alle Dateien in hinterlegten Dateiausgabe-Wurzeln.
+    Manuell ausserhalb gespeicherte FiBu-Mate-Dateien erscheinen ueber das Dateiausgabe-Log.
+    """
+    logs = _fm487_load_logs()
+    items, seen = [], set()
+    # 1) registrierte FiBu-Mate-Dateien, auch ausserhalb des Ausgabepfads
+    for raw in logs.values():
+        if not isinstance(raw, dict):
+            continue
+        p = raw.get('path') or ''
+        if not p:
+            continue
+        try:
+            ap = os.path.abspath(str(p))
+            if not os.path.isfile(ap):
+                continue
+            st = os.stat(ap)
+            iid = raw.get('id') or _fm487_file_id(ap)
+            item = dict(raw)
+            item.update({'id': iid, 'type': 'file', 'name': item.get('name') or os.path.basename(ap), 'path': ap})
+            item['user'] = _fm487_unknown_user(item.get('user'))
+            item['module'] = item.get('module') or (_fm472_guess_module(ap) if '_fm472_guess_module' in globals() else 'FiBu Mate')
+            item['created_at'] = item.get('created_at') or datetime.fromtimestamp(st.st_mtime).isoformat(timespec='seconds')
+            item['created_by_fibu_mate'] = True
+            items.append(item); seen.add(ap.casefold())
+        except Exception:
+            pass
+    # 2) Dateien im hinterlegten Dateiausgabe-Pfad, Nutzer unbekannt wenn nicht registriert
+    for root in _fm487_output_roots():
+        if not os.path.isdir(root):
+            continue
+        try:
+            for dirpath, dirnames, filenames in os.walk(root):
+                if any(part.lower() in {'__pycache__','logs','previewcache'} for part in dirpath.split(os.sep)):
+                    continue
+                for fn in filenames:
+                    if os.path.splitext(fn)[1].lower() not in _fm487_file_exts():
+                        continue
+                    ap = os.path.abspath(os.path.join(dirpath, fn))
+                    if ap.casefold() in seen:
+                        continue
+                    try:
+                        st = os.stat(ap); iid = _fm487_file_id(ap); raw = logs.get(iid, {})
+                        items.append({
+                            'id': iid, 'type': 'file', 'name': fn, 'path': ap,
+                            'user': _fm487_unknown_user(raw.get('user') or ''),
+                            'module': raw.get('module') or (_fm472_guess_module(ap) if '_fm472_guess_module' in globals() else 'FiBu Mate'),
+                            'created_at': raw.get('created_at') or datetime.fromtimestamp(st.st_mtime).isoformat(timespec='seconds'),
+                            'group_id': raw.get('group_id',''), 'group_title': raw.get('group_title',''),
+                            'sent_at': raw.get('sent_at',''), 'sent_channel': raw.get('sent_channel',''),
+                            'created_by_fibu_mate': True,
+                        })
+                        seen.add(ap.casefold())
+                    except Exception:
+                        pass
+        except Exception:
+            pass
+    return items
+
+
+def _fm487_build_groups(self, items):
+    groups, singles = {}, []
+    for item in items:
+        gid = str(item.get('group_id') or '').strip()
+        if gid:
+            g = groups.setdefault(gid, {
+                'id': 'grp_' + gid, 'type': 'group',
+                'name': item.get('group_title') or item.get('module') or 'Sammelexport',
+                'path': '', 'user': item.get('user',''), 'module': item.get('module',''),
+                'created_at': item.get('created_at',''), 'children': [],
+                'sent_at': item.get('sent_at',''), 'sent_channel': item.get('sent_channel','')
+            })
+            g['children'].append(item)
+            if str(item.get('created_at','')) > str(g.get('created_at','')): g['created_at'] = item.get('created_at','')
+            if item.get('sent_at') and str(item.get('sent_at')) > str(g.get('sent_at','')):
+                g['sent_at'] = item.get('sent_at'); g['sent_channel'] = item.get('sent_channel','')
+        else:
+            singles.append(item)
+    out = list(groups.values()) + singles
+    out.sort(key=lambda x: str(x.get('created_at','')), reverse=True)
+    for g in out:
+        if g.get('type') == 'group':
+            g['children'] = sorted(g.get('children', []) or [], key=lambda c: str(c.get('name','')).casefold())
+    return out
+
+
+def _fm487_build_items(self):
+    return _fm487_build_groups(self, _fm487_scan_output_files(self))
+
+
+def _fm487_register_output_file(self, path, user=None, module=None, group_id=None, group_title=None, created_at=None, children=None):
+    try:
+        if not path: return False
+        ap = os.path.abspath(str(path)); iid = _fm487_file_id(ap)
+        logs = _fm487_load_logs(); old = logs.get(iid, {})
+        old.update({
+            'id': iid, 'type': 'file', 'name': os.path.basename(ap), 'path': ap,
+            'user': _fm487_unknown_user(user or old.get('user') or getattr(self, 'current_user_display', '') or getattr(self, 'current_user_key', '')),
+            'module': module or old.get('module') or (_fm472_guess_module(ap) if '_fm472_guess_module' in globals() else 'FiBu Mate'),
+            'group_id': group_id or old.get('group_id',''), 'group_title': group_title or old.get('group_title',''),
+            'created_at': created_at or old.get('created_at') or _fm472_now_iso(),
+            'created_by_fibu_mate': True,
+        })
+        logs[iid] = old
+        return _fm487_write_logs(logs)
+    except Exception:
+        return False
+
+
+def _fm487_files_for_item(item):
+    try:
+        return _fm473_files_for_item(item)
+    except Exception:
+        if not item: return []
+        if item.get('type') == 'group':
+            return [c.get('path') for c in item.get('children', []) or [] if c.get('path') and os.path.isfile(c.get('path'))]
+        p = item.get('path')
+        return [p] if p and os.path.isfile(p) else []
+
+
+def _fm487_each_file_item(item):
+    if not item:
+        return []
+    if item.get('type') == 'group':
+        return [c for c in item.get('children', []) or [] if c.get('path')]
+    return [item]
+
+
+def _fm487_mark_sent_manual(self, item, sent=True, channel='Manuell'):
+    logs = _fm487_load_logs()
+    now = datetime.now().isoformat(timespec='seconds')
+    for sub in _fm487_each_file_item(item):
+        p = sub.get('path',''); iid = sub.get('id') or (_fm487_file_id(p) if p else '')
+        if not iid: continue
+        cur = logs.get(iid, {})
+        cur.update({k: sub.get(k) for k in ('id','type','name','path','user','module','created_at','group_id','group_title') if sub.get(k) is not None})
+        cur.setdefault('id', iid); cur.setdefault('type', 'file')
+        cur.setdefault('user', _fm487_unknown_user(cur.get('user')))
+        if sent:
+            cur['sent_at'] = now; cur['sent_channel'] = channel
+            sub['sent_at'] = now; sub['sent_channel'] = channel
+        else:
+            cur.pop('sent_at', None); cur.pop('sent_channel', None)
+            sub['sent_at'] = ''; sub['sent_channel'] = ''
+        logs[iid] = cur
+    if item.get('type') == 'group':
+        if sent: item['sent_at'] = now; item['sent_channel'] = channel
+        else: item['sent_at'] = ''; item['sent_channel'] = ''
+    else:
+        if sent: item['sent_at'] = now; item['sent_channel'] = channel
+        else: item['sent_at'] = ''; item['sent_channel'] = ''
+    return _fm487_write_logs(logs)
+
+
+def _fm487_toggle_sent(self, item):
+    active = bool(item and item.get('sent_at'))
+    return _fm487_mark_sent_manual(self, item, sent=not active, channel='Manuell')
+
+
+def _fm487_send_outlook(self, items):
+    if not isinstance(items, (list, tuple)):
+        items = [items] if items else []
+    files = []
+    for item in items:
+        files.extend(_fm487_files_for_item(item))
+    files = [f for f in dict.fromkeys(files) if f and os.path.isfile(f)]
+    if not files:
+        try: messagebox.showwarning('Dateiausgabe', 'Keine versendbare Datei gefunden.')
+        except Exception: pass
+        return False
+    try:
+        import win32com.client
+        outlook = win32com.client.Dispatch('Outlook.Application')
+        mail = outlook.CreateItem(0)
+        mail.Subject = 'FiBu Mate Dateiausgabe'
+        mail.Body = 'Hallo,\n\nanbei die Datei(en) aus FiBu Mate.\n\nViele Grüße'
+        for f in files: mail.Attachments.Add(f)
+        mail.Display()
+        for item in items: _fm487_mark_sent_manual(self, item, sent=True, channel='Outlook')
+        return True
+    except Exception as exc:
+        try: messagebox.showerror('Dateiausgabe', 'Outlook-Versand mit Dateianhang konnte nicht vorbereitet werden:\n' + str(exc))
+        except Exception: pass
+        return False
+
+
+def _fm487_sort_items(items, column, descending):
+    def key(item):
+        if column == 'name': return str(item.get('name','')).casefold()
+        if column == 'user': return str(item.get('user','')).casefold()
+        if column == 'path': return str(item.get('path','')).casefold()
+        return str(item.get('created_at',''))
+    out = sorted(items, key=key, reverse=bool(descending))
+    for item in out:
+        if item.get('type') == 'group':
+            item['children'] = sorted(item.get('children', []) or [], key=key, reverse=bool(descending))
+    return out
+
+
+def _fm487_filter_items(items, query='', users=None, sent_filter='Alle'):
+    q = str(query or '').strip().casefold()
+    users = set(users or [])
+    all_users = not users
+    sent_filter = sent_filter or 'Alle'
+    def hit(item):
+        vals = [item.get('name',''), item.get('user',''), item.get('module',''), item.get('created_at',''), _fm472_display_dt(item.get('created_at')) if '_fm472_display_dt' in globals() else '', item.get('path','')]
+        if q and q not in ' '.join(str(v) for v in vals).casefold(): return False
+        if not all_users and _fm487_unknown_user(item.get('user')) not in users: return False
+        if sent_filter == 'Versandt' and not item.get('sent_at'): return False
+        if sent_filter == 'Nicht versandt' and item.get('sent_at'): return False
+        return True
+    result = []
+    for item in items:
+        if item.get('type') == 'group':
+            children = [c for c in item.get('children', []) or [] if hit(c)]
+            if hit(item) or children:
+                clone = dict(item); clone['children'] = children if children else item.get('children', [])
+                result.append(clone)
+        elif hit(item):
+            result.append(item)
+    return result
+
+
+def _fm487_make_table_image(rows, title='Tabellenvorschau'):
+    if not PIL_AVAILABLE:
+        return None
+    try:
+        from PIL import ImageDraw, ImageFont
+        max_cols = min(8, max([len(r) for r in rows] or [1]))
+        row_count = min(32, len(rows))
+        col_w, row_h = 132, 28
+        w = max(420, max_cols * col_w + 34)
+        h = max(120, row_count * row_h + 58)
+        img = Image.new('RGB', (w, h), '#F8FAFC')
+        draw = ImageDraw.Draw(img)
+        try: font = ImageFont.truetype('DejaVuSans.ttf', 11); font_b = ImageFont.truetype('DejaVuSans-Bold.ttf', 11)
+        except Exception: font = font_b = None
+        draw.text((16, 12), title, fill='#004B93', font=font_b)
+        y0 = 42
+        for r_idx, row in enumerate(rows[:row_count]):
+            y = y0 + r_idx * row_h
+            bg = '#E8EEF5' if r_idx == 0 else ('#FFFFFF' if r_idx % 2 else '#F2F6FA')
+            draw.rectangle((16, y, 16 + max_cols*col_w, y + row_h), fill=bg, outline='#D7DEE8')
+            for c in range(max_cols):
+                x = 16 + c * col_w
+                if c > 0: draw.line((x, y, x, y+row_h), fill='#D7DEE8')
+                val = '' if c >= len(row) or row[c] is None else str(row[c])
+                if len(val) > 24: val = val[:23] + '…'
+                draw.text((x+6, y+8), val, fill='#182431', font=font_b if r_idx == 0 else font)
+        return img
+    except Exception:
+        return None
+
+
+def _fm487_preview_images_for_path(path):
+    images = []
+    ext = os.path.splitext(path)[1].lower()
+    if not path or not os.path.exists(path):
+        raise RuntimeError('Datei wurde nicht gefunden.')
+    if ext == '.pdf':
+        try:
+            import fitz
+            doc = fitz.open(path)
+            for page in doc:
+                pix = page.get_pixmap(matrix=fitz.Matrix(1.15, 1.15), alpha=False)
+                img = Image.frombytes('RGB', [pix.width, pix.height], pix.samples)
+                images.append(img)
+            doc.close()
+        except Exception as exc:
+            raise RuntimeError('PDF-Vorschau konnte nicht gerendert werden: ' + str(exc))
+    elif ext in {'.png','.jpg','.jpeg','.bmp','.gif'}:
+        try:
+            images.append(Image.open(path).convert('RGB'))
+        except Exception as exc:
+            raise RuntimeError('Bildvorschau konnte nicht geladen werden: ' + str(exc))
+    elif ext in {'.xlsx','.xls'}:
+        rows=[]
+        try:
+            from openpyxl import load_workbook
+            wb = load_workbook(path, read_only=True, data_only=True)
+            ws = wb.active
+            for i,row in enumerate(ws.iter_rows(max_rows=32, max_cols=8, values_only=True)):
+                rows.append([v for v in row])
+            try: wb.close()
+            except Exception: pass
+            img = _fm487_make_table_image(rows, 'Excel - erstes Arbeitsblatt')
+            if img: images.append(img)
+        except Exception as exc:
+            raise RuntimeError('Excel-Vorschau konnte nicht gerendert werden: ' + str(exc))
+    elif ext == '.csv':
+        rows=[]
+        try:
+            import csv
+            with open(path, 'r', encoding='utf-8-sig', errors='replace', newline='') as f:
+                sample = f.read(4096); f.seek(0)
+                try: dialect = csv.Sniffer().sniff(sample, delimiters=';,\t,')
+                except Exception: dialect = csv.excel
+                for i,row in enumerate(csv.reader(f, dialect)):
+                    rows.append(row)
+                    if i >= 31: break
+            img = _fm487_make_table_image(rows, 'CSV - Tabellenvorschau')
+            if img: images.append(img)
+        except Exception as exc:
+            raise RuntimeError('CSV-Vorschau konnte nicht gerendert werden: ' + str(exc))
+    return images
+
+
+def _fm487_draw_preview(self, canvas, items):
+    canvas.delete('all'); canvas._fm487_preview_refs=[]
+    width = max(460, canvas.winfo_width() or 720)
+    y = 14
+    if not items:
+        canvas.configure(scrollregion=(0,0,width,80)); return
+    if not isinstance(items, (list, tuple)): items = [items]
+    files = []
+    word_fallbacks = []
+    errors = []
+    for item in items:
+        for sub in _fm487_each_file_item(item):
+            p = sub.get('path','')
+            if not p: continue
+            ext = os.path.splitext(p)[1].lower()
+            if ext in {'.doc','.docx','.txt'}:
+                # Word-Fallback bzw. Text nur fuer Word/Text-Ausnahme.
+                word_fallbacks.append((sub, p))
+            else:
+                files.append((sub, p))
+    for sub,p in files:
+        try:
+            imgs = _fm487_preview_images_for_path(p)
+            for idx,img in enumerate(imgs or []):
+                max_w = max(360, width - 44)
+                max_h = 900
+                img = img.copy(); img.thumbnail((max_w, max_h))
+                ph = ImageTk.PhotoImage(img)
+                canvas._fm487_preview_refs.append(ph)
+                canvas.create_image(18, y, image=ph, anchor='nw')
+                canvas.create_rectangle(18, y, 18+ph.width(), y+ph.height(), outline=LINE)
+                y += ph.height() + 18
+        except Exception as exc:
+            errors.append(str(exc))
+    for sub,p in word_fallbacks:
+        try:
+            txt = ''
+            ext = os.path.splitext(p)[1].lower()
+            if ext == '.docx':
+                try:
+                    from docx import Document
+                    doc = Document(p)
+                    txt = '\n'.join(par.text for par in doc.paragraphs if par.text).strip()[:6000]
+                except Exception as exc:
+                    txt = 'Word-Vorschau konnte nicht gelesen werden: ' + str(exc)
+            else:
+                with open(p, 'r', encoding='utf-8', errors='replace') as f: txt = f.read(6000)
+            canvas.create_rectangle(18, y, width-22, y+360, fill=WHITE, outline=LINE)
+            canvas.create_text(34, y+18, text=txt or 'Keine Textvorschau verfügbar.', anchor='nw', fill=TEXT, font=body_font(9), width=width-80)
+            y += 380
+        except Exception as exc:
+            errors.append(str(exc))
+    if errors:
+        canvas.create_rectangle(18, y, width-22, y+80, fill='#FFF7CC', outline=LINE)
+        canvas.create_text(34, y+16, text='\n'.join(errors[:4]), anchor='nw', fill=RED, font=body_font(9), width=width-80)
+        y += 100
+    canvas.configure(scrollregion=(0,0,width,max(y+30, canvas.winfo_height())))
+
+
+def _fm487_user_filter_popup(self, tree, all_items, refresh_cb):
+    popup = tk.Toplevel(self.root)
+    popup.title('Benutzerfilter')
+    popup.configure(bg=BG)
+    popup.transient(self.root)
+    popup.resizable(True, True)
+    try: popup.geometry('360x460')
+    except Exception: pass
+    qvar = tk.StringVar(value='')
+    selected = set(getattr(self, 'file_output_user_filter_selected', set()) or [])
+    users = sorted({_fm487_unknown_user(i.get('user')) for i in _fm487_scan_output_files(self)})
+    vars = {}
+    top = tk.Frame(popup, bg=BG); top.pack(fill='x', padx=12, pady=10)
+    tk.Label(top, text='Suchen', bg=BG, fg=TEXT2, font=body_font(9)).pack(side='left')
+    ent = tk.Entry(top, textvariable=qvar, bg=WHITE, fg=TEXT, font=body_font(9), relief='solid', bd=1); ent.pack(side='left', fill='x', expand=True, padx=(8,0))
+    box = tk.Frame(popup, bg=WHITE, relief='solid', bd=1); box.pack(fill='both', expand=True, padx=12, pady=(0,10))
+    canvas = tk.Canvas(box, bg=WHITE, highlightthickness=0); canvas.pack(side='left', fill='both', expand=True)
+    scroll = ttk.Scrollbar(box, orient='vertical', command=canvas.yview); scroll.pack(side='right', fill='y')
+    canvas.configure(yscrollcommand=scroll.set)
+    inner = tk.Frame(canvas, bg=WHITE); canvas.create_window(0,0,window=inner,anchor='nw')
+    def rebuild(*_):
+        for w in inner.winfo_children(): w.destroy()
+        vars.clear(); q = qvar.get().strip().casefold()
+        for u in users:
+            if q and q not in u.casefold(): continue
+            var = tk.BooleanVar(value=(not selected or u in selected))
+            vars[u] = var
+            tk.Checkbutton(inner, text=u, variable=var, bg=WHITE, fg=TEXT, font=body_font(9), anchor='w').pack(fill='x', anchor='w')
+        try: canvas.configure(scrollregion=canvas.bbox('all'))
+        except Exception: pass
+    def select_all(flag):
+        for v in vars.values(): v.set(bool(flag))
+    qvar.trace_add('write', rebuild); rebuild()
+    btns = tk.Frame(popup, bg=BG); btns.pack(fill='x', padx=12, pady=(0,12))
+    tk.Button(btns, text='Alle auswählen', command=lambda: select_all(True), bg=WHITE, fg=TEXT, font=body_font(9), relief='solid', bd=1).pack(side='left', padx=(0,6))
+    tk.Button(btns, text='Alle abwählen', command=lambda: select_all(False), bg=WHITE, fg=TEXT, font=body_font(9), relief='solid', bd=1).pack(side='left')
+    def apply():
+        chosen = {u for u,v in vars.items() if v.get()}
+        self.file_output_user_filter_selected = chosen
+        refresh_cb(); popup.destroy()
+    tk.Button(btns, text='Übernehmen', command=apply, bg='#CFEAD6', fg=TEXT, font=body_font(9,'bold'), relief='solid', bd=1).pack(side='right')
+
+
+def _fm487_render_file_output(self):
+    self.focusable_tiles.clear()
+    w,h = self.canvas.winfo_width(), self.canvas.winfo_height()
+    x0,y0 = 24,135; full_w,full_h = max(900,w-48), max(520,h-y0-64)
+    outer = tk.Frame(self.root,bg=BG); self.widget_items.append(outer)
+    self.canvas.create_window(ui_s(x0),ui_s(y0),window=outer,anchor='nw',width=ui_s(full_w),height=ui_s(full_h))
+    search_var = tk.StringVar(value=getattr(self,'file_output_search_text',''))
+    sent_filter_var = tk.StringVar(value=getattr(self,'file_output_sent_filter','Alle') or 'Alle')
+    sort_state = getattr(self,'file_output_sort_state',{'column':'date','descending':True}) or {'column':'date','descending':True}
+    selected_items = {'items': list(getattr(self,'file_output_selected_items', []) or [])}
+    all_items = self.file_output_build_items()
+
+    top = tk.Frame(outer,bg=BG); top.pack(fill='x',pady=(0,8))
+    tk.Label(top,text='Suche',bg=BG,fg=TEXT2,font=body_font(10)).pack(side='left',padx=(0,8))
+    ent=tk.Entry(top,textvariable=search_var,bg=WHITE,fg=TEXT,font=body_font(11),relief='solid',bd=1); ent.pack(side='left',fill='x',expand=True,ipady=5)
+    tk.Label(top,text='Versand',bg=BG,fg=TEXT2,font=body_font(10)).pack(side='left',padx=(10,6))
+    sent_cb=ttk.Combobox(top,textvariable=sent_filter_var,values=list(_FM487_SENT_FILTERS),state='readonly',width=14,font=body_font(9)); sent_cb.pack(side='left')
+    tk.Button(top,text='Aktualisieren',command=lambda:self.render_page(),bg=_FM473_BUTTON_GREY if '_FM473_BUTTON_GREY' in globals() else '#D6DCE4',fg=TEXT,font=body_font(10),relief='solid',bd=1).pack(side='left',padx=(8,0),ipadx=10,ipady=4)
+    content=tk.Frame(outer,bg=BG); content.pack(fill='both',expand=True)
+    left=tk.Frame(content,bg=WHITE,highlightbackground=LINE,highlightthickness=2); left.pack(side='left',fill='both',expand=True,padx=(0,12))
+    right=tk.Frame(content,bg=WHITE,highlightbackground=LINE,highlightthickness=2); right.pack(side='right',fill='both',expand=True)
+    left.configure(width=max(470,int(full_w*0.42))); right.configure(width=max(580,int(full_w*0.56)))
+    head=tk.Frame(left,bg=WHITE); head.pack(fill='x',padx=12,pady=(10,6))
+    tk.Label(head,text='Zuletzt erstellte Dateien',bg=WHITE,fg=BLUE,font=body_font(13,weight='bold')).pack(side='left')
+    action_bar=tk.Frame(left,bg=WHITE); action_bar.pack(fill='x',padx=12,pady=(0,8))
+    buttons=[]
+    def selected(): return list(selected_items.get('items') or [])
+    def one_selected():
+        arr=selected(); return arr[0] if arr else {}
+    def set_buttons_state():
+        state='normal' if selected() else 'disabled'
+        for b in buttons:
+            try: b.configure(state=state, cursor='hand2' if state=='normal' else 'arrow')
+            except Exception: pass
+    def add_btn(text, cmd, icon=None):
+        b=tk.Button(action_bar,text=text,command=cmd,bg=_FM473_BUTTON_GREY if '_FM473_BUTTON_GREY' in globals() else '#D6DCE4',fg=TEXT,activebackground=_FM473_BUTTON_GREY_ACTIVE if '_FM473_BUTTON_GREY_ACTIVE' in globals() else '#C8D0DA',font=body_font(9),relief='solid',bd=1,state='disabled',compound='left',cursor='arrow')
+        try:
+            ph=_fm473_icon_photo(self, icon, 18) if icon else None
+            if ph: b.configure(image=ph); b._img=ph
+        except Exception: pass
+        b.pack(side='left',padx=(0,6),ipadx=8,ipady=3); buttons.append(b); return b
+    add_btn('Datei öffnen', lambda: _fm472_open_file(one_selected()) if '_fm472_open_file' in globals() else None)
+    add_btn('Speicherort öffnen', lambda: _fm472_open_folder(one_selected()) if '_fm472_open_folder' in globals() else None, _FM473_EXPLORER_ICON if '_FM473_EXPLORER_ICON' in globals() else None)
+    add_btn('Outlook Versand', lambda: (_fm487_send_outlook(self, selected()) and self.render_page()), _FM473_OUTLOOK_ICON if '_FM473_OUTLOOK_ICON' in globals() else None)
+    add_btn('Export löschen', lambda: _fm473_delete_export(self, one_selected()) if '_fm473_delete_export' in globals() else None)
+
+    tree_frame=tk.Frame(left,bg=WHITE); tree_frame.pack(fill='both',expand=True,padx=12,pady=(0,12))
+    columns=('name','user','date','path')
+    tree=ttk.Treeview(tree_frame,columns=columns,show='tree headings',selectmode='extended')
+    try: sent_img=_fm473_icon_photo(self,_FM473_SENT_ICON,16)
+    except Exception: sent_img=None
+    self._fm487_sent_img = sent_img
+    def heading_text(col,label):
+        marker=' ↓' if sort_state.get('column')==col and sort_state.get('descending',True) else (' ↑' if sort_state.get('column')==col else '')
+        return label+marker
+    def set_sort(col):
+        cur=getattr(self,'file_output_sort_state',{'column':'date','descending':True})
+        desc=not cur.get('descending',True) if cur.get('column')==col else (True if col=='date' else False)
+        self.file_output_sort_state={'column':col,'descending':desc}; self.render_page()
+    tree.heading('#0',text='')
+    tree.heading('name',text=heading_text('name','Dateiname / Sammelposition'),command=lambda:set_sort('name'))
+    tree.heading('user',text=heading_text('user','Benutzer'),command=lambda:_fm487_user_filter_popup(self, tree, all_items, fill_tree))
+    tree.heading('date',text=heading_text('date','Erstellt'),command=lambda:set_sort('date'))
+    tree.heading('path',text=heading_text('path','Ablagepfad kurz'),command=lambda:set_sort('path'))
+    tree.column('#0',width=44,minwidth=44,stretch=False,anchor='center'); tree.column('name',width=220,stretch=True); tree.column('user',width=120,stretch=False); tree.column('date',width=122,stretch=False); tree.column('path',width=190,stretch=True)
+    vsb=ttk.Scrollbar(tree_frame,orient='vertical',command=tree.yview); tree.configure(yscrollcommand=vsb.set)
+    tree.pack(side='left',fill='both',expand=True); vsb.pack(side='right',fill='y')
+    prev_head=tk.Frame(right,bg=WHITE); prev_head.pack(fill='x',padx=12,pady=(10,6))
+    tk.Label(prev_head,text='Vorschau',bg=WHITE,fg=BLUE,font=body_font(13,weight='bold')).pack(side='left')
+    prev_canvas=tk.Canvas(right,bg='#F8FAFC',highlightthickness=0,bd=0)
+    prev_scroll=ttk.Scrollbar(right,orient='vertical',command=prev_canvas.yview); prev_canvas.configure(yscrollcommand=prev_scroll.set)
+    prev_canvas.pack(side='left',fill='both',expand=True,padx=(12,0),pady=(0,12)); prev_scroll.pack(side='right',fill='y',padx=(0,12),pady=(0,12))
+    id_map={}; suppress_select={'flag':False}
+    def fill_tree():
+        id_map.clear(); tree.delete(*tree.get_children())
+        q=search_var.get(); self.file_output_search_text=q
+        self.file_output_sent_filter=sent_filter_var.get() or 'Alle'
+        user_filter=getattr(self,'file_output_user_filter_selected',set()) or set()
+        shown=_fm487_filter_items(all_items,q,user_filter,self.file_output_sent_filter)
+        shown=_fm487_sort_items(shown,sort_state.get('column','date'),sort_state.get('descending',True))
+        for item in shown:
+            iid=item.get('id') or _fm487_file_id(item.get('path','')+item.get('name',''))
+            id_map[iid]=item
+            img=sent_img if item.get('sent_at') and sent_img else ''
+            tree.insert('', 'end', iid=iid, text='', image=img, values=(item.get('name',''), item.get('user',''), _fm472_display_dt(item.get('created_at')) if '_fm472_display_dt' in globals() else item.get('created_at',''), _fm472_short_path(item.get('path','')) if '_fm472_short_path' in globals() else item.get('path','')))
+            if item.get('type')=='group':
+                for c in item.get('children',[]) or []:
+                    cid=c.get('id') or _fm487_file_id(c.get('path',''))
+                    if cid in id_map: cid=iid+'_'+cid
+                    id_map[cid]=c
+                    cimg=sent_img if c.get('sent_at') and sent_img else ''
+                    tree.insert(iid,'end',iid=cid,text='',image=cimg,values=(c.get('name',''),c.get('user',''),_fm472_display_dt(c.get('created_at')) if '_fm472_display_dt' in globals() else c.get('created_at',''),_fm472_short_path(c.get('path','')) if '_fm472_short_path' in globals() else c.get('path','')))
+        tree.selection_remove(tree.selection())
+        selected_items['items']=[]; self.file_output_selected_items=[]; self.file_output_selected_item=None
+        _fm487_draw_preview(self,prev_canvas,[]); set_buttons_state()
+    def current_selection_items():
+        return [id_map[i] for i in tree.selection() if i in id_map]
+    def apply_selection():
+        if suppress_select.get('flag'): return
+        arr=current_selection_items()
+        selected_items['items']=arr; self.file_output_selected_items=arr; self.file_output_selected_item=arr[0] if arr else None
+        _fm487_draw_preview(self,prev_canvas,arr); set_buttons_state()
+    def on_click(ev):
+        row=tree.identify_row(ev.y)
+        col=tree.identify_column(ev.x)
+        if not row:
+            suppress_select['flag']=True; tree.selection_remove(tree.selection()); suppress_select['flag']=False; apply_selection(); return 'break'
+        if col == '#0':
+            return None
+        sel=set(tree.selection())
+        ctrl=bool(getattr(ev,'state',0) & 0x0004)
+        if row in sel and not ctrl and len(sel)==1:
+            suppress_select['flag']=True; tree.selection_remove(row); suppress_select['flag']=False; apply_selection(); return 'break'
+        return None
+    def on_right_click(ev):
+        row=tree.identify_row(ev.y); col=tree.identify_column(ev.x)
+        if row and col == '#0' and row in id_map:
+            _fm487_toggle_sent(self, id_map[row]); fill_tree(); return 'break'
+        return None
+    tree.bind('<Button-1>', on_click)
+    tree.bind('<Button-3>', on_right_click)
+    tree.bind('<<TreeviewSelect>>', lambda e: apply_selection())
+    search_var.trace_add('write', lambda *_: fill_tree())
+    sent_filter_var.trace_add('write', lambda *_: fill_tree())
+    try: prev_canvas.bind('<MouseWheel>',lambda e:(prev_canvas.yview_scroll(int(-1*(e.delta/120)),'units'),'break'))
+    except Exception: pass
+    fill_tree()
+
+try:
+    FiBuMateApp.file_output_register = _fm487_register_output_file
+    FiBuMateApp.file_output_build_items = _fm487_build_items
+    FiBuMateApp.render_file_output = _fm487_render_file_output
+except Exception:
+    pass
+
+
+# Wissenszentrale-Start: Kreise entfernen, Karten dezent einfaerben
+def _fm487_kb_card_color(color):
+    try:
+        return blend(WHITE, color, 0.10)
+    except Exception:
+        return WHITE
+
+
+def _fm487_render_knowledge_start_overlay(self):
+    w, h = self.canvas.winfo_width(), self.canvas.winfo_height()
+    y0 = ui_s(98); y1 = h - ui_s(34)
+    self.canvas.create_rectangle(0, y0, w, y1, fill=blend(BG, WHITE, 0.86), outline=LINE, width=2)
+    self.canvas.create_rectangle(0, y0, w, ui_s(158), fill=blend(HEADER, WHITE, 0.34), outline=LINE, width=1)
+    self.canvas.create_text(ui_s(45), ui_s(123), text='Wissenszentrale – Start', fill=BLUE, font=body_font(22, weight='bold'), anchor='w')
+    self.canvas.create_text(ui_s(45), ui_s(148), text='Startseite maximiert – Arbeitsbereich vollständig abgedeckt', fill=TEXT2, font=body_font(9), anchor='w')
+    self.draw_kb_button(w - ui_s(180), 112, 'Schließen', self.kb_close_start_overlay, False, width=130)
+    self.canvas.create_text(ui_s(45), ui_s(195), text='Was möchtest du tun?', fill=TEXT, font=body_font(15, weight='bold'), anchor='w')
+    var = tk.BooleanVar(value=bool(getattr(self, 'knowledge_show_start', True)))
+    def _toggle(): self.save_knowledge_start_preference(var.get())
+    chk = tk.Checkbutton(self.root, text='Startseite anzeigen', variable=var, command=_toggle, bg=blend(BG, WHITE, 0.86), fg=TEXT, font=body_font(11), activebackground=blend(BG, WHITE, 0.86))
+    self.canvas.create_window(ui_s(45), h - ui_s(88), window=chk, anchor='nw', width=ui_s(260), height=ui_s(34)); self.widget_items.append(chk)
+    cards=[('Wissen suchen','Gesamtliste und Suche öffnen','all','#2563EB'),('Neuer Eintrag','Dokumentation oder Aufgabe erfassen','new','#059669'),('To-Dos anzeigen','wiederkehrende Aufgaben anzeigen','todos','#DC2626'),('Kategorien','Kategorien anzeigen','categories','#7C3AED'),('Veraltete Einträge','Prüfung / Archiv','outdated','#EC4899')]
+    card_w=min(430,max(300,int((max(900,w-ui_s(90))-90)/3))); card_h=150
+    start_x,start_y=45,235; gap_x,gap_y=45,38
+    for idx,(title,desc,view,color) in enumerate(cards):
+        col,row=idx%3,idx//3; x=start_x+col*(card_w+gap_x); y=start_y+row*(card_h+gap_y)
+        fill=_fm487_kb_card_color(color); hover_fill=blend(fill,color,0.08)
+        self.canvas.create_rectangle(ui_s(x+6),ui_s(y+8),ui_s(x+card_w+6),ui_s(y+card_h+8),fill=SHADOW,outline='')
+        rect=self.canvas.create_rectangle(ui_s(x),ui_s(y),ui_s(x+card_w),ui_s(y+card_h),fill=fill,outline=blend(LINE,color,0.18))
+        self.canvas.create_text(ui_s(x+26),ui_s(y+35),text=title,fill=BLUE,font=body_font(15,weight='bold'),anchor='w')
+        self.canvas.create_text(ui_s(x+26),ui_s(y+75),text=desc,fill=TEXT2,font=body_font(11),anchor='w')
+        self.draw_kb_button(x+26,y+105,'Öffnen',lambda v=view:self.kb_switch_view_from_start(v),view=='new')
+        def _enter(_e, item=rect, hf=hover_fill):
+            try: self.canvas.itemconfigure(item, fill=hf)
+            except Exception: pass
+        def _leave(_e, item=rect, f=fill):
+            try: self.canvas.itemconfigure(item, fill=f)
+            except Exception: pass
+        self.canvas.tag_bind(rect,'<Enter>',_enter); self.canvas.tag_bind(rect,'<Leave>',_leave)
+    self.canvas.create_text(ui_s(45),h-ui_s(45),text='Die Startseite liegt über allen Arbeitsansicht-Widgets und endet erst oberhalb der Fußleiste.',fill=TEXT2,font=body_font(10),anchor='w')
+
+try:
+    FiBuMateApp.render_knowledge_start_overlay = _fm487_render_knowledge_start_overlay
+except Exception:
+    pass
+
+
+
+
+# ------------------------------------------------------------------
+# FIBU_MATE_PASSWORD_AUTH_FINAL_V0488
+# Datum: 2026-07-13
+# Zweck:
+# - Passwortfunktion aktivieren.
+# - Erstanmeldung ohne Passwort: Benutzer legt nach Eingabe des Benutzernamens direkt ein Passwort fest.
+# - Login mit gesetztem Passwort nur nach Passwortpruefung.
+# - Passwort-Reset ab E3: alter Hash wird geloescht, Benutzer muss beim naechsten Login neu vergeben.
+# - E-Mail-Benachrichtigung automatisch via Outlook, Fallback: vorbereitete Outlook-Mail anzeigen.
+# - Passwoerter werden nie angezeigt und nur als PBKDF2-Hash gespeichert.
+# ------------------------------------------------------------------
+FIBU_MATE_PASSWORD_AUTH_VERSION = "0.488"
+
+
+def _fm488_role_rank_value(role):
+    try:
+        return int(ROLE_RANK.get(role, 1))
+    except Exception:
+        return 1
+
+
+def _fm488_user_role_from_data(user):
+    try:
+        return ROLE_MIGRATION.get((user or {}).get("permission", ROLE_E1), (user or {}).get("permission", ROLE_E1) or ROLE_E1)
+    except Exception:
+        return ROLE_E1
+
+
+def _fm488_user_fullname_from_record(key, user):
+    try:
+        full = str((user or {}).get("full_name", "")).strip()
+        if full:
+            return full
+        first = str((user or {}).get("first_name", "")).strip()
+        disp = str((user or {}).get("display_name", key)).strip()
+        return " ".join(x for x in [first, disp] if x).strip() or str(key)
+    except Exception:
+        return str(key)
+
+
+def _fm488_normalize_auth(user):
+    if not isinstance(user, dict):
+        return {"password_hash": None, "enabled": False, "password_must_set": True}
+    auth = user.setdefault("auth", {})
+    if not isinstance(auth, dict):
+        auth = {}
+        user["auth"] = auth
+    auth.setdefault("password_hash", None)
+    auth.setdefault("enabled", bool(auth.get("password_hash")))
+    auth.setdefault("password_must_set", not bool(auth.get("password_hash")))
+    return auth
+
+
+def _fm488_hash_password(password):
+    import os as _os, base64 as _base64, hashlib as _hashlib
+    salt = _os.urandom(16)
+    iterations = 260000
+    dk = _hashlib.pbkdf2_hmac("sha256", str(password).encode("utf-8"), salt, iterations)
+    return "pbkdf2_sha256${}${}${}".format(iterations, _base64.b64encode(salt).decode("ascii"), _base64.b64encode(dk).decode("ascii"))
+
+
+def _fm488_verify_password(password, stored):
+    import base64 as _base64, hashlib as _hashlib, hmac as _hmac
+    try:
+        parts = str(stored or "").split("$")
+        if len(parts) != 4 or parts[0] != "pbkdf2_sha256":
+            return False
+        iterations = int(parts[1])
+        salt = _base64.b64decode(parts[2].encode("ascii"))
+        expected = _base64.b64decode(parts[3].encode("ascii"))
+        actual = _hashlib.pbkdf2_hmac("sha256", str(password).encode("utf-8"), salt, iterations)
+        return _hmac.compare_digest(actual, expected)
+    except Exception:
+        return False
+
+
+def _fm488_password_valid(password):
+    p = str(password or "")
+    if len(p) < 8:
+        return False, "Das Passwort muss mindestens 8 Zeichen enthalten."
+    if not re.search(r"[A-Za-z]", p):
+        return False, "Das Passwort muss mindestens einen Buchstaben enthalten."
+    if not re.search(r"\d", p):
+        return False, "Das Passwort muss mindestens eine Zahl enthalten."
+    return True, ""
+
+
+def _fm488_center_popup(self, win, width=430, height=235):
+    try:
+        win.update_idletasks()
+        x = self.root.winfo_rootx() + max(0, int((self.root.winfo_width() - width) / 2))
+        y = self.root.winfo_rooty() + max(0, int((self.root.winfo_height() - height) / 2))
+        win.geometry(f"{width}x{height}+{x}+{y}")
+    except Exception:
+        pass
+
+
+def _fm488_password_set_dialog(self, title, intro, require_old=False, old_hash=None):
+    result = {"password": None}
+    win = tk.Toplevel(self.root)
+    win.title(title)
+    win.configure(bg=BG)
+    win.resizable(False, False)
+    try:
+        win.transient(self.root)
+        win.grab_set()
+    except Exception:
+        pass
+    frame = tk.Frame(win, bg=BG)
+    frame.pack(fill="both", expand=True, padx=18, pady=16)
+    tk.Label(frame, text=title, bg=BG, fg=BLUE, font=body_font(13, "bold")).pack(anchor="w", pady=(0, 6))
+    tk.Label(frame, text=intro, bg=BG, fg=TEXT, font=body_font(10), wraplength=390, justify="left").pack(anchor="w", pady=(0, 10))
+    old_var = tk.StringVar(value="")
+    new_var = tk.StringVar(value="")
+    rep_var = tk.StringVar(value="")
+    if require_old:
+        tk.Label(frame, text="Altes Passwort", bg=BG, fg=TEXT2, font=body_font(9)).pack(anchor="w")
+        tk.Entry(frame, textvariable=old_var, show="*", bg=WHITE, fg=TEXT, relief="solid", bd=1, font=body_font(10)).pack(fill="x", ipady=4, pady=(0, 6))
+    tk.Label(frame, text="Neues Passwort", bg=BG, fg=TEXT2, font=body_font(9)).pack(anchor="w")
+    e1 = tk.Entry(frame, textvariable=new_var, show="*", bg=WHITE, fg=TEXT, relief="solid", bd=1, font=body_font(10))
+    e1.pack(fill="x", ipady=4, pady=(0, 6))
+    tk.Label(frame, text="Neues Passwort wiederholen", bg=BG, fg=TEXT2, font=body_font(9)).pack(anchor="w")
+    e2 = tk.Entry(frame, textvariable=rep_var, show="*", bg=WHITE, fg=TEXT, relief="solid", bd=1, font=body_font(10))
+    e2.pack(fill="x", ipady=4, pady=(0, 10))
+    info_var = tk.StringVar(value="Mindestens 8 Zeichen, 1 Buchstabe und 1 Zahl.")
+    tk.Label(frame, textvariable=info_var, bg=BG, fg=TEXT2, font=body_font(9), wraplength=390, justify="left").pack(anchor="w", pady=(0, 10))
+    row = tk.Frame(frame, bg=BG)
+    row.pack(fill="x")
+    def save():
+        if require_old and not _fm488_verify_password(old_var.get(), old_hash):
+            info_var.set("Das alte Passwort ist nicht korrekt.")
+            return
+        if new_var.get() != rep_var.get():
+            info_var.set("Die beiden neuen Passwoerter stimmen nicht ueberein.")
+            return
+        ok, msg = _fm488_password_valid(new_var.get())
+        if not ok:
+            info_var.set(msg)
+            return
+        result["password"] = new_var.get()
+        try:
+            win.grab_release()
+        except Exception:
+            pass
+        win.destroy()
+    tk.Button(row, text="Speichern", command=save, bg="#CFEAD6", fg=TEXT, font=body_font(10, "bold"), relief="solid", bd=1, padx=18, pady=6).pack(side="right", padx=(8, 0))
+    tk.Button(row, text="Abbrechen", command=win.destroy, bg=WHITE, fg=TEXT, font=body_font(10), relief="solid", bd=1, padx=18, pady=6).pack(side="right")
+    e1.focus_set()
+    try:
+        win.bind("<Return>", lambda e: save())
+        _fm488_center_popup(self, win, 455, 330 if require_old else 285)
+        self.root.wait_window(win)
+    except Exception:
+        pass
+    return result.get("password")
+
+
+def _fm488_prompt_password_dialog(self, display_name):
+    result = {"password": None}
+    win = tk.Toplevel(self.root)
+    win.title("FiBu Mate - Passwort")
+    win.configure(bg=BG)
+    win.resizable(False, False)
+    try:
+        win.transient(self.root)
+        win.grab_set()
+    except Exception:
+        pass
+    frame = tk.Frame(win, bg=BG)
+    frame.pack(fill="both", expand=True, padx=18, pady=16)
+    tk.Label(frame, text="Passwort erforderlich", bg=BG, fg=BLUE, font=body_font(13, "bold")).pack(anchor="w", pady=(0, 8))
+    tk.Label(frame, text="Benutzer: " + str(display_name), bg=BG, fg=TEXT, font=body_font(10)).pack(anchor="w", pady=(0, 10))
+    var = tk.StringVar(value="")
+    ent = tk.Entry(frame, textvariable=var, show="*", bg=WHITE, fg=TEXT, relief="solid", bd=1, font=body_font(11))
+    ent.pack(fill="x", ipady=5, pady=(0, 12))
+    row = tk.Frame(frame, bg=BG)
+    row.pack(fill="x")
+    def ok():
+        result["password"] = var.get()
+        try:
+            win.grab_release()
+        except Exception:
+            pass
+        win.destroy()
+    tk.Button(row, text="Anmelden", command=ok, bg=BLUE, fg=WHITE, font=body_font(10, "bold"), relief="solid", bd=0, padx=18, pady=6).pack(side="right", padx=(8, 0))
+    tk.Button(row, text="Abbrechen", command=win.destroy, bg=WHITE, fg=TEXT, font=body_font(10), relief="solid", bd=1, padx=18, pady=6).pack(side="right")
+    def _pw_focus():
+        try:
+            win.lift(); win.focus_force(); ent.focus_force(); ent.icursor("end")
+        except Exception:
+            try: ent.focus_set()
+            except Exception: pass
+    try:
+        win.bind("<Map>", lambda e: win.after(20, _pw_focus), add="+")
+        win.after_idle(_pw_focus); win.after(60, _pw_focus); win.after(150, _pw_focus); win.after(350, _pw_focus)
+    except Exception:
+        try: ent.focus_set()
+        except Exception: pass
+    try:
+        win.bind("<Return>", lambda e: ok())
+        _fm488_center_popup(self, win, 430, 190)
+        try: win.wait_visibility()
+        except Exception: pass
+        _pw_focus()
+        self.root.wait_window(win)
+    except Exception:
+        pass
+    return result.get("password")
+
+
+def _fm488_finalize_login(self, key, username):
+    users = self.user_data.setdefault("users", {})
+    u = users[key]
+    u.setdefault("display_name", username)
+    u.setdefault("first_name", "")
+    u.setdefault("full_name", " ".join(x for x in [u.get("first_name", "").strip(), u.get("display_name", username).strip()] if x).strip() or username)
+    u.setdefault("favorites", [])
+    u.setdefault("email", "")
+    u["permission"] = ROLE_MIGRATION.get(u.get("permission", ROLE_E1), ROLE_E1)
+    if key == SUPERUSER_KEY:
+        u["permission"] = ROLE_E4
+    self.ensure_permissions_defaults()
+    self.current_user_key = key
+    self.current_user_display = u.get("display_name", username)
+    self.favorites = set(fav for fav in u.get("favorites", []) if fav in TOOL_REGISTRY and fav not in HIDDEN_TOOL_IDS)
+    u["favorites"] = sorted(self.favorites)
+    self.save_user_data()
+    try:
+        self.start_live_permissions_refresh()
+    except Exception:
+        pass
+    self.page_history = []
+    self.breadcrumb = []
+    self.show_page("main", "Hauptmenue", add_to_history=False)
+
+
+def _fm488_login_user(self, username):
+    username = " ".join(str(username).strip().split())
+    key = normalize_username(username)
+    if not key:
+        messagebox.showwarning("FiBu Mate", "Bitte einen Nutzernamen eingeben.")
+        return
+    try:
+        self.user_data = _fm444_normalize_user_data(getattr(self, "user_data", None))
+    except Exception:
+        self.user_data = getattr(self, "user_data", {}) or {"users": {}}
+    users = self.user_data.setdefault("users", {})
+    if key not in users:
+        try:
+            if key == SUPERUSER_KEY and _fm444_bootstrap_superuser_if_allowed(self, username, key):
+                pass
+            else:
+                messagebox.showwarning("FiBu Mate", "Benutzer nicht gefunden.\nBitte wende dich an eine Administratorin / einen Administrator.")
+                return
+        except Exception:
+            messagebox.showwarning("FiBu Mate", "Benutzer nicht gefunden.\nBitte wende dich an eine Administratorin / einen Administrator.")
+            return
+    u = users[key]
+    u.setdefault("display_name", username)
+    u.setdefault("first_name", "")
+    u.setdefault("full_name", " ".join(x for x in [u.get("first_name", "").strip(), u.get("display_name", username).strip()] if x).strip() or username)
+    u.setdefault("email", "")
+    auth = _fm488_normalize_auth(u)
+    if not auth.get("password_hash") or bool(auth.get("password_must_set")):
+        new_pw = _fm488_password_set_dialog(self, "Passwort festlegen", "Fuer diesen Benutzer ist noch kein Passwort gesetzt oder das Passwort wurde zurueckgesetzt. Bitte jetzt ein neues Passwort vergeben.", require_old=False)
+        if not new_pw:
+            return
+        auth["password_hash"] = _fm488_hash_password(new_pw)
+        auth["enabled"] = True
+        auth["password_must_set"] = False
+        auth["password_set_at"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        auth.pop("password_reset_at", None)
+        auth.pop("password_reset_by", None)
+        self.save_user_data()
+        try:
+            messagebox.showinfo("FiBu Mate", "Passwort wurde gespeichert.")
+        except Exception:
+            pass
+    else:
+        entered = _fm488_prompt_password_dialog(self, _fm488_user_fullname_from_record(key, u))
+        if entered is None:
+            return
+        if not _fm488_verify_password(entered, auth.get("password_hash")):
+            messagebox.showwarning("FiBu Mate", "Passwort ist nicht korrekt.")
+            return
+    _fm488_finalize_login(self, key, username)
+
+
+def _fm488_can_reset_password(self, target_key):
+    users = self.user_data.setdefault("users", {})
+    if target_key not in users:
+        return False
+    actor_role = self.my_role() if hasattr(self, "my_role") else users.get(getattr(self, "current_user_key", ""), {}).get("permission", ROLE_E1)
+    actor_rank = _fm488_role_rank_value(actor_role)
+    target_rank = _fm488_role_rank_value(_fm488_user_role_from_data(users.get(target_key, {})))
+    return actor_rank >= 3 and target_rank <= actor_rank
+
+
+def _fm488_send_password_reset_mail(self, target_user):
+    email = str((target_user or {}).get("email", "")).strip()
+    if not email:
+        return "no_email"
+    display = _fm488_user_fullname_from_record("", target_user)
+    subject = "FiBu Mate - Passwort wurde zurueckgesetzt"
+    body = ("Hallo " + display + ",\n\n"
+            "dein FiBu-Mate-Passwort wurde zurueckgesetzt.\n"
+            "Bitte melde dich in FiBu Mate mit deinem Benutzernamen an. "
+            "Beim naechsten Anmelden wirst du automatisch aufgefordert, ein neues Passwort festzulegen.\n\n"
+            "Viele Gruesse\nFiBu Mate")
+    try:
+        import win32com.client as win32
+        outlook = win32.Dispatch("Outlook.Application")
+        mail = outlook.CreateItem(0)
+        mail.To = email
+        mail.Subject = subject
+        mail.Body = body
+        try:
+            mail.Send()
+            return "sent"
+        except Exception:
+            mail.Display()
+            return "displayed"
+    except Exception:
+        try:
+            import urllib.parse as _up, webbrowser as _wb
+            url = "mailto:" + _up.quote(email) + "?subject=" + _up.quote(subject) + "&body=" + _up.quote(body)
+            _wb.open(url)
+            return "displayed"
+        except Exception:
+            return "failed"
+
+
+def _fm488_reset_password_for_user(self, target_key):
+    users = self.user_data.setdefault("users", {})
+    if target_key not in users:
+        return
+    if not _fm488_can_reset_password(self, target_key):
+        messagebox.showwarning("Keine Berechtigung", "Du darfst dieses Passwort nicht zuruecksetzen.")
+        return
+    target = users[target_key]
+    display = _fm488_user_fullname_from_record(target_key, target)
+    if not messagebox.askyesno("Passwort zuruecksetzen", "Passwort wirklich zuruecksetzen fuer:\n\n" + display + "?"):
+        return
+    auth = _fm488_normalize_auth(target)
+    auth["password_hash"] = None
+    auth["enabled"] = False
+    auth["password_must_set"] = True
+    auth["password_reset_at"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    auth["password_reset_by"] = getattr(self, "current_user_key", "") or ""
+    self.save_user_data()
+    mail_status = _fm488_send_password_reset_mail(self, target)
+    if mail_status == "sent":
+        messagebox.showinfo("FiBu Mate", "Passwort wurde zurueckgesetzt und die E-Mail wurde automatisch versendet.")
+    elif mail_status == "displayed":
+        messagebox.showinfo("FiBu Mate", "Passwort wurde zurueckgesetzt. Die E-Mail wurde vorbereitet/geoeffnet.")
+    elif mail_status == "no_email":
+        messagebox.showwarning("FiBu Mate", "Passwort wurde zurueckgesetzt. Fuer diesen Benutzer ist keine E-Mail-Adresse gepflegt.")
+    else:
+        messagebox.showwarning("FiBu Mate", "Passwort wurde zurueckgesetzt. Die E-Mail-Benachrichtigung konnte nicht automatisch erstellt werden.")
+    try:
+        self.render_page()
+    except Exception:
+        pass
+
+
+def _fm488_change_own_password(self):
+    key = getattr(self, "current_user_key", "")
+    users = self.user_data.setdefault("users", {})
+    if key not in users:
+        return
+    auth = _fm488_normalize_auth(users[key])
+    require_old = bool(auth.get("password_hash")) and not bool(auth.get("password_must_set"))
+    new_pw = _fm488_password_set_dialog(self, "Eigenes Passwort aendern", "Bitte neues Passwort vergeben. Passwoerter werden nicht angezeigt und nicht im Klartext gespeichert.", require_old=require_old, old_hash=auth.get("password_hash"))
+    if not new_pw:
+        return
+    auth["password_hash"] = _fm488_hash_password(new_pw)
+    auth["enabled"] = True
+    auth["password_must_set"] = False
+    auth["password_set_at"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    self.save_user_data()
+    messagebox.showinfo("FiBu Mate", "Passwort wurde geaendert.")
+
+
+try:
+    _fm488_prev_render_users_menu = FiBuMateApp.render_users_menu
+except Exception:
+    _fm488_prev_render_users_menu = None
+
+
+def _fm488_render_users_menu(self):
+    if not self.can_view_user_management():
+        self.render_menu_text("Keine Berechtigung fuer die Benutzerverwaltung.")
+        return
+    users = self.user_data.setdefault("users", {})
+    visible = [self.current_user_key] if self.my_role() == ROLE_E1 and self.current_user_key in users else sorted(users.keys())
+    w, h = self.canvas.winfo_width(), self.canvas.winfo_height()
+    top = 132
+    vh = int(max(top + 260, h - 92) - top)
+    cont = tk.Frame(self.root, bg=BG)
+    self.widget_items.append(cont)
+    self.canvas.create_window(0, top, window=cont, anchor="nw", width=w, height=vh)
+    body = tk.Frame(cont, bg=BG)
+    body.pack(fill="both", expand=True, padx=24)
+    cv = tk.Canvas(body, bg=BG, highlightthickness=0, bd=0)
+    sb = tk.Scrollbar(body, orient="vertical", command=cv.yview)
+    frame = tk.Frame(cv, bg=BG)
+    win = cv.create_window((0, 0), window=frame, anchor="nw")
+    cv.configure(yscrollcommand=sb.set)
+    cv.pack(side="left", fill="both", expand=True)
+    sb.pack(side="right", fill="y")
+    try:
+        self.register_scroll_canvas(cv, sb)
+    except Exception:
+        pass
+    def upd(e=None):
+        cv.itemconfigure(win, width=max(1, cv.winfo_width()))
+        cv.configure(scrollregion=cv.bbox("all"))
+    frame.bind("<Configure>", upd)
+    cv.bind("<Configure>", upd)
+    tk.Label(frame, text="Benutzerverwaltung", font=self.zoomed_content_font(("Segoe UI", 15, "bold")), bg=BG, fg=TEXT).grid(row=0, column=0, columnspan=9, sticky="w", pady=(0, 14))
+    heads = ["Benutzer", "Anzeigename/Nachname", "Vorname", "E-Mail", "Rolle", "Passwort", "", "", ""]
+    for c, head in enumerate(heads):
+        tk.Label(frame, text=head, bg=BG, fg=TEXT, font=("Segoe UI", 10, "bold")).grid(row=1, column=c, sticky="w", padx=(0, 14))
+    is_super = self.current_user_key == SUPERUSER_KEY
+    def can_edit(k):
+        if is_super:
+            return True
+        if k == SUPERUSER_KEY:
+            return False
+        if k == self.current_user_key:
+            return True
+        return self.my_role() in (ROLE_E3, ROLE_E4) and self.role_rank(users.get(k, {}).get("permission", ROLE_E1)) <= self.role_rank(self.my_role())
+    def role_vals(k):
+        if is_super and k != SUPERUSER_KEY:
+            return ROLE_ORDER
+        if k == SUPERUSER_KEY:
+            return [ROLE_E4]
+        return [r for r in ROLE_ORDER if self.role_rank(r) <= self.role_rank(self.my_role()) and (self.my_role() == ROLE_E4 or r != ROLE_E4)]
+    def save_row(k, nv, fv, ev, rv):
+        if k not in users or not can_edit(k):
+            return
+        data = users[k]
+        new_name = " ".join(nv.get().strip().split()) or data.get("display_name", k)
+        new_key = normalize_username(new_name)
+        if k == SUPERUSER_KEY:
+            new_key = SUPERUSER_KEY
+        if is_super and k != SUPERUSER_KEY and new_key != k:
+            if not new_key or new_key in users:
+                messagebox.showwarning("FiBu Mate", "Benutzername ungueltig oder bereits vorhanden.")
+                return
+            data = users.pop(k)
+            users[new_key] = data
+        data["display_name"] = new_name
+        data["first_name"] = fv.get().strip()
+        data["email"] = ev.get().strip()
+        data["full_name"] = " ".join(x for x in [data.get("first_name", ""), data.get("display_name", new_key)] if x).strip() or data.get("display_name", new_key)
+        role = rv.get() or data.get("permission", ROLE_E1)
+        if role not in role_vals(new_key):
+            messagebox.showwarning("FiBu Mate", "Diese Rolle darf nicht vergeben werden.")
+            return
+        data["permission"] = ROLE_E4 if new_key == SUPERUSER_KEY else role
+        _fm488_normalize_auth(data)
+        self.ensure_permissions_defaults()
+        self.save_user_data()
+        messagebox.showinfo("FiBu Mate", "Benutzerdaten wurden gespeichert.")
+        self.render_page()
+    def del_user(k):
+        if k in (SUPERUSER_KEY, self.current_user_key) or not can_edit(k):
+            messagebox.showwarning("FiBu Mate", "Dieser Benutzer kann nicht geloescht werden.")
+            return
+        if messagebox.askyesno("Benutzer loeschen", "Benutzer wirklich loeschen?\n\n" + users.get(k, {}).get("display_name", k)):
+            users.pop(k, None)
+            self.save_user_data()
+            self.render_page()
+    row = 2
+    for k in visible:
+        u = users[k]
+        auth = _fm488_normalize_auth(u)
+        edit = can_edit(k)
+        nv = tk.StringVar(value=u.get("display_name", k))
+        fv = tk.StringVar(value=u.get("first_name", ""))
+        ev = tk.StringVar(value=u.get("email", ""))
+        rv = tk.StringVar(value=u.get("permission", ROLE_E1))
+        pwd_status = "gesetzt" if auth.get("password_hash") and not auth.get("password_must_set") else "muss gesetzt werden"
+        tk.Label(frame, text=k, bg=BG, fg=TEXT2, font=("Segoe UI", 10)).grid(row=row, column=0, sticky="w", padx=(0, 14), pady=4)
+        tk.Entry(frame, textvariable=nv, font=("Segoe UI", 10), width=22, bg="#E8EEF5", fg=TEXT, relief="solid", bd=1, state="normal" if edit and (is_super or k not in (self.current_user_key, SUPERUSER_KEY)) else "disabled").grid(row=row, column=1, sticky="w", padx=(0, 14), pady=4)
+        tk.Entry(frame, textvariable=fv, font=("Segoe UI", 10), width=18, bg="#E8EEF5", fg=TEXT, relief="solid", bd=1, state="normal" if edit else "disabled").grid(row=row, column=2, sticky="w", padx=(0, 14), pady=4)
+        tk.Entry(frame, textvariable=ev, font=("Segoe UI", 10), width=30, bg="#E8EEF5", fg=TEXT, relief="solid", bd=1, state="normal" if edit else "disabled").grid(row=row, column=3, sticky="w", padx=(0, 14), pady=4)
+        ttk.Combobox(frame, textvariable=rv, values=role_vals(k), state="readonly" if edit and (is_super or k != SUPERUSER_KEY) else "disabled", font=("Segoe UI", 10), width=24).grid(row=row, column=4, sticky="w", padx=(0, 14), pady=4)
+        tk.Label(frame, text=pwd_status, bg=BG, fg=TEXT2, font=("Segoe UI", 10)).grid(row=row, column=5, sticky="w", padx=(0, 14), pady=4)
+        tk.Button(frame, text="Speichern", command=lambda k=k, nv=nv, fv=fv, ev=ev, rv=rv: save_row(k, nv, fv, ev, rv), bg=BLUE if edit else GREY_DISABLED, fg="white", bd=0, width=10, padx=10, pady=5, state="normal" if edit else "disabled").grid(row=row, column=6, sticky="w", padx=(12, 8), pady=4)
+        can_reset = _fm488_can_reset_password(self, k)
+        tk.Button(frame, text="PW Reset", command=lambda k=k: _fm488_reset_password_for_user(self, k), bg=WHITE if can_reset else GREY_DISABLED, fg=TEXT, bd=1, width=10, padx=8, pady=5, state="normal" if can_reset else "disabled").grid(row=row, column=7, sticky="w", padx=(0, 8), pady=4)
+        ok = edit and k not in (self.current_user_key, SUPERUSER_KEY) and self.my_role() in (ROLE_E3, ROLE_E4)
+        tk.Button(frame, text="Loeschen", command=lambda k=k: del_user(k), bg=RED if ok else GREY_DISABLED, fg="white", bd=0, width=10, padx=8, pady=5, state="normal" if ok else "disabled").grid(row=row, column=8, sticky="w", padx=(0, 8), pady=4)
+        row += 1
+    upd()
+
+
+try:
+    _fm488_prev_render_settings_menu = FiBuMateApp.render_settings_menu
+except Exception:
+    _fm488_prev_render_settings_menu = None
+
+
+def _fm488_render_settings_menu(self):
+    modules = [("Passwort aendern", "__change_password__"), ("Kachelfarbe", "tile_colors"), ("Benutzerverwaltung", "users"), ("Berechtigungen", "permissions"), ("Versionsverlauf", "versions")]
+    if self.my_role() == ROLE_E4:
+        modules.append(("Lingo", "__lingo_popup__"))
+    def open_mid(mid, ttl):
+        if mid == "__change_password__":
+            return _fm488_change_own_password(self)
+        if mid == "__lingo_popup__":
+            return self.show_lingo_popup()
+        return self.show_page(mid, ttl, True)
+    w, h = self.canvas.winfo_width(), self.canvas.winfo_height()
+    tile_w = max(250, min(330, int(w * 0.18)))
+    tile_h = max(105, min(140, int(h * 0.13)))
+    gap = max(24, int(w * 0.022))
+    total = len(modules) * tile_w + (len(modules) - 1) * gap
+    start = (w - total) / 2 + tile_w / 2
+    y = y_pct(h, 56)
+    for i, (title, mid) in enumerate(modules):
+        tile = Tile(self.root, self, f"settings_{mid}", title, lambda m=mid, t=title: open_mid(m, t), favorite_enabled=False, icon_type="gear")
+        tile.resize_tile(tile_w, tile_h)
+        self.widget_items.append(tile)
+        self.focusable_tiles.append(tile)
+        self.canvas.create_window(start + i * (tile_w + gap), y, window=tile, anchor="center")
+    self.draw_bottom_logo()
+
+
+FiBuMateApp.login_user = _fm488_login_user
+FiBuMateApp.render_users_menu = _fm488_render_users_menu
+FiBuMateApp.render_settings_menu = _fm488_render_settings_menu
+FiBuMateApp.show_change_password_popup = _fm488_change_own_password
+
+
+
+
+# ------------------------------------------------------------------
+# FIBU_MATE_SETTINGS_WRAP_AND_VERSION_E4_SAVE_V0489
+# Datum: 2026-07-13
+# Zweck:
+# - Einstellungen: Kacheln umbrechen, sobald eine Zeile mehr als 4 Kacheln haette.
+# - Versionsverlauf: Bearbeiten/Ausblenden/Loeschen ausschliesslich fuer E4.
+# - Versionsverlauf-Bearbeitung: Speichern-Button explizit vorhanden und schreibt die Aenderungen.
+# - Hinweis Passwortfunktion/G-Laufwerk bleibt technisch unveraendert: zentrale Benutzerdatei nach resolve_user_data_path().
+# ------------------------------------------------------------------
+FIBU_MATE_SETTINGS_WRAP_AND_VERSION_E4_SAVE_VERSION = "0.489"
+
+
+def _fm489_is_e4_only(self):
+    try:
+        return str(self.my_role()) == ROLE_E4 or self.role_rank(self.my_role()) >= 4
+    except Exception:
+        pass
+    try:
+        users = getattr(self, 'user_data', {}).get('users', {})
+        role = users.get(getattr(self, 'current_user_key', ''), {}).get('permission', ROLE_E1)
+        return role == ROLE_E4 or int(ROLE_RANK.get(role, 1)) >= 4
+    except Exception:
+        return False
+
+
+def _fm489_render_settings_menu(self):
+    modules = [
+        ("Passwort aendern", "__change_password__"),
+        ("Kachelfarbe", "tile_colors"),
+        ("Benutzerverwaltung", "users"),
+        ("Berechtigungen", "permissions"),
+        ("Versionsverlauf", "versions"),
+    ]
+    if self.my_role() == ROLE_E4:
+        modules.append(("Lingo", "__lingo_popup__"))
+
+    def open_mid(mid, ttl):
+        if mid == "__change_password__":
+            try:
+                return _fm488_change_own_password(self)
+            except Exception:
+                return getattr(self, 'show_change_password_popup', lambda: None)()
+        if mid == "__lingo_popup__":
+            return self.show_lingo_popup()
+        return self.show_page(mid, ttl, True)
+
+    w, h = self.canvas.winfo_width(), self.canvas.winfo_height()
+    tile_w = max(250, min(330, int(w * 0.18)))
+    tile_h = max(105, min(140, int(h * 0.13)))
+    gap_x = max(24, int(w * 0.022))
+    gap_y = max(22, int(h * 0.025))
+    max_cols = 4
+    rows = [modules[i:i + max_cols] for i in range(0, len(modules), max_cols)]
+    total_h = len(rows) * tile_h + max(0, len(rows) - 1) * gap_y
+    start_y = max(185, int((h - total_h) * 0.50))
+    for r, row_items in enumerate(rows):
+        cols = len(row_items)
+        total_w = cols * tile_w + max(0, cols - 1) * gap_x
+        start_x = max(24, (w - total_w) / 2)
+        y = start_y + r * (tile_h + gap_y)
+        for c, (title, mid) in enumerate(row_items):
+            tile = Tile(self.root, self, f"settings_{mid}", title, lambda m=mid, t=title: open_mid(m, t), favorite_enabled=False, icon_type="gear")
+            tile.resize_tile(tile_w, tile_h)
+            self.widget_items.append(tile)
+            self.focusable_tiles.append(tile)
+            self.canvas.create_window(start_x + c * (tile_w + gap_x), y, window=tile, anchor="nw")
+    self.draw_bottom_logo()
+
+
+def _fm489_edit_version_dialog(self, index, entries):
+    if not _fm489_is_e4_only(self):
+        try:
+            messagebox.showwarning('Versionsverlauf', 'Nur E4 darf Versionsverlauf-Eintraege bearbeiten.')
+        except Exception:
+            pass
+        return
+    try:
+        entry = dict(entries[index])
+    except Exception:
+        return
+    try:
+        win = tk.Toplevel(self.root)
+        win.title('Versionsverlauf bearbeiten')
+        win.configure(bg=WHITE)
+        win.geometry('760x510')
+        win.resizable(True, True)
+        try:
+            win.transient(self.root)
+            win.grab_set()
+        except Exception:
+            pass
+        outer = tk.Frame(win, bg=WHITE)
+        outer.pack(fill='both', expand=True, padx=16, pady=14)
+        version_var = tk.StringVar(value=str(entry.get('version', '')))
+        title_var = tk.StringVar(value=str(entry.get('title', '')))
+        date_var = tk.StringVar(value=str(entry.get('date') or entry.get('published_at') or ''))
+        tk.Label(outer, text='Version', bg=WHITE, fg=TEXT2, font=body_font(10)).pack(anchor='w')
+        tk.Entry(outer, textvariable=version_var, bg=WHITE, fg=TEXT, font=body_font(11), relief='solid', bd=1).pack(fill='x', ipady=4, pady=(0, 8))
+        tk.Label(outer, text='Titel / Kurzbeschreibung', bg=WHITE, fg=TEXT2, font=body_font(10)).pack(anchor='w')
+        tk.Entry(outer, textvariable=title_var, bg=WHITE, fg=TEXT, font=body_font(11), relief='solid', bd=1).pack(fill='x', ipady=4, pady=(0, 8))
+        tk.Label(outer, text='Datum / Veroeffentlichung', bg=WHITE, fg=TEXT2, font=body_font(10)).pack(anchor='w')
+        tk.Entry(outer, textvariable=date_var, bg=WHITE, fg=TEXT, font=body_font(11), relief='solid', bd=1).pack(fill='x', ipady=4, pady=(0, 8))
+        tk.Label(outer, text='Eintrag / Stichpunkte', bg=WHITE, fg=TEXT2, font=body_font(10)).pack(anchor='w')
+        txt_frame = tk.Frame(outer, bg=WHITE)
+        txt_frame.pack(fill='both', expand=True, pady=(0, 10))
+        txt = tk.Text(txt_frame, bg='#F8FAFC', fg=TEXT, font=body_font(11), relief='solid', bd=1, wrap='word')
+        ys = tk.Scrollbar(txt_frame, orient='vertical', command=txt.yview)
+        txt.configure(yscrollcommand=ys.set)
+        bullets = entry.get('bullets', [])
+        if isinstance(bullets, list):
+            txt.insert('1.0', '\n'.join(str(b) for b in bullets))
+        else:
+            txt.insert('1.0', str(bullets or entry.get('text', '') or ''))
+        txt.pack(side='left', fill='both', expand=True)
+        ys.pack(side='right', fill='y')
+        br = tk.Frame(outer, bg=WHITE)
+        br.pack(fill='x')
+        def save():
+            entry['version'] = version_var.get().strip()
+            entry['title'] = title_var.get().strip()
+            if date_var.get().strip():
+                entry['date'] = date_var.get().strip()
+            raw = txt.get('1.0', 'end-1c').strip()
+            entry['bullets'] = [line.strip() for line in raw.splitlines() if line.strip()]
+            entries[index] = entry
+            if _fm450_save_version_entries_admin(self, entries):
+                try:
+                    messagebox.showinfo('Versionsverlauf', 'Aenderungen wurden gespeichert.')
+                except Exception:
+                    pass
+                win.destroy()
+                self.render_page()
+        tk.Button(br, text='Speichern', command=save, bg='#CFEAD6', fg=TEXT, font=body_font(10, weight='bold'), relief='solid', bd=1).pack(side='left', padx=(0, 8), ipadx=18, ipady=5)
+        tk.Button(br, text='Abbrechen', command=win.destroy, bg=WHITE, fg=TEXT, font=body_font(10), relief='solid', bd=1).pack(side='left', ipadx=18, ipady=5)
+        txt.focus_set()
+    except Exception as exc:
+        try:
+            messagebox.showerror('Versionsverlauf', 'Bearbeiten nicht moeglich:\n' + str(exc))
+        except Exception:
+            pass
+
+
+def _fm489_render_versions_menu(self):
+    entries = _fm450_version_entries_raw(self)
+    is_e4 = _fm489_is_e4_only(self)
+    if not is_e4:
+        entries = [e for e in entries if not bool(e.get('hidden'))]
+    w, h = self.canvas.winfo_width(), self.canvas.winfo_height()
+    area_top = 132
+    area_bottom = max(area_top + 260, h - 92)
+    view_h = int(area_bottom - area_top)
+    container = tk.Frame(self.root, bg=BG)
+    self.widget_items.append(container)
+    self.canvas.create_window(0, area_top, window=container, anchor='nw', width=w, height=view_h)
+    scroll_canvas = tk.Canvas(container, bg=BG, highlightthickness=0, bd=0)
+    scrollbar = tk.Scrollbar(container, orient='vertical', command=scroll_canvas.yview)
+    content = tk.Frame(scroll_canvas, bg=BG)
+    content_window = scroll_canvas.create_window((0, 0), window=content, anchor='nw')
+    def update_scrollregion(_event=None):
+        scroll_canvas.itemconfigure(content_window, width=max(1, scroll_canvas.winfo_width()))
+        scroll_canvas.configure(scrollregion=scroll_canvas.bbox('all'))
+        try:
+            self._sync_scrollbar_visibility(scroll_canvas, scrollbar)
+        except Exception:
+            pass
+    content.bind('<Configure>', update_scrollregion)
+    scroll_canvas.bind('<Configure>', update_scrollregion)
+    scroll_canvas.configure(yscrollcommand=scrollbar.set)
+    scroll_canvas.pack(side='left', fill='both', expand=True)
+    scrollbar.pack(side='right', fill='y')
+    try:
+        self.register_scroll_canvas(scroll_canvas, scrollbar)
+    except Exception:
+        pass
+    tk.Label(content, text='Versionsverlauf', bg=BG, fg=BLUE, font=body_font(20, weight='bold')).pack(anchor='w', padx=24, pady=(18, 4))
+    source_txt = f"Versionsverlauf: lokale Historie plus zentrale Release-Historie ({self._central_version_history_path()})"
+    tk.Label(content, text=source_txt, bg=BG, fg=TEXT2, font=body_font(9), wraplength=max(520, w - 70), justify='left').pack(anchor='w', padx=24, pady=(0, 10))
+    if is_e4:
+        tk.Label(content, text='E4-Administration aktiv: Eintraege koennen bearbeitet, ausgeblendet/eingeblendet oder geloescht werden.', bg=BG, fg=RED, font=body_font(10, weight='bold'), wraplength=max(520, w - 70), justify='left').pack(anchor='w', padx=24, pady=(0, 10))
+    else:
+        tk.Label(content, text='Nur E4 darf Versionsverlauf-Eintraege bearbeiten.', bg=BG, fg=TEXT2, font=body_font(10), wraplength=max(520, w - 70), justify='left').pack(anchor='w', padx=24, pady=(0, 10))
+    if not entries:
+        tk.Label(content, text='Noch kein Versionsverlauf vorhanden.', bg=BG, fg=TEXT2, font=body_font(12)).pack(anchor='w', padx=24, pady=24)
+        return
+    for idx, entry in enumerate(entries):
+        card = tk.Frame(content, bg=WHITE, highlightbackground=LINE, highlightthickness=1)
+        card.pack(fill='x', padx=24, pady=8)
+        top = tk.Frame(card, bg=WHITE)
+        top.pack(fill='x', padx=14, pady=(10, 4))
+        version = str(entry.get('version', '')).strip() or 'ohne Version'
+        title = str(entry.get('title', '')).strip()
+        hidden = bool(entry.get('hidden'))
+        head = version + (f' - {title}' if title else '') + ('  [AUSGEBLENDET]' if hidden else '')
+        tk.Label(top, text=head, bg=WHITE, fg=(RED if hidden else BLUE), font=body_font(13, weight='bold')).pack(side='left', anchor='w')
+        date_txt = entry.get('date') or entry.get('published_at') or ''
+        if date_txt:
+            tk.Label(top, text=str(date_txt), bg=WHITE, fg=TEXT2, font=body_font(9)).pack(side='right')
+        bullets = entry.get('bullets', [])
+        if isinstance(bullets, list):
+            for b in bullets:
+                tk.Label(card, text='• ' + str(b), bg=WHITE, fg=TEXT, font=body_font(10), wraplength=max(520, w - 120), justify='left').pack(anchor='w', padx=18, pady=1)
+        else:
+            tk.Label(card, text=str(bullets), bg=WHITE, fg=TEXT, font=body_font(10), wraplength=max(520, w - 120), justify='left').pack(anchor='w', padx=18, pady=1)
+        if is_e4:
+            br = tk.Frame(card, bg=WHITE)
+            br.pack(fill='x', padx=14, pady=(8, 10))
+            def edit(i=idx):
+                _fm489_edit_version_dialog(self, i, entries)
+            def toggle(i=idx):
+                entries[i]['hidden'] = not bool(entries[i].get('hidden'))
+                if _fm450_save_version_entries_admin(self, entries):
+                    self.render_page()
+            def delete(i=idx):
+                try:
+                    ok = messagebox.askyesno('Versionsverlauf', 'Diesen Versionsverlauf-Eintrag unwiderruflich loeschen?')
+                except Exception:
+                    ok = False
+                if ok:
+                    try:
+                        entries.pop(i)
+                    except Exception:
+                        pass
+                    if _fm450_save_version_entries_admin(self, entries):
+                        self.render_page()
+            tk.Button(br, text='Bearbeiten', command=edit, bg=WHITE, fg=TEXT, font=body_font(9), relief='solid', bd=1).pack(side='left', padx=(0, 6), ipadx=10, ipady=2)
+            tk.Button(br, text=('Einblenden' if hidden else 'Ausblenden'), command=toggle, bg=WHITE, fg=TEXT, font=body_font(9), relief='solid', bd=1).pack(side='left', padx=(0, 6), ipadx=10, ipady=2)
+            tk.Button(br, text='Loeschen', command=delete, bg='#FEE2E2', fg=RED, font=body_font(9, weight='bold'), relief='solid', bd=1).pack(side='left', ipadx=10, ipady=2)
+
+FiBuMateApp.render_settings_menu = _fm489_render_settings_menu
+FiBuMateApp.render_versions_menu = _fm489_render_versions_menu
+
+
+
+
+# ------------------------------------------------------------------
+# FIBU_MATE_VERSIONS_INFO_ONLY_APPLY_BUTTON_V0490
+# Datum: 2026-07-13
+# Zweck:
+# - Versionsverlauf wieder nur unter Informationen anzeigen, nicht unter Einstellungen.
+# - Einstellungen-Kacheln behalten den Umbruch nach maximal 4 Kacheln je Zeile.
+# - Versionsverlauf-Bearbeitung fuer E4 mit explizitem Button "Uebernehmen".
+# ------------------------------------------------------------------
+FIBU_MATE_VERSIONS_INFO_ONLY_APPLY_BUTTON_VERSION = "0.490"
+
+
+def _fm490_is_e4_only(self):
+    try:
+        return str(self.my_role()) == ROLE_E4 or self.role_rank(self.my_role()) >= 4
+    except Exception:
+        pass
+    try:
+        users = getattr(self, 'user_data', {}).get('users', {})
+        role = users.get(getattr(self, 'current_user_key', ''), {}).get('permission', ROLE_E1)
+        return role == ROLE_E4 or int(ROLE_RANK.get(role, 1)) >= 4
+    except Exception:
+        return False
+
+
+def _fm490_render_settings_menu(self):
+    # Versionsverlauf ist bewusst NICHT enthalten; er bleibt ausschliesslich unter Informationen.
+    modules = [
+        ("Passwort aendern", "__change_password__"),
+        ("Kachelfarbe", "tile_colors"),
+        ("Benutzerverwaltung", "users"),
+        ("Berechtigungen", "permissions"),
+    ]
+    if self.my_role() == ROLE_E4:
+        modules.append(("Lingo", "__lingo_popup__"))
+
+    def open_mid(mid, ttl):
+        if mid == "__change_password__":
+            try:
+                return _fm488_change_own_password(self)
+            except Exception:
+                return getattr(self, 'show_change_password_popup', lambda: None)()
+        if mid == "__lingo_popup__":
+            return self.show_lingo_popup()
+        return self.show_page(mid, ttl, True)
+
+    w, h = self.canvas.winfo_width(), self.canvas.winfo_height()
+    tile_w = max(250, min(330, int(w * 0.18)))
+    tile_h = max(105, min(140, int(h * 0.13)))
+    gap_x = max(24, int(w * 0.022))
+    gap_y = max(22, int(h * 0.025))
+    max_cols = 4
+    rows = [modules[i:i + max_cols] for i in range(0, len(modules), max_cols)]
+    total_h = len(rows) * tile_h + max(0, len(rows) - 1) * gap_y
+    start_y = max(185, int((h - total_h) * 0.50))
+    for r, row_items in enumerate(rows):
+        cols = len(row_items)
+        total_w = cols * tile_w + max(0, cols - 1) * gap_x
+        start_x = max(24, (w - total_w) / 2)
+        y = start_y + r * (tile_h + gap_y)
+        for c, (title, mid) in enumerate(row_items):
+            tile = Tile(self.root, self, f"settings_{mid}", title, lambda m=mid, t=title: open_mid(m, t), favorite_enabled=False, icon_type="gear")
+            tile.resize_tile(tile_w, tile_h)
+            self.widget_items.append(tile)
+            self.focusable_tiles.append(tile)
+            self.canvas.create_window(start_x + c * (tile_w + gap_x), y, window=tile, anchor="nw")
+    self.draw_bottom_logo()
+
+
+def _fm490_edit_version_dialog(self, index, entries):
+    if not _fm490_is_e4_only(self):
+        try:
+            messagebox.showwarning('Versionsverlauf', 'Nur E4 darf Versionsverlauf-Eintraege bearbeiten.')
+        except Exception:
+            pass
+        return
+    try:
+        entry = dict(entries[index])
+    except Exception:
+        return
+    try:
+        win = tk.Toplevel(self.root)
+        win.title('Versionsverlauf bearbeiten')
+        win.configure(bg=WHITE)
+        win.geometry('760x520')
+        win.resizable(True, True)
+        try:
+            win.transient(self.root)
+            win.grab_set()
+        except Exception:
+            pass
+        outer = tk.Frame(win, bg=WHITE)
+        outer.pack(fill='both', expand=True, padx=16, pady=14)
+        tk.Label(outer, text='Versionsverlauf-Eintrag bearbeiten', bg=WHITE, fg=BLUE, font=body_font(14, weight='bold')).pack(anchor='w', pady=(0, 10))
+        version_var = tk.StringVar(value=str(entry.get('version', '')))
+        title_var = tk.StringVar(value=str(entry.get('title', '')))
+        date_var = tk.StringVar(value=str(entry.get('date') or entry.get('published_at') or ''))
+        tk.Label(outer, text='Version', bg=WHITE, fg=TEXT2, font=body_font(10)).pack(anchor='w')
+        tk.Entry(outer, textvariable=version_var, bg=WHITE, fg=TEXT, font=body_font(11), relief='solid', bd=1).pack(fill='x', ipady=4, pady=(0, 8))
+        tk.Label(outer, text='Titel / Kurzbeschreibung', bg=WHITE, fg=TEXT2, font=body_font(10)).pack(anchor='w')
+        tk.Entry(outer, textvariable=title_var, bg=WHITE, fg=TEXT, font=body_font(11), relief='solid', bd=1).pack(fill='x', ipady=4, pady=(0, 8))
+        tk.Label(outer, text='Datum / Veroeffentlichung', bg=WHITE, fg=TEXT2, font=body_font(10)).pack(anchor='w')
+        tk.Entry(outer, textvariable=date_var, bg=WHITE, fg=TEXT, font=body_font(11), relief='solid', bd=1).pack(fill='x', ipady=4, pady=(0, 8))
+        tk.Label(outer, text='Eintrag / Stichpunkte', bg=WHITE, fg=TEXT2, font=body_font(10)).pack(anchor='w')
+        txt_frame = tk.Frame(outer, bg=WHITE)
+        txt_frame.pack(fill='both', expand=True, pady=(0, 10))
+        txt = tk.Text(txt_frame, bg='#F8FAFC', fg=TEXT, font=body_font(11), relief='solid', bd=1, wrap='word')
+        ys = tk.Scrollbar(txt_frame, orient='vertical', command=txt.yview)
+        txt.configure(yscrollcommand=ys.set)
+        bullets = entry.get('bullets', [])
+        if isinstance(bullets, list):
+            txt.insert('1.0', '\n'.join(str(b) for b in bullets))
+        else:
+            txt.insert('1.0', str(bullets or entry.get('text', '') or ''))
+        txt.pack(side='left', fill='both', expand=True)
+        ys.pack(side='right', fill='y')
+        status_var = tk.StringVar(value='')
+        tk.Label(outer, textvariable=status_var, bg=WHITE, fg=TEXT2, font=body_font(9)).pack(anchor='w', pady=(0, 8))
+        br = tk.Frame(outer, bg=WHITE)
+        br.pack(fill='x')
+
+        def apply_changes(close_after=False):
+            entry['version'] = version_var.get().strip()
+            entry['title'] = title_var.get().strip()
+            if date_var.get().strip():
+                entry['date'] = date_var.get().strip()
+            raw = txt.get('1.0', 'end-1c').strip()
+            entry['bullets'] = [line.strip() for line in raw.splitlines() if line.strip()]
+            entries[index] = entry
+            if _fm450_save_version_entries_admin(self, entries):
+                status_var.set('Aenderungen wurden uebernommen.')
+                if close_after:
+                    win.destroy()
+                    self.render_page()
+
+        # Explizit gewuenschter Button: Uebernehmen
+        tk.Button(br, text='Uebernehmen', command=lambda: apply_changes(False), bg='#CFEAD6', fg=TEXT, font=body_font(10, weight='bold'), relief='solid', bd=1).pack(side='left', padx=(0, 8), ipadx=18, ipady=5)
+        tk.Button(br, text='Speichern und schliessen', command=lambda: apply_changes(True), bg=WHITE, fg=TEXT, font=body_font(10), relief='solid', bd=1).pack(side='left', padx=(0, 8), ipadx=18, ipady=5)
+        tk.Button(br, text='Abbrechen', command=win.destroy, bg=WHITE, fg=TEXT, font=body_font(10), relief='solid', bd=1).pack(side='left', ipadx=18, ipady=5)
+        txt.focus_set()
+    except Exception as exc:
+        try:
+            messagebox.showerror('Versionsverlauf', 'Bearbeiten nicht moeglich:\n' + str(exc))
+        except Exception:
+            pass
+
+
+def _fm490_render_versions_menu(self):
+    entries = _fm450_version_entries_raw(self)
+    is_e4 = _fm490_is_e4_only(self)
+    if not is_e4:
+        entries = [e for e in entries if not bool(e.get('hidden'))]
+    w, h = self.canvas.winfo_width(), self.canvas.winfo_height()
+    area_top = 132
+    area_bottom = max(area_top + 260, h - 92)
+    view_h = int(area_bottom - area_top)
+    container = tk.Frame(self.root, bg=BG)
+    self.widget_items.append(container)
+    self.canvas.create_window(0, area_top, window=container, anchor='nw', width=w, height=view_h)
+    scroll_canvas = tk.Canvas(container, bg=BG, highlightthickness=0, bd=0)
+    scrollbar = tk.Scrollbar(container, orient='vertical', command=scroll_canvas.yview)
+    content = tk.Frame(scroll_canvas, bg=BG)
+    content_window = scroll_canvas.create_window((0, 0), window=content, anchor='nw')
+    def update_scrollregion(_event=None):
+        scroll_canvas.itemconfigure(content_window, width=max(1, scroll_canvas.winfo_width()))
+        scroll_canvas.configure(scrollregion=scroll_canvas.bbox('all'))
+        try:
+            self._sync_scrollbar_visibility(scroll_canvas, scrollbar)
+        except Exception:
+            pass
+    content.bind('<Configure>', update_scrollregion)
+    scroll_canvas.bind('<Configure>', update_scrollregion)
+    scroll_canvas.configure(yscrollcommand=scrollbar.set)
+    scroll_canvas.pack(side='left', fill='both', expand=True)
+    scrollbar.pack(side='right', fill='y')
+    try:
+        self.register_scroll_canvas(scroll_canvas, scrollbar)
+    except Exception:
+        pass
+    tk.Label(content, text='Versionsverlauf', bg=BG, fg=BLUE, font=body_font(20, weight='bold')).pack(anchor='w', padx=24, pady=(18, 4))
+    source_txt = f"Versionsverlauf: lokale Historie plus zentrale Release-Historie ({self._central_version_history_path()})"
+    tk.Label(content, text=source_txt, bg=BG, fg=TEXT2, font=body_font(9), wraplength=max(520, w - 70), justify='left').pack(anchor='w', padx=24, pady=(0, 10))
+    if is_e4:
+        tk.Label(content, text='E4-Administration aktiv: Bearbeiten, Ausblenden/Einblenden und Loeschen sind nur hier unter Informationen verfuegbar.', bg=BG, fg=RED, font=body_font(10, weight='bold'), wraplength=max(520, w - 70), justify='left').pack(anchor='w', padx=24, pady=(0, 10))
+    if not entries:
+        tk.Label(content, text='Noch kein Versionsverlauf vorhanden.', bg=BG, fg=TEXT2, font=body_font(12)).pack(anchor='w', padx=24, pady=24)
+        return
+    for idx, entry in enumerate(entries):
+        card = tk.Frame(content, bg=WHITE, highlightbackground=LINE, highlightthickness=1)
+        card.pack(fill='x', padx=24, pady=8)
+        top = tk.Frame(card, bg=WHITE)
+        top.pack(fill='x', padx=14, pady=(10, 4))
+        version = str(entry.get('version', '')).strip() or 'ohne Version'
+        title = str(entry.get('title', '')).strip()
+        hidden = bool(entry.get('hidden'))
+        head = version + (f' - {title}' if title else '') + ('  [AUSGEBLENDET]' if hidden else '')
+        tk.Label(top, text=head, bg=WHITE, fg=(RED if hidden else BLUE), font=body_font(13, weight='bold')).pack(side='left', anchor='w')
+        date_txt = entry.get('date') or entry.get('published_at') or ''
+        if date_txt:
+            tk.Label(top, text=str(date_txt), bg=WHITE, fg=TEXT2, font=body_font(9)).pack(side='right')
+        bullets = entry.get('bullets', [])
+        if isinstance(bullets, list):
+            for b in bullets:
+                tk.Label(card, text='• ' + str(b), bg=WHITE, fg=TEXT, font=body_font(10), wraplength=max(520, w - 120), justify='left').pack(anchor='w', padx=18, pady=1)
+        else:
+            tk.Label(card, text=str(bullets), bg=WHITE, fg=TEXT, font=body_font(10), wraplength=max(520, w - 120), justify='left').pack(anchor='w', padx=18, pady=1)
+        if is_e4:
+            br = tk.Frame(card, bg=WHITE)
+            br.pack(fill='x', padx=14, pady=(8, 10))
+            def edit(i=idx):
+                _fm490_edit_version_dialog(self, i, entries)
+            def toggle(i=idx):
+                entries[i]['hidden'] = not bool(entries[i].get('hidden'))
+                if _fm450_save_version_entries_admin(self, entries):
+                    self.render_page()
+            def delete(i=idx):
+                try:
+                    ok = messagebox.askyesno('Versionsverlauf', 'Diesen Versionsverlauf-Eintrag unwiderruflich loeschen?')
+                except Exception:
+                    ok = False
+                if ok:
+                    try:
+                        entries.pop(i)
+                    except Exception:
+                        pass
+                    if _fm450_save_version_entries_admin(self, entries):
+                        self.render_page()
+            tk.Button(br, text='Bearbeiten', command=edit, bg=WHITE, fg=TEXT, font=body_font(9), relief='solid', bd=1).pack(side='left', padx=(0, 6), ipadx=10, ipady=2)
+            tk.Button(br, text=('Einblenden' if hidden else 'Ausblenden'), command=toggle, bg=WHITE, fg=TEXT, font=body_font(9), relief='solid', bd=1).pack(side='left', padx=(0, 6), ipadx=10, ipady=2)
+            tk.Button(br, text='Loeschen', command=delete, bg='#FEE2E2', fg=RED, font=body_font(9, weight='bold'), relief='solid', bd=1).pack(side='left', ipadx=10, ipady=2)
+
+FiBuMateApp.render_settings_menu = _fm490_render_settings_menu
+FiBuMateApp.render_versions_menu = _fm490_render_versions_menu
+
+
+
+
+# ------------------------------------------------------------------
+# FIBU_MATE_VERSION_DIALOG_HEADER_APPLY_V0491
+# Datum: 2026-07-13
+# Zweck:
+# - Versionsverlauf bleibt nur unter Informationen, nicht unter Einstellungen.
+# - Bearbeiten-Popup im Versionsverlauf: Uebernehmen/Speichern direkt in der Kopfzeile.
+# - Der Button ist sichtbar, auch wenn das Textfeld gross ist.
+# ------------------------------------------------------------------
+FIBU_MATE_VERSION_DIALOG_HEADER_APPLY_VERSION = "0.491"
+
+
+def _fm491_is_e4_only(self):
+    try:
+        return str(self.my_role()) == ROLE_E4 or self.role_rank(self.my_role()) >= 4
+    except Exception:
+        pass
+    try:
+        users = getattr(self, 'user_data', {}).get('users', {})
+        role = users.get(getattr(self, 'current_user_key', ''), {}).get('permission', ROLE_E1)
+        return role == ROLE_E4 or int(ROLE_RANK.get(role, 1)) >= 4
+    except Exception:
+        return False
+
+
+def _fm491_render_settings_menu(self):
+    # Versionsverlauf bleibt bewusst ausschliesslich unter Informationen.
+    modules = [
+        ("Passwort aendern", "__change_password__"),
+        ("Kachelfarbe", "tile_colors"),
+        ("Benutzerverwaltung", "users"),
+        ("Berechtigungen", "permissions"),
+    ]
+    if self.my_role() == ROLE_E4:
+        modules.append(("Lingo", "__lingo_popup__"))
+
+    def open_mid(mid, ttl):
+        if mid == "__change_password__":
+            try:
+                return _fm488_change_own_password(self)
+            except Exception:
+                return getattr(self, 'show_change_password_popup', lambda: None)()
+        if mid == "__lingo_popup__":
+            return self.show_lingo_popup()
+        return self.show_page(mid, ttl, True)
+
+    w, h = self.canvas.winfo_width(), self.canvas.winfo_height()
+    tile_w = max(250, min(330, int(w * 0.18)))
+    tile_h = max(105, min(140, int(h * 0.13)))
+    gap_x = max(24, int(w * 0.022))
+    gap_y = max(22, int(h * 0.025))
+    max_cols = 4
+    rows = [modules[i:i + max_cols] for i in range(0, len(modules), max_cols)]
+    total_h = len(rows) * tile_h + max(0, len(rows) - 1) * gap_y
+    start_y = max(185, int((h - total_h) * 0.50))
+    for r, row_items in enumerate(rows):
+        cols = len(row_items)
+        total_w = cols * tile_w + max(0, cols - 1) * gap_x
+        start_x = max(24, (w - total_w) / 2)
+        y = start_y + r * (tile_h + gap_y)
+        for c, (title, mid) in enumerate(row_items):
+            tile = Tile(self.root, self, f"settings_{mid}", title, lambda m=mid, t=title: open_mid(m, t), favorite_enabled=False, icon_type="gear")
+            tile.resize_tile(tile_w, tile_h)
+            self.widget_items.append(tile)
+            self.focusable_tiles.append(tile)
+            self.canvas.create_window(start_x + c * (tile_w + gap_x), y, window=tile, anchor="nw")
+    self.draw_bottom_logo()
+
+
+def _fm491_edit_version_dialog(self, index, entries):
+    if not _fm491_is_e4_only(self):
+        try:
+            messagebox.showwarning('Versionsverlauf', 'Nur E4 darf Versionsverlauf-Eintraege bearbeiten.')
+        except Exception:
+            pass
+        return
+    try:
+        entry = dict(entries[index])
+    except Exception:
+        return
+    try:
+        win = tk.Toplevel(self.root)
+        win.title('Versionsverlauf bearbeiten')
+        win.configure(bg=WHITE)
+        win.geometry('780x560')
+        win.minsize(720, 480)
+        win.resizable(True, True)
+        try:
+            win.transient(self.root)
+            win.grab_set()
+        except Exception:
+            pass
+
+        outer = tk.Frame(win, bg=WHITE)
+        outer.pack(fill='both', expand=True, padx=14, pady=12)
+
+        header = tk.Frame(outer, bg=WHITE)
+        header.pack(fill='x', pady=(0, 10))
+        tk.Label(header, text='Versionsverlauf-Eintrag bearbeiten', bg=WHITE, fg=BLUE, font=body_font(13, weight='bold')).pack(side='left', anchor='w')
+        status_var = tk.StringVar(value='')
+
+        version_var = tk.StringVar(value=str(entry.get('version', '')))
+        title_var = tk.StringVar(value=str(entry.get('title', '')))
+        date_var = tk.StringVar(value=str(entry.get('date') or entry.get('published_at') or ''))
+
+        form = tk.Frame(outer, bg=WHITE)
+        form.pack(fill='x', pady=(0, 8))
+        tk.Label(form, text='Version', bg=WHITE, fg=TEXT2, font=body_font(10)).grid(row=0, column=0, sticky='w')
+        tk.Entry(form, textvariable=version_var, bg=WHITE, fg=TEXT, font=body_font(10), relief='solid', bd=1).grid(row=1, column=0, sticky='ew', ipady=4, pady=(0, 8))
+        tk.Label(form, text='Titel / Kurzbeschreibung', bg=WHITE, fg=TEXT2, font=body_font(10)).grid(row=2, column=0, sticky='w')
+        tk.Entry(form, textvariable=title_var, bg=WHITE, fg=TEXT, font=body_font(10), relief='solid', bd=1).grid(row=3, column=0, sticky='ew', ipady=4, pady=(0, 8))
+        tk.Label(form, text='Datum / Veroeffentlichung', bg=WHITE, fg=TEXT2, font=body_font(10)).grid(row=4, column=0, sticky='w')
+        tk.Entry(form, textvariable=date_var, bg=WHITE, fg=TEXT, font=body_font(10), relief='solid', bd=1).grid(row=5, column=0, sticky='ew', ipady=4)
+        form.grid_columnconfigure(0, weight=1)
+
+        tk.Label(outer, text='Eintrag / Stichpunkte', bg=WHITE, fg=TEXT2, font=body_font(10)).pack(anchor='w')
+        txt_frame = tk.Frame(outer, bg=WHITE)
+        txt_frame.pack(fill='both', expand=True, pady=(2, 8))
+        txt = tk.Text(txt_frame, bg='#F8FAFC', fg=TEXT, font=body_font(10), relief='solid', bd=1, wrap='word')
+        ys = tk.Scrollbar(txt_frame, orient='vertical', command=txt.yview)
+        txt.configure(yscrollcommand=ys.set)
+        bullets = entry.get('bullets', [])
+        if isinstance(bullets, list):
+            txt.insert('1.0', '\n'.join(str(b) for b in bullets))
+        else:
+            txt.insert('1.0', str(bullets or entry.get('text', '') or ''))
+        txt.pack(side='left', fill='both', expand=True)
+        ys.pack(side='right', fill='y')
+
+        status = tk.Label(outer, textvariable=status_var, bg=WHITE, fg=TEXT2, font=body_font(9))
+        status.pack(anchor='w', pady=(0, 6))
+
+        def apply_changes(close_after=False):
+            entry['version'] = version_var.get().strip()
+            entry['title'] = title_var.get().strip()
+            if date_var.get().strip():
+                entry['date'] = date_var.get().strip()
+            raw = txt.get('1.0', 'end-1c').strip()
+            entry['bullets'] = [line.strip() for line in raw.splitlines() if line.strip()]
+            entries[index] = entry
+            if _fm450_save_version_entries_admin(self, entries):
+                status_var.set('Aenderungen wurden uebernommen.')
+                if close_after:
+                    win.destroy()
+                    self.render_page()
+
+        # Kopfzeilen-Button: sichtbar direkt oben rechts im Popup.
+        tk.Button(header, text='Uebernehmen', command=lambda: apply_changes(False), bg='#CFEAD6', fg=TEXT, font=body_font(10, weight='bold'), relief='solid', bd=1).pack(side='right', padx=(8, 0), ipadx=16, ipady=4)
+        tk.Button(header, text='Speichern', command=lambda: apply_changes(True), bg=WHITE, fg=TEXT, font=body_font(10), relief='solid', bd=1).pack(side='right', padx=(8, 0), ipadx=16, ipady=4)
+        tk.Button(header, text='Abbrechen', command=win.destroy, bg=WHITE, fg=TEXT, font=body_font(10), relief='solid', bd=1).pack(side='right', ipadx=16, ipady=4)
+        txt.focus_set()
+    except Exception as exc:
+        try:
+            messagebox.showerror('Versionsverlauf', 'Bearbeiten nicht moeglich:\n' + str(exc))
+        except Exception:
+            pass
+
+# Wichtig: _fm490_render_versions_menu ruft den globalen Namen _fm490_edit_version_dialog auf.
+# Deshalb wird dieser globale Name final auf die neue Kopfzeilen-Variante umgebogen.
+_fm490_edit_version_dialog = _fm491_edit_version_dialog
+try:
+    _fm489_edit_version_dialog = _fm491_edit_version_dialog
+except Exception:
+    pass
+
+FiBuMateApp.render_settings_menu = _fm491_render_settings_menu
+try:
+    FiBuMateApp.render_versions_menu = _fm490_render_versions_menu
+except Exception:
+    pass
+
+
+
+
+# ------------------------------------------------------------------
+# FIBU_MATE_FOOTER_INTERSPORT_MARK_V0492
+# Datum: 2026-07-13
+# Zweck:
+# - Unteren INTERSPORT-Schriftzug dezent durch INTERSPORT_banner_mark_CMYK.png ersetzen.
+# ------------------------------------------------------------------
+FIBU_MATE_FOOTER_INTERSPORT_MARK_VERSION = "0.492"
+
+try:
+    _fm492_prev_draw_bottom_logo = FiBuMateApp.draw_bottom_logo
+except Exception:
+    _fm492_prev_draw_bottom_logo = None
+
+
+def _fm492_footer_logo_candidates():
+    candidates = []
+    try:
+        candidates.append(r"C:\python\bin\Imgs\INTERSPORT_banner_mark_CMYK.png")
+    except Exception:
+        pass
+    try:
+        candidates.append(os.path.join(IMG_DIR, "INTERSPORT_banner_mark_CMYK.png"))
+    except Exception:
+        pass
+    try:
+        candidates.append(os.path.join(BIN_DIR, "Imgs", "INTERSPORT_banner_mark_CMYK.png"))
+    except Exception:
+        pass
+    out = []
+    seen = set()
+    for p in candidates:
+        if p and p not in seen:
+            seen.add(p); out.append(p)
+    return out
+
+
+def _fm492_draw_bottom_logo(self):
+    try:
+        w, h = self.canvas.winfo_width(), self.canvas.winfo_height()
+        if PIL_AVAILABLE:
+            for path in _fm492_footer_logo_candidates():
+                if os.path.exists(path):
+                    img = Image.open(path)
+                    # Dezent: klar lesbar, aber kompakt am unteren Rand.
+                    max_w = max(180, min(360, int(w * 0.22)))
+                    max_h = 42
+                    ph = ImageTk.PhotoImage(resize_keep_ratio(img, max_w, max_h))
+                    self.image_refs.append(ph)
+                    self.canvas.create_image(w / 2, h - 24, image=ph)
+                    return
+        # Fallback beibehalten, falls die Datei lokal nicht vorhanden ist.
+        if _fm492_prev_draw_bottom_logo:
+            return _fm492_prev_draw_bottom_logo(self)
+        self.canvas.create_text(w / 2, h - 24, text="INTERSPORT", font=("Segoe UI", 18, "bold"), fill=BLUE)
+    except Exception:
+        try:
+            if _fm492_prev_draw_bottom_logo:
+                return _fm492_prev_draw_bottom_logo(self)
+        except Exception:
+            pass
+
+try:
+    FiBuMateApp.draw_bottom_logo = _fm492_draw_bottom_logo
+    FiBuMateApp.draw_intersport_logo_above_footer = lambda self, show_mini_logo=True: self.draw_bottom_logo()
+except Exception:
+    pass
+
+
+
+
+# ------------------------------------------------------------------
+# FIBU_MATE_KONTENAUSWERTUNG_V0501
+# Datum: 2026-07-13
+# Zweck:
+# - Neues Tool "Kontenauswertung" unter Tools -> Tools - Treasury.
+# - Import von SFIRM-Excel-Exporten mit Entgeltabschluss-Aufschlüsselung.
+# - SQLite-Datenbank für Monatsabschlüsse, Gebührenpositionen, Stückkosten und Entwicklung.
+# - Auswertung mit Monatsübersicht, Detailpositionen, Kosten-/Mengen-/Stückkostenentwicklung, Plausibilitätsprüfung und Excel-Export.
+# - Hauptmenü: Tools - Treasury ergänzt; Dateiausgabe in unterste Modulleiste rechts neben Einstellungen verschoben.
+# ------------------------------------------------------------------
+FIBU_MATE_KONTENAUSWERTUNG_VERSION = "0.501"
+
+
+def _fm501_konto_db_path():
+    for base in (
+        os.path.join(NETWORK_ROOT, "Fibu_Mate_Doc", "Database"),
+        os.path.join(SCRIPT_DIR, "bin", "Fibu_Mate_Doc", "Database"),
+        os.path.join(SCRIPT_DIR, "Database"),
+    ):
+        try:
+            os.makedirs(base, exist_ok=True)
+            return os.path.join(base, "kontenauswertung.sqlite3")
+        except Exception:
+            continue
+    return os.path.join(os.getcwd(), "kontenauswertung.sqlite3")
+
+
+def _fm501_sqlite():
+    import sqlite3
+    return sqlite3
+
+
+def _fm501_db_connect():
+    sqlite3 = _fm501_sqlite()
+    con = sqlite3.connect(_fm501_konto_db_path())
+    con.row_factory = sqlite3.Row
+    return con
+
+
+def _fm501_db_init():
+    con = _fm501_db_connect()
+    try:
+        cur = con.cursor()
+        cur.execute('''CREATE TABLE IF NOT EXISTS imports (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            filename TEXT NOT NULL,
+            file_mtime TEXT,
+            imported_at TEXT NOT NULL,
+            imported_by TEXT,
+            row_count INTEGER DEFAULT 0,
+            closing_count INTEGER DEFAULT 0,
+            detail_count INTEGER DEFAULT 0,
+            file_hash TEXT,
+            UNIQUE(filename, file_hash)
+        )''')
+        cur.execute('''CREATE TABLE IF NOT EXISTS closings (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            import_id INTEGER,
+            source_file TEXT,
+            source_row INTEGER,
+            buchungsdatum TEXT,
+            wertstellungsdatum TEXT,
+            abschlussdatum TEXT,
+            monat_key TEXT,
+            zeitraum_von TEXT,
+            zeitraum_bis TEXT,
+            rechnungsnummer TEXT,
+            betrag_brutto REAL,
+            betrag_netto REAL,
+            ust REAL,
+            waehrung TEXT,
+            gvc TEXT,
+            btc TEXT,
+            raw_text TEXT,
+            created_at TEXT NOT NULL,
+            UNIQUE(rechnungsnummer, abschlussdatum)
+        )''')
+        cur.execute('''CREATE TABLE IF NOT EXISTS fee_items (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            closing_id INTEGER NOT NULL,
+            abschlussdatum TEXT,
+            monat_key TEXT,
+            geschaeftsvorfall TEXT,
+            positionstyp TEXT,
+            anzahl INTEGER,
+            stueckkosten REAL,
+            gesamtbetrag REAL,
+            berechneter_betrag REAL,
+            abweichung REAL,
+            plausibel INTEGER,
+            sort_order INTEGER,
+            raw_line TEXT,
+            UNIQUE(closing_id, geschaeftsvorfall, positionstyp, sort_order)
+        )''')
+        con.commit()
+    finally:
+        con.close()
+
+
+def _fm501_de_float(value):
+    if value is None:
+        return None
+    if isinstance(value, (int, float)):
+        return float(value)
+    s = str(value).strip()
+    if not s:
+        return None
+    neg = s.endswith('-') or s.startswith('-')
+    s = s.strip('-').replace('EUR', '').replace('€', '').strip()
+    s = s.replace('.', '').replace(',', '.')
+    try:
+        val = float(s)
+        return -val if neg and False else val
+    except Exception:
+        return None
+
+
+def _fm501_date_iso(value):
+    if not value:
+        return ""
+    try:
+        if hasattr(value, 'date'):
+            return value.date().isoformat()
+    except Exception:
+        pass
+    text = str(value).strip()
+    for fmt in ("%d.%m.%Y", "%Y-%m-%d"):
+        try:
+            return datetime.strptime(text, fmt).date().isoformat()
+        except Exception:
+            pass
+    return text
+
+
+def _fm501_date_de_to_iso(text):
+    if not text:
+        return ""
+    try:
+        return datetime.strptime(str(text).strip(), "%d.%m.%Y").date().isoformat()
+    except Exception:
+        return str(text).strip()
+
+
+def _fm501_month_key_from_iso(iso_date):
+    try:
+        d = datetime.strptime(str(iso_date), "%Y-%m-%d")
+        return d.strftime("%m/%y")
+    except Exception:
+        return str(iso_date or "")[:7]
+
+
+def _fm501_hash_file(path):
+    try:
+        h = hashlib.sha256()
+        with open(path, 'rb') as f:
+            for chunk in iter(lambda: f.read(1024 * 1024), b''):
+                h.update(chunk)
+        return h.hexdigest()
+    except Exception:
+        return ""
+
+
+def _fm501_parse_entgelt_text(text):
+    import re as _re
+    text = str(text or "")
+    result = {
+        'abschlussdatum': '', 'zeitraum_von': '', 'zeitraum_bis': '', 'betrag_netto': None,
+        'ust': None, 'betrag_brutto_text': None, 'rechnungsnummer': '', 'items': []
+    }
+    m = _re.search(r'Abrechnung\s+(\d{2}\.\d{2}\.\d{4})', text)
+    if m:
+        result['abschlussdatum'] = _fm501_date_de_to_iso(m.group(1))
+    m = _re.search(r'Entgelte\s+vom\s+(\d{2}\.\d{2}\.\d{4})\s+bis\s+(\d{2}\.\d{2}\.\d{4})\s+([\d\.]+,\d{2})-', text)
+    if m:
+        result['zeitraum_von'] = _fm501_date_de_to_iso(m.group(1))
+        result['zeitraum_bis'] = _fm501_date_de_to_iso(m.group(2))
+        result['betrag_netto'] = _fm501_de_float(m.group(3))
+    m = _re.search(r'USt:\s*([\d\.]+,\d{2})-', text)
+    if m:
+        result['ust'] = _fm501_de_float(m.group(1))
+    m = _re.search(r'Abrechnung\s+\d{2}\.\d{2}\.\d{4}\s+([\d\.]+,\d{2})-', text.split('Rechnungsnummer')[0])
+    if m:
+        result['betrag_brutto_text'] = _fm501_de_float(m.group(1))
+    m = _re.search(r'Rechnungsnummer:\s*(\S+)', text)
+    if m:
+        result['rechnungsnummer'] = m.group(1).strip()
+
+    gf_pattern = _re.compile(r'(?P<label>[^\n]+)\n\s*Geschäftsvorfälle\s+(?P<count>[\d\.]+)\s*x\s*(?P<unit>\d+,\d{2})\s+(?P<total>\d+,\d{2})-', _re.M)
+    occupied = []
+    order = 0
+    for g in gf_pattern.finditer(text):
+        order += 1
+        label = g.group('label').strip()
+        count = int(g.group('count').replace('.', ''))
+        unit = _fm501_de_float(g.group('unit'))
+        total = _fm501_de_float(g.group('total'))
+        calc = round((count or 0) * (unit or 0), 2)
+        diff = round((total or 0) - calc, 2)
+        result['items'].append({
+            'geschaeftsvorfall': label, 'positionstyp': 'Geschäftsvorfälle', 'anzahl': count,
+            'stueckkosten': unit, 'gesamtbetrag': total, 'berechneter_betrag': calc,
+            'abweichung': diff, 'plausibel': 1 if abs(diff) < 0.011 else 0,
+            'sort_order': order, 'raw_line': g.group(0).strip()
+        })
+        occupied.append((g.start(), g.end()))
+
+    # Weitere entgeltrelevante Zeilen wie "Kontoauszug signiert 22 x 1,10 24,20-".
+    other_pattern = _re.compile(r'(?P<label>[^\n\d][^\n]*?)\s+(?P<count>[\d\.]+)\s*x\s*(?P<unit>\d+,\d{2})\s+(?P<total>\d+,\d{2})-', _re.M)
+    for g in other_pattern.finditer(text):
+        if any(g.start() >= a and g.start() < b for a, b in occupied):
+            continue
+        label = g.group('label').strip()
+        if not label or 'Geschäftsvorfälle' in label:
+            continue
+        order += 1
+        count = int(g.group('count').replace('.', ''))
+        unit = _fm501_de_float(g.group('unit'))
+        total = _fm501_de_float(g.group('total'))
+        calc = round((count or 0) * (unit or 0), 2)
+        diff = round((total or 0) - calc, 2)
+        result['items'].append({
+            'geschaeftsvorfall': label, 'positionstyp': 'Sonstige Entgeltposition', 'anzahl': count,
+            'stueckkosten': unit, 'gesamtbetrag': total, 'berechneter_betrag': calc,
+            'abweichung': diff, 'plausibel': 1 if abs(diff) < 0.011 else 0,
+            'sort_order': order, 'raw_line': g.group(0).strip()
+        })
+
+    m = _re.search(r'Mindestbetrag\s+([\d\.]+,\d{2})', text)
+    if m:
+        order += 1
+        amount = _fm501_de_float(m.group(1))
+        result['items'].append({
+            'geschaeftsvorfall': 'Mindestbetrag', 'positionstyp': 'Mindestbetrag', 'anzahl': None,
+            'stueckkosten': None, 'gesamtbetrag': amount, 'berechneter_betrag': amount,
+            'abweichung': 0.0, 'plausibel': 1, 'sort_order': order, 'raw_line': m.group(0).strip()
+        })
+    return result
+
+
+def _fm501_import_excel(path, app=None):
+    from openpyxl import load_workbook
+    _fm501_db_init()
+    wb = load_workbook(path, data_only=True, read_only=False)
+    ws = wb.active
+    headers = [ws.cell(row=1, column=c).value for c in range(1, ws.max_column + 1)]
+    h = {str(v).strip(): i + 1 for i, v in enumerate(headers) if v is not None}
+    required = ['Buchung', 'Wertstellung', 'Buchungstext', 'Verwendungszweck', 'Betrag']
+    missing = [x for x in required if x not in h]
+    if missing:
+        raise ValueError('Fehlende Spalten: ' + ', '.join(missing))
+    file_hash = _fm501_hash_file(path)
+    filename = os.path.basename(path)
+    user = getattr(app, 'current_user_display', '') or getattr(app, 'current_user_key', '') or ''
+    now = datetime.now().isoformat(timespec='seconds')
+    con = _fm501_db_connect()
+    closing_count = 0; detail_count = 0; skipped = 0
+    try:
+        cur = con.cursor()
+        cur.execute('INSERT OR IGNORE INTO imports(filename,file_mtime,imported_at,imported_by,row_count,closing_count,detail_count,file_hash) VALUES(?,?,?,?,?,?,?,?)',
+                    (filename, str(os.path.getmtime(path)) if os.path.exists(path) else '', now, user, ws.max_row - 1, 0, 0, file_hash))
+        con.commit()
+        cur.execute('SELECT id FROM imports WHERE filename=? AND file_hash=?', (filename, file_hash))
+        import_id = cur.fetchone()[0]
+        for r in range(2, ws.max_row + 1):
+            bt = ws.cell(r, h['Buchungstext']).value
+            if not (bt and 'ENTGELTABSCHLUSS' in str(bt).upper()):
+                continue
+            vz = str(ws.cell(r, h.get('Verwendungszweck')).value or '')
+            if 'Verwendungszweck 2' in h and ws.cell(r, h['Verwendungszweck 2']).value:
+                # VZ 2 ist bei SFIRM oft nur Restfragment, wird beim Rawtext aber mitgesichert.
+                raw_text = vz + '\n' + str(ws.cell(r, h['Verwendungszweck 2']).value or '')
+            else:
+                raw_text = vz
+            parsed = _fm501_parse_entgelt_text(vz)
+            buchungsdatum = _fm501_date_iso(ws.cell(r, h['Buchung']).value)
+            wertstellung = _fm501_date_iso(ws.cell(r, h['Wertstellung']).value)
+            abschluss = parsed.get('abschlussdatum') or wertstellung or buchungsdatum
+            monat_key = _fm501_month_key_from_iso(abschluss)
+            betrag = ws.cell(r, h['Betrag']).value
+            brutto = abs(float(betrag)) if isinstance(betrag, (int, float)) else _fm501_de_float(betrag)
+            rechnung = parsed.get('rechnungsnummer') or f'{filename}:row:{r}'
+            cur.execute('''INSERT OR IGNORE INTO closings(import_id,source_file,source_row,buchungsdatum,wertstellungsdatum,abschlussdatum,monat_key,zeitraum_von,zeitraum_bis,rechnungsnummer,betrag_brutto,betrag_netto,ust,waehrung,gvc,btc,raw_text,created_at)
+                           VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)''',
+                        (import_id, filename, r, buchungsdatum, wertstellung, abschluss, monat_key, parsed.get('zeitraum_von',''), parsed.get('zeitraum_bis',''), rechnung,
+                         brutto, parsed.get('betrag_netto'), parsed.get('ust'), ws.cell(r, h.get('Währung', h['Betrag'])).value if 'Währung' in h else 'EUR',
+                         ws.cell(r, h['GVC']).value if 'GVC' in h else '', ws.cell(r, h['BTC']).value if 'BTC' in h else '', raw_text, now))
+            cur.execute('SELECT id FROM closings WHERE rechnungsnummer=? AND abschlussdatum=?', (rechnung, abschluss))
+            row = cur.fetchone()
+            if not row:
+                skipped += 1; continue
+            closing_id = row[0]
+            closing_count += 1
+            # Bei Reimport alte Positionen ersetzen, Kopf bleibt eindeutig.
+            cur.execute('DELETE FROM fee_items WHERE closing_id=?', (closing_id,))
+            for item in parsed.get('items', []):
+                cur.execute('''INSERT OR IGNORE INTO fee_items(closing_id,abschlussdatum,monat_key,geschaeftsvorfall,positionstyp,anzahl,stueckkosten,gesamtbetrag,berechneter_betrag,abweichung,plausibel,sort_order,raw_line)
+                               VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)''',
+                            (closing_id, abschluss, monat_key, item.get('geschaeftsvorfall'), item.get('positionstyp'), item.get('anzahl'), item.get('stueckkosten'), item.get('gesamtbetrag'), item.get('berechneter_betrag'), item.get('abweichung'), item.get('plausibel'), item.get('sort_order'), item.get('raw_line')))
+                detail_count += 1
+        cur.execute('UPDATE imports SET closing_count=?, detail_count=? WHERE id=?', (closing_count, detail_count, import_id))
+        con.commit()
+    finally:
+        con.close()
+    return {'filename': filename, 'closings': closing_count, 'details': detail_count, 'skipped': skipped, 'db': _fm501_konto_db_path()}
+
+
+def _fm501_fetch_closings():
+    _fm501_db_init()
+    con = _fm501_db_connect()
+    try:
+        return [dict(r) for r in con.execute('SELECT * FROM closings ORDER BY abschlussdatum DESC, id DESC').fetchall()]
+    finally:
+        con.close()
+
+
+def _fm501_fetch_items(closing_id=None):
+    _fm501_db_init()
+    con = _fm501_db_connect()
+    try:
+        if closing_id:
+            return [dict(r) for r in con.execute('SELECT * FROM fee_items WHERE closing_id=? ORDER BY sort_order, id', (closing_id,)).fetchall()]
+        return [dict(r) for r in con.execute('SELECT * FROM fee_items ORDER BY abschlussdatum, geschaeftsvorfall').fetchall()]
+    finally:
+        con.close()
+
+
+def _fm501_summary_stats():
+    _fm501_db_init()
+    con = _fm501_db_connect()
+    try:
+        row = con.execute('SELECT COUNT(*) c, SUM(betrag_brutto) brutto, SUM(betrag_netto) netto, SUM(ust) ust FROM closings').fetchone()
+        detail = con.execute('SELECT COUNT(*) c, SUM(gesamtbetrag) gesamt FROM fee_items').fetchone()
+        months = con.execute('SELECT monat_key, betrag_brutto FROM closings ORDER BY abschlussdatum').fetchall()
+        top = con.execute('SELECT geschaeftsvorfall, SUM(gesamtbetrag) gesamt, SUM(COALESCE(anzahl,0)) anzahl, AVG(stueckkosten) avg_unit FROM fee_items GROUP BY geschaeftsvorfall ORDER BY gesamt DESC LIMIT 8').fetchall()
+        return {'closings': row['c'] or 0, 'brutto': row['brutto'] or 0, 'netto': row['netto'] or 0, 'ust': row['ust'] or 0, 'details': detail['c'] or 0, 'detail_sum': detail['gesamt'] or 0, 'months': [dict(x) for x in months], 'top': [dict(x) for x in top]}
+    finally:
+        con.close()
+
+
+def _fm501_fmt_eur(v):
+    try:
+        return f"{float(v):,.2f} €".replace(',', 'X').replace('.', ',').replace('X', '.')
+    except Exception:
+        return "-"
+
+
+def _fm501_fmt_num(v):
+    try:
+        return f"{float(v):,.0f}".replace(',', '.')
+    except Exception:
+        return "-"
+
+
+def _fm501_export_analysis_excel(app=None):
+    try:
+        from tkinter import filedialog
+        from openpyxl import Workbook
+        from openpyxl.styles import Font, PatternFill, Border, Side, Alignment
+        from openpyxl.chart import BarChart, LineChart, Reference
+        path = filedialog.asksaveasfilename(title='Kontenauswertung exportieren', defaultextension='.xlsx', initialfile='Kontenauswertung_Export_' + datetime.now().strftime('%Y_%m_%d') + '.xlsx', filetypes=[('Excel-Dateien','*.xlsx')])
+        if not path:
+            return None
+        closings = _fm501_fetch_closings(); items = _fm501_fetch_items()
+        wb = Workbook(); ws = wb.active; ws.title = 'Entgeltabschluesse'
+        header_fill = PatternFill('solid', fgColor='D9EAF7'); sub_fill = PatternFill('solid', fgColor='EAF7EF')
+        thin = Side(style='thin', color='A6B7C8')
+        border = Border(bottom=thin)
+        headers = ['Monat','Abschlussdatum','Buchungsdatum','Wertstellung','Rechnungsnummer','Brutto','Netto','USt','Quelle','Zeile']
+        ws.append(headers)
+        for c in ws[1]: c.font = Font(bold=True); c.fill = header_fill; c.border = border
+        for c in closings:
+            ws.append([c.get('monat_key'), c.get('abschlussdatum'), c.get('buchungsdatum'), c.get('wertstellungsdatum'), c.get('rechnungsnummer'), c.get('betrag_brutto'), c.get('betrag_netto'), c.get('ust'), c.get('source_file'), c.get('source_row')])
+        for row in ws.iter_rows(min_row=2, min_col=6, max_col=8):
+            for cell in row: cell.number_format = '#,##0.00 €'
+        for col, width in {'A':12,'B':14,'C':14,'D':14,'E':34,'F':14,'G':14,'H':14,'I':34,'J':10}.items(): ws.column_dimensions[col].width = width
+        ws2 = wb.create_sheet('Einzelpositionen')
+        headers2 = ['Monat','Abschlussdatum','Geschäftsvorfall','Positionstyp','Anzahl','Stückkosten','Gesamtbetrag','Berechnet','Abweichung','Plausibel']
+        ws2.append(headers2)
+        for c in ws2[1]: c.font = Font(bold=True); c.fill = sub_fill; c.border = border
+        for i in items:
+            ws2.append([i.get('monat_key'), i.get('abschlussdatum'), i.get('geschaeftsvorfall'), i.get('positionstyp'), i.get('anzahl'), i.get('stueckkosten'), i.get('gesamtbetrag'), i.get('berechneter_betrag'), i.get('abweichung'), 'Ja' if i.get('plausibel') else 'Nein'])
+        for row in ws2.iter_rows(min_row=2, min_col=6, max_col=9):
+            for cell in row: cell.number_format = '#,##0.00 €'
+        for col, width in {'A':12,'B':14,'C':32,'D':24,'E':12,'F':14,'G':14,'H':14,'I':14,'J':12}.items(): ws2.column_dimensions[col].width = width
+        ws3 = wb.create_sheet('Pivot Geschäftsvorfälle')
+        ws3.append(['Geschäftsvorfall','Gesamtkosten','Anzahl gesamt','Ø Stückkosten'])
+        for c in ws3[1]: c.font = Font(bold=True); c.fill = header_fill; c.border = border
+        stats = _fm501_summary_stats()
+        for t in stats.get('top', []):
+            ws3.append([t.get('geschaeftsvorfall'), t.get('gesamt'), t.get('anzahl'), t.get('avg_unit')])
+        for row in ws3.iter_rows(min_row=2, min_col=2, max_col=4):
+            for cell in row: cell.number_format = '#,##0.00 €' if cell.column in (2,4) else '#,##0'
+        ws3.column_dimensions['A'].width = 32; ws3.column_dimensions['B'].width = 16; ws3.column_dimensions['C'].width = 14; ws3.column_dimensions['D'].width = 16
+        if ws3.max_row >= 2:
+            chart = BarChart(); chart.title = 'Top Gebührenpositionen'; chart.y_axis.title = 'EUR'; chart.x_axis.title = 'Geschäftsvorfall'
+            data = Reference(ws3, min_col=2, min_row=1, max_row=ws3.max_row)
+            cats = Reference(ws3, min_col=1, min_row=2, max_row=ws3.max_row)
+            chart.add_data(data, titles_from_data=True); chart.set_categories(cats); chart.height = 8; chart.width = 18
+            ws3.add_chart(chart, 'F2')
+        wb.save(path)
+        try: messagebox.showinfo('Kontenauswertung', 'Excel-Export erstellt:\n' + path)
+        except Exception: pass
+        return path
+    except Exception as exc:
+        try: messagebox.showerror('Kontenauswertung', 'Excel-Export fehlgeschlagen:\n' + str(exc))
+        except Exception: pass
+        return None
+
+
+def _fm501_draw_bar_chart(canvas, x, y, w, h, data, title, value_key, label_key):
+    canvas.create_rectangle(x, y, x+w, y+h, fill=WHITE, outline=LINE)
+    canvas.create_text(x+14, y+14, text=title, fill=BLUE, font=body_font(12, 'bold'), anchor='w')
+    if not data:
+        canvas.create_text(x+w/2, y+h/2, text='Noch keine Daten vorhanden.', fill=TEXT2, font=body_font(10))
+        return
+    max_v = max(float(d.get(value_key) or 0) for d in data) or 1
+    left = x + 16; bottom = y + h - 34; top = y + 42; bar_area_h = max(20, bottom-top)
+    n = len(data); gap = 8; bw = max(16, int((w - 40 - (n-1)*gap) / max(1,n)))
+    for i, d in enumerate(data):
+        val = float(d.get(value_key) or 0)
+        bh = int(bar_area_h * val / max_v)
+        bx = left + i * (bw + gap)
+        canvas.create_rectangle(bx, bottom-bh, bx+bw, bottom, fill=blend(BLUE, WHITE, 0.25), outline=BLUE)
+        label = str(d.get(label_key) or '')[:8]
+        canvas.create_text(bx+bw/2, bottom+13, text=label, fill=TEXT2, font=body_font(8))
+        canvas.create_text(bx+bw/2, bottom-bh-8, text=_fm501_fmt_eur(val), fill=TEXT, font=body_font(8))
+
+
+def _fm501_draw_top_list(parent, top):
+    for child in parent.winfo_children(): child.destroy()
+    tk.Label(parent, text='Top-Kostentreiber', bg=WHITE, fg=BLUE, font=body_font(12,'bold')).pack(anchor='w', padx=10, pady=(8,4))
+    if not top:
+        tk.Label(parent, text='Noch keine Detailpositionen importiert.', bg=WHITE, fg=TEXT2, font=body_font(10)).pack(anchor='w', padx=10, pady=8)
+        return
+    for row in top:
+        txt = f"{row.get('geschaeftsvorfall','')}  |  {_fm501_fmt_eur(row.get('gesamt'))}  |  Anzahl {_fm501_fmt_num(row.get('anzahl'))}  |  Ø {_fm501_fmt_eur(row.get('avg_unit'))}"
+        tk.Label(parent, text=txt, bg=WHITE, fg=TEXT, font=body_font(9), anchor='w', justify='left').pack(fill='x', padx=10, pady=1)
+
+
+def _fm501_render_treasury_tools_menu(self):
+    items = [
+        ('Kontenauswertung', 'account_analysis'),
+    ]
+    self.render_center_menu(items, title='Tools - Treasury')
+    self.draw_bottom_logo()
+
+
+def _fm501_render_account_analysis_tool(self):
+    _fm501_db_init()
+    w, h = self.canvas.winfo_width(), self.canvas.winfo_height()
+    top_y = 132
+    frame = tk.Frame(self.root, bg=BG)
+    self.widget_items.append(frame)
+    self.canvas.create_window(0, top_y, window=frame, anchor='nw', width=w, height=max(400, h-top_y-55))
+    header = tk.Frame(frame, bg=WHITE, highlightbackground=LINE, highlightthickness=1)
+    header.pack(fill='x', padx=20, pady=(12,8))
+    tk.Label(header, text='Kontenauswertung', bg=WHITE, fg=BLUE, font=body_font(18,'bold')).pack(side='left', padx=14, pady=12)
+    tk.Label(header, text='SFIRM-Excel-Import für Entgeltabschlüsse, Gebührenentwicklung, Mengen und Stückkosten', bg=WHITE, fg=TEXT2, font=body_font(10)).pack(side='left', padx=(10,0))
+
+    status_var = tk.StringVar(value='Datenbank: ' + _fm501_konto_db_path())
+    selected_closing_id = {'id': None}
+    content = tk.Frame(frame, bg=BG)
+    content.pack(fill='both', expand=True, padx=20, pady=(0,10))
+    controls = tk.Frame(content, bg=BG); controls.pack(fill='x', pady=(0,8))
+
+    def refresh_all():
+        stats = _fm501_summary_stats()
+        kpi_var.set(f"Entgeltabschlüsse: {stats['closings']}   |   Detailpositionen: {stats['details']}   |   Brutto gesamt: {_fm501_fmt_eur(stats['brutto'])}   |   Netto gesamt: {_fm501_fmt_eur(stats['netto'])}   |   USt: {_fm501_fmt_eur(stats['ust'])}")
+        closing_tree.delete(*closing_tree.get_children())
+        for c in _fm501_fetch_closings():
+            closing_tree.insert('', 'end', iid=str(c['id']), values=(c.get('monat_key'), c.get('abschlussdatum'), c.get('buchungsdatum'), _fm501_fmt_eur(c.get('betrag_brutto')), _fm501_fmt_eur(c.get('betrag_netto')), _fm501_fmt_eur(c.get('ust')), c.get('rechnungsnummer'), c.get('source_file')))
+        item_tree.delete(*item_tree.get_children())
+        cid = selected_closing_id.get('id')
+        for i in _fm501_fetch_items(cid):
+            item_tree.insert('', 'end', values=(i.get('monat_key'), i.get('geschaeftsvorfall'), i.get('positionstyp'), _fm501_fmt_num(i.get('anzahl')) if i.get('anzahl') is not None else '', _fm501_fmt_eur(i.get('stueckkosten')) if i.get('stueckkosten') is not None else '', _fm501_fmt_eur(i.get('gesamtbetrag')), _fm501_fmt_eur(i.get('abweichung')), 'Ja' if i.get('plausibel') else 'Nein'))
+        charts.delete('all')
+        _fm501_draw_bar_chart(charts, 8, 8, max(420, int(w*0.48)), 205, stats.get('months', [])[-12:], 'Brutto-Entgelte je Abschlussmonat', 'betrag_brutto', 'monat_key')
+        _fm501_draw_bar_chart(charts, max(440, int(w*0.50)), 8, max(420, int(w*0.45)), 205, stats.get('top', []), 'Top Gebührenpositionen', 'gesamt', 'geschaeftsvorfall')
+        _fm501_draw_top_list(top_frame, stats.get('top', []))
+
+    def import_file():
+        try:
+            from tkinter import filedialog
+            path = filedialog.askopenfilename(title='SFIRM-Excel-Export auswählen', filetypes=[('Excel-Dateien','*.xlsx *.xlsm *.xltx *.xltm'), ('Alle Dateien','*.*')])
+            if not path: return
+            res = _fm501_import_excel(path, self)
+            status_var.set(f"Import abgeschlossen: {res['closings']} Entgeltabschlüsse, {res['details']} Detailpositionen. DB: {res['db']}")
+            try: messagebox.showinfo('Kontenauswertung', f"Import abgeschlossen.\n\nEntgeltabschlüsse: {res['closings']}\nDetailpositionen: {res['details']}\nDatenbank:\n{res['db']}")
+            except Exception: pass
+            refresh_all()
+        except Exception as exc:
+            try: messagebox.showerror('Kontenauswertung', 'Import fehlgeschlagen:\n' + str(exc))
+            except Exception: pass
+
+    tk.Button(controls, text='Excel importieren', command=import_file, bg='#CFEAD6', fg=TEXT, font=body_font(10,'bold'), relief='solid', bd=1, padx=14, pady=6).pack(side='left', padx=(0,8))
+    tk.Button(controls, text='Aktualisieren', command=refresh_all, bg=WHITE, fg=TEXT, font=body_font(10), relief='solid', bd=1, padx=14, pady=6).pack(side='left', padx=(0,8))
+    tk.Button(controls, text='Excel-Auswertung exportieren', command=lambda: _fm501_export_analysis_excel(self), bg=WHITE, fg=BLUE, font=body_font(10), relief='solid', bd=1, padx=14, pady=6).pack(side='left', padx=(0,8))
+    tk.Label(controls, textvariable=status_var, bg=BG, fg=TEXT2, font=body_font(8)).pack(side='right')
+
+    kpi_var = tk.StringVar(value='')
+    tk.Label(content, textvariable=kpi_var, bg=WHITE, fg=TEXT, font=body_font(10,'bold'), anchor='w', padx=12, pady=8, relief='solid', bd=1).pack(fill='x', pady=(0,8))
+
+    charts = tk.Canvas(content, bg=BG, height=225, highlightthickness=0)
+    charts.pack(fill='x', pady=(0,8))
+
+    split = tk.Frame(content, bg=BG); split.pack(fill='both', expand=True)
+    left = tk.Frame(split, bg=WHITE, highlightbackground=LINE, highlightthickness=1); left.pack(side='left', fill='both', expand=True, padx=(0,8))
+    right = tk.Frame(split, bg=WHITE, highlightbackground=LINE, highlightthickness=1); right.pack(side='left', fill='both', expand=True, padx=(8,0))
+    tk.Label(left, text='Entgeltabschlüsse', bg=WHITE, fg=BLUE, font=body_font(12,'bold')).pack(anchor='w', padx=10, pady=(8,4))
+    cols = ('monat','abschluss','buchung','brutto','netto','ust','rechnung','quelle')
+    closing_tree = ttk.Treeview(left, columns=cols, show='headings', height=10)
+    for col, label, width_col in [('monat','Monat',70),('abschluss','Abschluss',90),('buchung','Buchung',90),('brutto','Brutto',90),('netto','Netto',90),('ust','USt',80),('rechnung','Rechnung',220),('quelle','Quelle',200)]:
+        closing_tree.heading(col, text=label); closing_tree.column(col, width=width_col, stretch=(col in ('rechnung','quelle')))
+    ys1 = ttk.Scrollbar(left, orient='vertical', command=closing_tree.yview); closing_tree.configure(yscrollcommand=ys1.set)
+    closing_tree.pack(side='left', fill='both', expand=True, padx=(10,0), pady=(0,10)); ys1.pack(side='right', fill='y', pady=(0,10), padx=(0,10))
+
+    def on_select(_event=None):
+        sel = closing_tree.selection()
+        selected_closing_id['id'] = int(sel[0]) if sel else None
+        refresh_all()
+    closing_tree.bind('<<TreeviewSelect>>', on_select)
+
+    tk.Label(right, text='Einzelpositionen / Stückkosten', bg=WHITE, fg=BLUE, font=body_font(12,'bold')).pack(anchor='w', padx=10, pady=(8,4))
+    cols2 = ('monat','gv','typ','anzahl','stk','gesamt','abw','ok')
+    item_tree = ttk.Treeview(right, columns=cols2, show='headings', height=10)
+    for col, label, width_col in [('monat','Monat',60),('gv','Geschäftsvorfall',190),('typ','Typ',140),('anzahl','Anzahl',70),('stk','Stückkosten',90),('gesamt','Gesamt',90),('abw','Abw.',70),('ok','OK',50)]:
+        item_tree.heading(col, text=label); item_tree.column(col, width=width_col, stretch=(col in ('gv','typ')))
+    ys2 = ttk.Scrollbar(right, orient='vertical', command=item_tree.yview); item_tree.configure(yscrollcommand=ys2.set)
+    item_tree.pack(side='left', fill='both', expand=True, padx=(10,0), pady=(0,10)); ys2.pack(side='right', fill='y', pady=(0,10), padx=(0,10))
+
+    top_frame = tk.Frame(content, bg=WHITE, highlightbackground=LINE, highlightthickness=1)
+    top_frame.pack(fill='x', pady=(8,0))
+    refresh_all()
+
+
+def _fm501_render_main_menu(self):
+    top_tiles = [
+        {'title':'Abschlusskalender','cmd':lambda: self.show_page('closing_calendar','Abschlusskalender',True),'fixed':None,'lock':False,'icon':'calendar','fold':False},
+        {'title':'Wissenszentrale','cmd':lambda: self.open_knowledge_base(),'fixed':None,'lock':False,'icon':'knowledge','fold':False},
+    ]
+    middle_tiles = [
+        {'title':'Tools - Hauptbuch','cmd':lambda: self.show_page('data_prep','Tools - Hauptbuch',True),'fixed':None,'lock':False,'icon':'fibu_data_prep','fold':False},
+        {'title':'Tools - Debitoren','cmd':lambda: self.show_page('debitoren_tools','Tools - Debitoren',True),'fixed':None,'lock':False,'icon':'fibu_data_prep','fold':False},
+        {'title':'Tools - Treasury','cmd':lambda: self.show_page('treasury_tools','Tools - Treasury',True),'fixed':None,'lock':False,'icon':'modules','fold':False},
+    ]
+    mini_tiles = [
+        {'title':'In Entwicklung','cmd':self.try_open_in_dev,'fixed':GREY_TILE,'lock':True,'icon':'lock','fold':False},
+        {'title':'Informationen','cmd':lambda: self.show_page('information','Informationen',True),'fixed':None,'lock':False,'icon':'info','fold':True},
+        {'title':'Einstellungen','cmd':lambda: self.show_page('settings','Einstellungen',True),'fixed':None,'lock':False,'icon':'gear','fold':True},
+        {'title':'Dateiausgabe','cmd':lambda: self.show_page('file_output','Dateiausgabe',True),'fixed':None,'lock':False,'icon':'file_explorer','fold':False},
+    ]
+    w, h = self.canvas.winfo_width(), self.canvas.winfo_height()
+    tw = max(240, min(330, int(w*0.165))); th = max(125, min(170, int(h*0.155)))
+    gap_x = max(38, int(w*0.04)); line_x1 = x_pct(w, 9.5); line_x2 = x_pct(w, 92)
+    def create_tile_row(items, left_edge, y, id_prefix, tile_w, tile_h):
+        for i, item in enumerate(items):
+            tile = Tile(self.root, self, f'{id_prefix}_{i}', item['title'], item['cmd'], favorite_enabled=False, fixed_color=item['fixed'], lock_tile=item['lock'], icon_type=item['icon'], corner_fold=item['fold'])
+            tile.resize_tile(tile_w, tile_h)
+            self.widget_items.append(tile); self.focusable_tiles.append(tile)
+            self.canvas.create_window(left_edge + i*(tile_w+gap_x), y, window=tile, anchor='nw')
+    top_tile_w = max(250, int(tw*1.05)); top_tile_h = max(130, int(th*1.05))
+    tool_tile_w = max(200, int(tw*0.82)); tool_tile_h = max(100, int(th*0.82))
+    mini_tw = int(tw*0.68); mini_th = int(th*0.68)
+    y_modules = y_pct(h, 55); y_tools = y_pct(h, 35); mini_y = y_pct(h, 15)
+    self.draw_continuous_relief_line(self.canvas, y_modules-22, line_x1, line_x2)
+    self.draw_section_label('Module', line_x1, y_modules-38)
+    create_tile_row(top_tiles, line_x1, y_modules, 'main_module', top_tile_w, top_tile_h)
+    self.draw_continuous_relief_line(self.canvas, y_tools-20, line_x1, line_x2)
+    self.draw_section_label('Tools', line_x1, y_tools-36)
+    create_tile_row(middle_tiles, line_x1, y_tools, 'main_tools', tool_tile_w, tool_tile_h)
+    self.draw_continuous_relief_line(self.canvas, mini_y-18, line_x1, line_x2)
+    create_tile_row(mini_tiles, line_x1, mini_y, 'main_mini', mini_tw, mini_th)
+    self.draw_bottom_logo()
+
+try:
+    _fm501_prev_render_page = FiBuMateApp.render_page
+except Exception:
+    _fm501_prev_render_page = None
+
+
+def _fm501_render_page(self):
+    if self.current_page in ('treasury_tools', 'account_analysis'):
+        self.clear_widgets()
+        self.draw_background()
+        self.draw_header(self.current_title)
+        self.draw_controls()
+        self.draw_path_bar()
+        self.draw_favorites_bar()
+        if self.current_page == 'treasury_tools':
+            self.render_treasury_tools_menu()
+        elif self.current_page == 'account_analysis':
+            self.render_account_analysis_tool()
+        if self.focusable_tiles:
+            self.focus_index = 0
+            self.focusable_tiles[0].focus_set()
+        return
+    if _fm501_prev_render_page:
+        return _fm501_prev_render_page(self)
+
+try:
+    FiBuMateApp.render_treasury_tools_menu = _fm501_render_treasury_tools_menu
+    FiBuMateApp.render_account_analysis_tool = _fm501_render_account_analysis_tool
+    FiBuMateApp.render_main_menu = _fm501_render_main_menu
+    FiBuMateApp.render_page = _fm501_render_page
+except Exception:
+    pass
+
+
+
+
+# ------------------------------------------------------------------
+# FIBU_MATE_MAINMENU_KONTENAUSWERTUNG_FIX_V0502
+# Datum: 2026-07-13
+# Zweck:
+# - Hauptmenue nach v0.501 wieder sichtbar machen.
+# - Ursache: v0.501 rief self.draw_section_label auf, obwohl diese Methode nicht final an FiBuMateApp gebunden war.
+# - Schreibweise "Hauptmenü" beim Login wieder korrigieren.
+# - Tools - Treasury bleibt in der Tools-Zeile, Dateiausgabe bleibt rechts neben Einstellungen in der unteren Modulleiste.
+# ------------------------------------------------------------------
+FIBU_MATE_MAINMENU_KONTENAUSWERTUNG_FIX_VERSION = "0.502"
+
+
+def _fm502_draw_section_label_safe(self, text, x, y):
+    try:
+        if '_fm484_draw_section_label' in globals():
+            return _fm484_draw_section_label(self, text, x, y)
+    except Exception:
+        pass
+    try:
+        self.canvas.create_text(x, y, text=text, fill=blend(TEXT2, BLUE, 0.30), font=body_font(9, 'bold'), anchor='w')
+    except Exception:
+        pass
+
+
+def _fm502_render_main_menu(self):
+    top_tiles = [
+        {'title':'Abschlusskalender','cmd':lambda: self.show_page('closing_calendar','Abschlusskalender',True),'fixed':None,'lock':False,'icon':'calendar','fold':False},
+        {'title':'Wissenszentrale','cmd':lambda: self.open_knowledge_base(),'fixed':None,'lock':False,'icon':'knowledge','fold':False},
+    ]
+    middle_tiles = [
+        {'title':'Tools - Hauptbuch','cmd':lambda: self.show_page('data_prep','Tools - Hauptbuch',True),'fixed':None,'lock':False,'icon':'fibu_data_prep','fold':False},
+        {'title':'Tools - Debitoren','cmd':lambda: self.show_page('debitoren_tools','Tools - Debitoren',True),'fixed':None,'lock':False,'icon':'fibu_data_prep','fold':False},
+        {'title':'Tools - Treasury','cmd':lambda: self.show_page('treasury_tools','Tools - Treasury',True),'fixed':None,'lock':False,'icon':'modules','fold':False},
+    ]
+    mini_tiles = [
+        {'title':'In Entwicklung','cmd':self.try_open_in_dev,'fixed':GREY_TILE,'lock':True,'icon':'lock','fold':False},
+        {'title':'Informationen','cmd':lambda: self.show_page('information','Informationen',True),'fixed':None,'lock':False,'icon':'info','fold':True},
+        {'title':'Einstellungen','cmd':lambda: self.show_page('settings','Einstellungen',True),'fixed':None,'lock':False,'icon':'gear','fold':True},
+        {'title':'Dateiausgabe','cmd':lambda: self.show_page('file_output','Dateiausgabe',True),'fixed':None,'lock':False,'icon':'file_explorer','fold':False},
+    ]
+    w, h = self.canvas.winfo_width(), self.canvas.winfo_height()
+    tw = max(240, min(330, int(w*0.165)))
+    th = max(125, min(170, int(h*0.155)))
+    gap_x = max(38, int(w*0.04))
+    line_x1 = x_pct(w, 9.5)
+    line_x2 = x_pct(w, 92)
+    header_line_y = FM_HEADER_H if 'FM_HEADER_H' in globals() else ui_s(96)
+
+    def create_tile_row(items, visible_left_edge, canvas_top, id_prefix, tile_w, tile_h):
+        canvas_left = visible_left_edge - ui_s(8)
+        canvas_h = tile_h + ui_s(16)
+        for i, item in enumerate(items):
+            tile = Tile(self.root, self, f'{id_prefix}_{i}', item['title'], item['cmd'], favorite_enabled=False, fixed_color=item['fixed'], lock_tile=item['lock'], icon_type=item['icon'], corner_fold=item['fold'])
+            tile.resize_tile(tile_w, tile_h)
+            self.widget_items.append(tile)
+            self.focusable_tiles.append(tile)
+            cx = canvas_left + (tile_w + ui_s(16)) / 2 + i*(tile_w+gap_x)
+            cy = canvas_top + canvas_h / 2
+            self.canvas.create_window(cx, cy, window=tile, anchor='center')
+
+    def centered_x_positions(count, tile_w, gap=gap_x):
+        total_width = count*tile_w + (count-1)*gap
+        start_x = (w-total_width)/2 + tile_w/2
+        return [start_x+i*(tile_w+gap) for i in range(count)]
+
+    def create_centered_row(items, y, id_prefix, tile_w, tile_h):
+        xs = centered_x_positions(len(items), tile_w)
+        for i,item in enumerate(items):
+            tile = Tile(self.root, self, f'{id_prefix}_{i}', item['title'], item['cmd'], favorite_enabled=False, fixed_color=item['fixed'], lock_tile=item['lock'], icon_type=item['icon'], corner_fold=item['fold'])
+            tile.resize_tile(tile_w,tile_h)
+            self.widget_items.append(tile)
+            self.focusable_tiles.append(tile)
+            self.canvas.create_window(xs[i], y, window=tile, anchor='center')
+
+    top_tile_w=max(250,int(tw*1.05))
+    top_tile_h=max(130,int(th*1.05))
+    tool_tile_w=max(200,int(tw*0.86*0.95))
+    tool_tile_h=max(100,int(th*0.86*0.95))
+    mini_tw=int(tw*0.72)
+    mini_th=int(th*0.72)
+
+    gap_below_line = ui_s(5)
+    top_canvas_top = header_line_y + gap_below_line
+    top_canvas_bottom = top_canvas_top + top_tile_h + ui_s(16)
+    first_sep_y = top_canvas_bottom + ui_s(18)
+    tools_canvas_top = first_sep_y + gap_below_line
+    mini_center_y = y_pct(h,16.5) + th/2 - mini_th/2
+    mini_top = mini_center_y - mini_th/2
+    label_x = ui_s(8)
+
+    _fm502_draw_section_label_safe(self, 'Module', label_x, header_line_y + ui_s(42))
+    create_tile_row(top_tiles, line_x1, top_canvas_top, 'main_menuzeile_1', top_tile_w, top_tile_h)
+    self.draw_continuous_relief_line(self.canvas, first_sep_y, line_x1, line_x2)
+
+    _fm502_draw_section_label_safe(self, 'Tools', label_x, first_sep_y + ui_s(28))
+    create_tile_row(middle_tiles, line_x1, tools_canvas_top, 'main_menuzeile_2', tool_tile_w, tool_tile_h)
+
+    self.draw_continuous_relief_line(self.canvas, mini_top-ui_s(13), line_x1, line_x2)
+    create_centered_row(mini_tiles, mini_center_y, 'main_mini_menuezeile', mini_tw, mini_th)
+    self.draw_bottom_logo()
+
+
+# Login-Finalisierung korrigieren: Hauptmenü mit Umlaut anzeigen.
+try:
+    _fm502_prev_finalize_login = _fm488_finalize_login
+except Exception:
+    _fm502_prev_finalize_login = None
+
+
+def _fm502_finalize_login(self, key, username):
+    if _fm502_prev_finalize_login:
+        _fm502_prev_finalize_login(self, key, username)
+        try:
+            if getattr(self, 'current_page', '') == 'main':
+                self.current_title = 'Hauptmenü'
+                self.breadcrumb = [('main', 'Hauptmenü')]
+        except Exception:
+            pass
+        return
+    try:
+        self.show_page('main', 'Hauptmenü', add_to_history=False)
+    except Exception:
+        pass
+
+try:
+    FiBuMateApp.draw_section_label = _fm502_draw_section_label_safe
+    FiBuMateApp.render_main_menu = _fm502_render_main_menu
+    _fm488_finalize_login = _fm502_finalize_login
+    FiBuMateApp.finalize_login = _fm502_finalize_login
+except Exception:
+    pass
+
+
+
+
+# ------------------------------------------------------------------
+# FIBU_MATE_TREASURY_OPEN_FIX_V0503
+# Datum: 2026-07-13
+# Zweck:
+# - Klick auf "Tools - Treasury" robust machen.
+# - Direkter Öffner fuer Treasury-Menue statt ausschliesslich verschachteltem lambda/show_page-Pfad.
+# - show_page und render_page fangen treasury_tools/account_analysis final ab.
+# - Kontenauswertung bleibt unter Tools -> Tools - Treasury erreichbar.
+# ------------------------------------------------------------------
+FIBU_MATE_TREASURY_OPEN_FIX_VERSION = "0.503"
+
+
+def _fm503_render_special_page(self, page_name, title):
+    try:
+        self.clear_widgets()
+        self.draw_background()
+        self.draw_header(title or self.current_title or '')
+        self.draw_controls()
+        self.draw_path_bar()
+        self.draw_favorites_bar()
+        if page_name == 'treasury_tools':
+            self.render_treasury_tools_menu()
+        elif page_name == 'account_analysis':
+            self.render_account_analysis_tool()
+        if self.focusable_tiles:
+            self.focus_index = 0
+            try: self.focusable_tiles[0].focus_set()
+            except Exception: pass
+        return True
+    except Exception as exc:
+        try:
+            messagebox.showerror('FiBu Mate', 'Seite konnte nicht geöffnet werden:\n' + str(exc))
+        except Exception:
+            pass
+        return True
+
+
+def _fm503_open_treasury_tools_menu(self):
+    try:
+        if not self.confirm_unsaved_changes():
+            return
+    except Exception:
+        pass
+    try:
+        if getattr(self, 'current_page', None):
+            self.page_history.append((self.current_page, self.current_title))
+    except Exception:
+        pass
+    self.current_page = 'treasury_tools'
+    self.current_title = 'Tools - Treasury'
+    try:
+        self.update_breadcrumb('treasury_tools', 'Tools - Treasury')
+    except Exception:
+        self.breadcrumb = [('main', 'Hauptmenü'), ('treasury_tools', 'Tools - Treasury')]
+    _fm503_render_special_page(self, 'treasury_tools', 'Tools - Treasury')
+
+
+def _fm503_open_account_analysis_tool(self):
+    try:
+        if not self.confirm_unsaved_changes():
+            return
+    except Exception:
+        pass
+    try:
+        if getattr(self, 'current_page', None):
+            self.page_history.append((self.current_page, self.current_title))
+    except Exception:
+        pass
+    self.current_page = 'account_analysis'
+    self.current_title = 'Kontenauswertung'
+    try:
+        self.update_breadcrumb('account_analysis', 'Kontenauswertung')
+    except Exception:
+        self.breadcrumb = [('main', 'Hauptmenü'), ('treasury_tools', 'Tools - Treasury'), ('account_analysis', 'Kontenauswertung')]
+    _fm503_render_special_page(self, 'account_analysis', 'Kontenauswertung')
+
+try:
+    _fm503_prev_show_page = FiBuMateApp.show_page
+except Exception:
+    _fm503_prev_show_page = None
+
+
+def _fm503_show_page(self, page_name, title='', add_to_history=True):
+    if page_name == 'treasury_tools':
+        return _fm503_open_treasury_tools_menu(self)
+    if page_name == 'account_analysis':
+        return _fm503_open_account_analysis_tool(self)
+    if _fm503_prev_show_page:
+        return _fm503_prev_show_page(self, page_name, title, add_to_history)
+
+try:
+    _fm503_prev_render_page = FiBuMateApp.render_page
+except Exception:
+    _fm503_prev_render_page = None
+
+
+def _fm503_render_page(self):
+    page = getattr(self, 'current_page', '')
+    if page in ('treasury_tools', 'account_analysis'):
+        return _fm503_render_special_page(self, page, getattr(self, 'current_title', '') or ('Tools - Treasury' if page == 'treasury_tools' else 'Kontenauswertung'))
+    if _fm503_prev_render_page:
+        return _fm503_prev_render_page(self)
+
+
+def _fm503_render_treasury_tools_menu(self):
+    # Eigene Kachel statt render_center_menu, damit der Klick sicher ueber den direkten Öffner laeuft.
+    w, h = self.canvas.winfo_width(), self.canvas.winfo_height()
+    tile_w = int(max(280, min(380, w * 0.21)))
+    tile_h = int(max(120, min(170, h * 0.15)))
+    x = x_pct(w, 50)
+    y = y_pct(h, 55)
+    tile = Tile(self.root, self, 'treasury_kontenauswertung', 'Kontenauswertung', command=lambda: _fm503_open_account_analysis_tool(self), favorite_enabled=False, center_text=True, icon_type='modules')
+    tile.resize_tile(tile_w, tile_h)
+    self.widget_items.append(tile)
+    self.focusable_tiles.append(tile)
+    self.canvas.create_window(x, y, window=tile, anchor='center')
+    self.draw_bottom_logo()
+
+
+def _fm503_render_main_menu(self):
+    top_tiles = [
+        {'title':'Abschlusskalender','cmd':lambda: self.show_page('closing_calendar','Abschlusskalender',True),'fixed':None,'lock':False,'icon':'calendar','fold':False},
+        {'title':'Wissenszentrale','cmd':lambda: self.open_knowledge_base(),'fixed':None,'lock':False,'icon':'knowledge','fold':False},
+    ]
+    middle_tiles = [
+        {'title':'Tools - Hauptbuch','cmd':lambda: self.show_page('data_prep','Tools - Hauptbuch',True),'fixed':None,'lock':False,'icon':'fibu_data_prep','fold':False},
+        {'title':'Tools - Debitoren','cmd':lambda: self.show_page('debitoren_tools','Tools - Debitoren',True),'fixed':None,'lock':False,'icon':'fibu_data_prep','fold':False},
+        {'title':'Tools - Treasury','cmd':lambda: _fm503_open_treasury_tools_menu(self),'fixed':None,'lock':False,'icon':'modules','fold':False},
+    ]
+    mini_tiles = [
+        {'title':'In Entwicklung','cmd':self.try_open_in_dev,'fixed':GREY_TILE,'lock':True,'icon':'lock','fold':False},
+        {'title':'Informationen','cmd':lambda: self.show_page('information','Informationen',True),'fixed':None,'lock':False,'icon':'info','fold':True},
+        {'title':'Einstellungen','cmd':lambda: self.show_page('settings','Einstellungen',True),'fixed':None,'lock':False,'icon':'gear','fold':True},
+        {'title':'Dateiausgabe','cmd':lambda: self.show_page('file_output','Dateiausgabe',True),'fixed':None,'lock':False,'icon':'file_explorer','fold':False},
+    ]
+    w, h = self.canvas.winfo_width(), self.canvas.winfo_height()
+    tw = max(240, min(330, int(w*0.165)))
+    th = max(125, min(170, int(h*0.155)))
+    gap_x = max(38, int(w*0.04))
+    line_x1 = x_pct(w, 9.5)
+    line_x2 = x_pct(w, 92)
+    header_line_y = FM_HEADER_H if 'FM_HEADER_H' in globals() else ui_s(96)
+
+    def create_tile_row(items, visible_left_edge, canvas_top, id_prefix, tile_w, tile_h):
+        canvas_left = visible_left_edge - ui_s(8)
+        canvas_h = tile_h + ui_s(16)
+        for i, item in enumerate(items):
+            tile = Tile(self.root, self, f'{id_prefix}_{i}', item['title'], item['cmd'], favorite_enabled=False, fixed_color=item['fixed'], lock_tile=item['lock'], icon_type=item['icon'], corner_fold=item['fold'])
+            tile.resize_tile(tile_w, tile_h)
+            self.widget_items.append(tile)
+            self.focusable_tiles.append(tile)
+            cx = canvas_left + (tile_w + ui_s(16)) / 2 + i*(tile_w+gap_x)
+            cy = canvas_top + canvas_h / 2
+            self.canvas.create_window(cx, cy, window=tile, anchor='center')
+
+    def centered_x_positions(count, tile_w, gap=gap_x):
+        total_width = count*tile_w + (count-1)*gap
+        start_x = (w-total_width)/2 + tile_w/2
+        return [start_x+i*(tile_w+gap) for i in range(count)]
+
+    def create_centered_row(items, y, id_prefix, tile_w, tile_h):
+        xs = centered_x_positions(len(items), tile_w)
+        for i,item in enumerate(items):
+            tile = Tile(self.root, self, f'{id_prefix}_{i}', item['title'], item['cmd'], favorite_enabled=False, fixed_color=item['fixed'], lock_tile=item['lock'], icon_type=item['icon'], corner_fold=item['fold'])
+            tile.resize_tile(tile_w,tile_h)
+            self.widget_items.append(tile)
+            self.focusable_tiles.append(tile)
+            self.canvas.create_window(xs[i], y, window=tile, anchor='center')
+
+    top_tile_w=max(250,int(tw*1.05)); top_tile_h=max(130,int(th*1.05))
+    tool_tile_w=max(200,int(tw*0.86*0.95)); tool_tile_h=max(100,int(th*0.86*0.95))
+    mini_tw=int(tw*0.72); mini_th=int(th*0.72)
+    gap_below_line = ui_s(5)
+    top_canvas_top = header_line_y + gap_below_line
+    top_canvas_bottom = top_canvas_top + top_tile_h + ui_s(16)
+    first_sep_y = top_canvas_bottom + ui_s(18)
+    tools_canvas_top = first_sep_y + gap_below_line
+    mini_center_y = y_pct(h,16.5) + th/2 - mini_th/2
+    mini_top = mini_center_y - mini_th/2
+    label_x = ui_s(8)
+    try:
+        _fm502_draw_section_label_safe(self, 'Module', label_x, header_line_y + ui_s(42))
+    except Exception:
+        self.canvas.create_text(label_x, header_line_y + ui_s(42), text='Module', fill=TEXT2, font=body_font(9,'bold'), anchor='w')
+    create_tile_row(top_tiles, line_x1, top_canvas_top, 'main_menuzeile_1', top_tile_w, top_tile_h)
+    self.draw_continuous_relief_line(self.canvas, first_sep_y, line_x1, line_x2)
+    try:
+        _fm502_draw_section_label_safe(self, 'Tools', label_x, first_sep_y + ui_s(28))
+    except Exception:
+        self.canvas.create_text(label_x, first_sep_y + ui_s(28), text='Tools', fill=TEXT2, font=body_font(9,'bold'), anchor='w')
+    create_tile_row(middle_tiles, line_x1, tools_canvas_top, 'main_menuzeile_2', tool_tile_w, tool_tile_h)
+    self.draw_continuous_relief_line(self.canvas, mini_top-ui_s(13), line_x1, line_x2)
+    create_centered_row(mini_tiles, mini_center_y, 'main_mini_menuezeile', mini_tw, mini_th)
+    self.draw_bottom_logo()
+
+try:
+    FiBuMateApp.open_treasury_tools_menu = _fm503_open_treasury_tools_menu
+    FiBuMateApp.open_account_analysis_tool = _fm503_open_account_analysis_tool
+    FiBuMateApp.show_page = _fm503_show_page
+    FiBuMateApp.render_page = _fm503_render_page
+    FiBuMateApp.render_treasury_tools_menu = _fm503_render_treasury_tools_menu
+    FiBuMateApp.render_main_menu = _fm503_render_main_menu
+except Exception:
+    pass
+
+
+
+
+# ------------------------------------------------------------------
+# FIBU_MATE_KONTENAUSWERTUNG_STABIL_V0504
+# Datum: 2026-07-13
+# Zweck: clear_widgets-Fehler aus v0.503 korrigieren und Treasury/Kontenauswertung stabil oeffnen.
+# ------------------------------------------------------------------
+FIBU_MATE_KONTENAUSWERTUNG_STABIL_VERSION = "0.504"
+
+
+def _fm504_clear_widgets_compat(self):
+    try:
+        return self.clear_content()
+    except Exception:
+        try:
+            for wdg in list(getattr(self, 'widget_items', []) or []):
+                try: wdg.destroy()
+                except Exception: pass
+            self.widget_items = []
+            self.focusable_tiles = []
+        except Exception:
+            pass
+
+
+def _fm504_render_special_page(self, page_name, title):
+    try:
+        self.clear_content()
+        self.draw_background()
+        self.draw_header(title or getattr(self, 'current_title', '') or '')
+        self.draw_controls()
+        self.draw_path_bar()
+        self.draw_favorites_bar()
+        if page_name == 'treasury_tools':
+            self.render_treasury_tools_menu()
+        elif page_name == 'account_analysis':
+            self.render_account_analysis_tool()
+        else:
+            return False
+        if getattr(self, 'focusable_tiles', None):
+            self.focus_index = 0
+            try: self.focusable_tiles[0].focus_set()
+            except Exception: pass
+        return True
+    except Exception as exc:
+        try: messagebox.showerror('FiBu Mate', 'Seite konnte nicht geöffnet werden:\n' + str(exc))
+        except Exception: pass
+        return True
+
+
+def _fm504_open_page_direct(self, page_name, title):
+    try:
+        if page_name != getattr(self, 'current_page', '') and not self.confirm_unsaved_changes():
+            return
+    except Exception:
+        pass
+    try:
+        if getattr(self, 'current_page', None) and getattr(self, 'current_page', None) != page_name:
+            self.page_history.append((self.current_page, self.current_title))
+    except Exception:
+        pass
+    self.current_page = page_name
+    self.current_title = title
+    try: self.update_breadcrumb(page_name, title)
+    except Exception:
+        self.breadcrumb = [('main', 'Hauptmenü'), (page_name, title)]
+    return _fm504_render_special_page(self, page_name, title)
+
+
+def _fm504_open_treasury_tools_menu(self):
+    return _fm504_open_page_direct(self, 'treasury_tools', 'Tools - Treasury')
+
+
+def _fm504_open_account_analysis_tool(self):
+    return _fm504_open_page_direct(self, 'account_analysis', 'Kontenauswertung')
+
+try:
+    _fm504_prev_show_page = FiBuMateApp.show_page
+except Exception:
+    _fm504_prev_show_page = None
+
+
+def _fm504_show_page(self, page_name, title='', add_to_history=True):
+    if page_name == 'treasury_tools':
+        return _fm504_open_treasury_tools_menu(self)
+    if page_name == 'account_analysis':
+        return _fm504_open_account_analysis_tool(self)
+    if _fm504_prev_show_page:
+        return _fm504_prev_show_page(self, page_name, title, add_to_history)
+
+try:
+    _fm504_prev_render_page = FiBuMateApp.render_page
+except Exception:
+    _fm504_prev_render_page = None
+
+
+def _fm504_render_page(self):
+    page = getattr(self, 'current_page', '')
+    if page in ('treasury_tools', 'account_analysis'):
+        return _fm504_render_special_page(self, page, getattr(self, 'current_title', '') or ('Tools - Treasury' if page == 'treasury_tools' else 'Kontenauswertung'))
+    if _fm504_prev_render_page:
+        return _fm504_prev_render_page(self)
+
+
+def _fm504_render_treasury_tools_menu(self):
+    w, h = self.canvas.winfo_width(), self.canvas.winfo_height()
+    tile = Tile(self.root, self, 'treasury_kontenauswertung', 'Kontenauswertung', command=lambda: _fm504_open_account_analysis_tool(self), favorite_enabled=False, center_text=True, icon_type='modules')
+    tile.resize_tile(int(max(280, min(380, w * 0.21))), int(max(120, min(170, h * 0.15))))
+    self.widget_items.append(tile)
+    self.focusable_tiles.append(tile)
+    self.canvas.create_window(x_pct(w, 50), y_pct(h, 55), window=tile, anchor='center')
+    self.draw_bottom_logo()
+
+
+def _fm504_render_main_menu(self):
+    top_tiles = [
+        {'title':'Abschlusskalender','cmd':lambda: self.show_page('closing_calendar','Abschlusskalender',True),'fixed':None,'lock':False,'icon':'calendar','fold':False},
+        {'title':'Wissenszentrale','cmd':lambda: self.open_knowledge_base(),'fixed':None,'lock':False,'icon':'knowledge','fold':False},
+    ]
+    middle_tiles = [
+        {'title':'Tools - Hauptbuch','cmd':lambda: self.show_page('data_prep','Tools - Hauptbuch',True),'fixed':None,'lock':False,'icon':'fibu_data_prep','fold':False},
+        {'title':'Tools - Debitoren','cmd':lambda: self.show_page('debitoren_tools','Tools - Debitoren',True),'fixed':None,'lock':False,'icon':'fibu_data_prep','fold':False},
+        {'title':'Tools - Treasury','cmd':lambda: _fm504_open_treasury_tools_menu(self),'fixed':None,'lock':False,'icon':'fibu_treasury','fold':False},
+    ]
+    mini_tiles = [
+        {'title':'In Entwicklung','cmd':self.try_open_in_dev,'fixed':GREY_TILE,'lock':True,'icon':'lock','fold':False},
+        {'title':'Informationen','cmd':lambda: self.show_page('information','Informationen',True),'fixed':None,'lock':False,'icon':'info','fold':True},
+        {'title':'Einstellungen','cmd':lambda: self.show_page('settings','Einstellungen',True),'fixed':None,'lock':False,'icon':'gear','fold':True},
+        {'title':'Dateiausgabe','cmd':lambda: self.show_page('file_output','Dateiausgabe',True),'fixed':None,'lock':False,'icon':'file_explorer','fold':False},
+    ]
+    w, h = self.canvas.winfo_width(), self.canvas.winfo_height()
+    tw = max(240, min(330, int(w*0.165))); th = max(125, min(170, int(h*0.155)))
+    gap_x = max(38, int(w*0.04)); line_x1 = x_pct(w, 9.5); line_x2 = x_pct(w, 92)
+    header_line_y = FM_HEADER_H if 'FM_HEADER_H' in globals() else ui_s(96)
+    def create_tile_row(items, visible_left_edge, canvas_top, id_prefix, tile_w, tile_h):
+        canvas_left=visible_left_edge-ui_s(8); canvas_h=tile_h+ui_s(16)
+        for i,item in enumerate(items):
+            tile=Tile(self.root,self,f'{id_prefix}_{i}',item['title'],item['cmd'],favorite_enabled=False,fixed_color=item['fixed'],lock_tile=item['lock'],icon_type=item['icon'],corner_fold=item['fold'])
+            tile.resize_tile(tile_w,tile_h); self.widget_items.append(tile); self.focusable_tiles.append(tile)
+            self.canvas.create_window(canvas_left+(tile_w+ui_s(16))/2+i*(tile_w+gap_x), canvas_top+canvas_h/2, window=tile, anchor='center')
+    def centered_x_positions(count, tile_w, gap=gap_x):
+        total_width=count*tile_w+(count-1)*gap; start_x=(w-total_width)/2+tile_w/2
+        return [start_x+i*(tile_w+gap) for i in range(count)]
+    def create_centered_row(items,y,id_prefix,tile_w,tile_h):
+        xs=centered_x_positions(len(items),tile_w)
+        for i,item in enumerate(items):
+            tile=Tile(self.root,self,f'{id_prefix}_{i}',item['title'],item['cmd'],favorite_enabled=False,fixed_color=item['fixed'],lock_tile=item['lock'],icon_type=item['icon'],corner_fold=item['fold'])
+            tile.resize_tile(tile_w,tile_h); self.widget_items.append(tile); self.focusable_tiles.append(tile); self.canvas.create_window(xs[i],y,window=tile,anchor='center')
+    top_tile_w=max(250,int(tw*1.05)); top_tile_h=max(130,int(th*1.05)); tool_tile_w=max(200,int(tw*0.86*0.95)); tool_tile_h=max(100,int(th*0.86*0.95)); mini_tw=int(tw*0.72); mini_th=int(th*0.72)
+    top_canvas_top=header_line_y+ui_s(5); top_canvas_bottom=top_canvas_top+top_tile_h+ui_s(16); first_sep_y=top_canvas_bottom+ui_s(18); tools_canvas_top=first_sep_y+ui_s(5); mini_center_y=y_pct(h,16.5)+th/2-mini_th/2; mini_top=mini_center_y-mini_th/2; label_x=ui_s(8)
+    try: _fm502_draw_section_label_safe(self,'Module',label_x,header_line_y+ui_s(42))
+    except Exception: self.canvas.create_text(label_x,header_line_y+ui_s(42),text='Module',fill=TEXT2,font=body_font(9,'bold'),anchor='w')
+    create_tile_row(top_tiles,line_x1,top_canvas_top,'main_menuzeile_1',top_tile_w,top_tile_h)
+    self.draw_continuous_relief_line(self.canvas,first_sep_y,line_x1,line_x2)
+    try: _fm502_draw_section_label_safe(self,'Tools',label_x,first_sep_y+ui_s(28))
+    except Exception: self.canvas.create_text(label_x,first_sep_y+ui_s(28),text='Tools',fill=TEXT2,font=body_font(9,'bold'),anchor='w')
+    create_tile_row(middle_tiles,line_x1,tools_canvas_top,'main_menuzeile_2',tool_tile_w,tool_tile_h)
+    self.draw_continuous_relief_line(self.canvas,mini_top-ui_s(13),line_x1,line_x2)
+    create_centered_row(mini_tiles,mini_center_y,'main_mini_menuezeile',mini_tw,mini_th)
+    self.draw_bottom_logo()
+
+try:
+    FiBuMateApp.clear_widgets = _fm504_clear_widgets_compat
+    FiBuMateApp.open_treasury_tools_menu = _fm504_open_treasury_tools_menu
+    FiBuMateApp.open_account_analysis_tool = _fm504_open_account_analysis_tool
+    FiBuMateApp.show_page = _fm504_show_page
+    FiBuMateApp.render_page = _fm504_render_page
+    FiBuMateApp.render_treasury_tools_menu = _fm504_render_treasury_tools_menu
+    FiBuMateApp.render_main_menu = _fm504_render_main_menu
+except Exception:
+    pass
+
+
+
+
+# ------------------------------------------------------------------
+# FIBU_MATE_KONTENAUSWERTUNG_AUSBAU_V0505
+# Datum: 2026-07-13
+# Zweck:
+# - Kopfbereich in Kontenauswertung entfernen, Arbeitsbereich nach oben ziehen.
+# - Button "Excel-Daten aufnehmen" statt "Excel importieren".
+# - Importe nach Bank/Konto erfassen, Doppelimporte erkennen und importierte Datensätze löschen können.
+# - Entgeltabschlüsse, Einzelpositionen/Stückkosten und Kostentreiber filterbar + sortierbar.
+# - Top-Kostentreiber als scrollbar formatierte Tabelle.
+# - Schaubilder personalisierbar/filterbar und erst nach Button-Klick aktualisieren.
+# - Bank-/Konto-Auswertungen inkl. Ø Stückkosten und Stückkostenentwicklung je Geschäftsvorfall pro Bank.
+# ------------------------------------------------------------------
+FIBU_MATE_KONTENAUSWERTUNG_AUSBAU_VERSION = "0.505"
+
+
+def _fm505_db_columns(con, table):
+    try:
+        return {str(r['name']) for r in con.execute(f'PRAGMA table_info({table})').fetchall()}
+    except Exception:
+        return set()
+
+
+def _fm505_add_col(con, table, name, spec):
+    cols = _fm505_db_columns(con, table)
+    if name not in cols:
+        con.execute(f'ALTER TABLE {table} ADD COLUMN {name} {spec}')
+
+
+def _fm505_db_init():
+    _fm501_db_init()
+    con = _fm501_db_connect()
+    try:
+        _fm505_add_col(con, 'imports', 'bank', 'TEXT')
+        _fm505_add_col(con, 'imports', 'konto', 'TEXT')
+        _fm505_add_col(con, 'imports', 'deleted', 'INTEGER DEFAULT 0')
+        _fm505_add_col(con, 'imports', 'deleted_at', 'TEXT')
+        _fm505_add_col(con, 'imports', 'deleted_by', 'TEXT')
+        _fm505_add_col(con, 'closings', 'bank', 'TEXT')
+        _fm505_add_col(con, 'closings', 'konto', 'TEXT')
+        _fm505_add_col(con, 'fee_items', 'bank', 'TEXT')
+        _fm505_add_col(con, 'fee_items', 'konto', 'TEXT')
+        con.commit()
+    finally:
+        con.close()
+
+
+def _fm505_distinct_values(table, col):
+    _fm505_db_init()
+    con = _fm501_db_connect()
+    try:
+        rows = con.execute(f"SELECT DISTINCT COALESCE({col},'') v FROM {table} WHERE COALESCE({col},'')<>'' ORDER BY v").fetchall()
+        return [r['v'] for r in rows]
+    finally:
+        con.close()
+
+
+def _fm505_guess_konto_from_filename(path):
+    try:
+        base = os.path.basename(str(path or ''))
+        m = re.search(r'(\d{4,12})(?=\D*(?:\.xlsx|\.xlsm|\.xls|$))', base)
+        if m:
+            return m.group(1)
+    except Exception:
+        pass
+    return ''
+
+
+def _fm505_ask_bank_konto(app, path):
+    default_konto = _fm505_guess_konto_from_filename(path)
+    result = {'ok': False, 'bank': '', 'konto': default_konto}
+    try:
+        win = tk.Toplevel(app.root)
+        win.title('Bank und Konto zum Import')
+        win.configure(bg=WHITE)
+        win.transient(app.root)
+        win.grab_set()
+        tk.Label(win, text='Excel-Daten aufnehmen', bg=WHITE, fg=BLUE, font=body_font(14, 'bold')).grid(row=0, column=0, columnspan=2, sticky='w', padx=18, pady=(14,6))
+        tk.Label(win, text='Bitte Bank und Konto für diesen SFIRM-Export angeben. Das Konto wird aus dem Dateinamen vorgeschlagen und kann überschrieben werden.', bg=WHITE, fg=TEXT2, font=body_font(9), wraplength=480, justify='left').grid(row=1, column=0, columnspan=2, sticky='w', padx=18, pady=(0,12))
+        bank_var = tk.StringVar(value='')
+        konto_var = tk.StringVar(value=default_konto)
+        bank_values = _fm505_distinct_values('imports', 'bank')
+        tk.Label(win, text='Bank', bg=WHITE, fg=TEXT, font=body_font(10, 'bold')).grid(row=2, column=0, sticky='w', padx=18, pady=(0,3))
+        cb = ttk.Combobox(win, textvariable=bank_var, values=bank_values, state='normal', font=body_font(10), width=34)
+        cb.grid(row=3, column=0, sticky='ew', padx=18, pady=(0,10))
+        tk.Label(win, text='Konto', bg=WHITE, fg=TEXT, font=body_font(10, 'bold')).grid(row=2, column=1, sticky='w', padx=(8,18), pady=(0,3))
+        ent = tk.Entry(win, textvariable=konto_var, bg=WHITE, fg=TEXT, font=body_font(10), relief='solid', bd=1)
+        ent.grid(row=3, column=1, sticky='ew', padx=(8,18), pady=(0,10), ipady=4)
+        win.grid_columnconfigure(0, weight=1); win.grid_columnconfigure(1, weight=1)
+        def ok():
+            if not bank_var.get().strip():
+                try: messagebox.showwarning('Kontenauswertung', 'Bitte eine Bank eingeben oder auswählen.')
+                except Exception: pass
+                return
+            if not konto_var.get().strip():
+                try: messagebox.showwarning('Kontenauswertung', 'Bitte ein Konto eingeben.')
+                except Exception: pass
+                return
+            result.update({'ok': True, 'bank': bank_var.get().strip(), 'konto': konto_var.get().strip()})
+            win.destroy()
+        def cancel():
+            win.destroy()
+        btns = tk.Frame(win, bg=WHITE); btns.grid(row=4, column=0, columnspan=2, sticky='e', padx=18, pady=(2,14))
+        tk.Button(btns, text='Übernehmen', command=ok, bg='#CFEAD6', fg=TEXT, font=body_font(10,'bold'), relief='solid', bd=1, padx=14, pady=5).pack(side='left', padx=(0,8))
+        tk.Button(btns, text='Abbrechen', command=cancel, bg=WHITE, fg=TEXT, font=body_font(10), relief='solid', bd=1, padx=14, pady=5).pack(side='left')
+        try: win.wait_window()
+        except Exception: pass
+    except Exception:
+        # Nicht-UI/Testumgebung: Pflichtwerte leerlassen; Aufrufer darf explizit übergeben.
+        pass
+    return result if result.get('ok') else None
+
+
+
+def _fm505b_normalize_header(value):
+    import unicodedata as _ud
+    text=_ud.normalize('NFKC',str(value or ''))
+    text=text.replace('\ufeff','').replace('\u200b','').replace('\xa0',' ')
+    text=re.sub(r'\s+',' ',text).strip().casefold()
+    return re.sub(r'[^a-z0-9äöüß]+','',text)
+
+
+def _fm505b_find_header(workbook):
+    aliases={
+        'Buchung': {'buchung','buchungsdatum','buchungstag'},
+        'Wertstellung': {'wertstellung','wertstellungsdatum','valuta','valutadatum'},
+        'Buchungstext': {'buchungstext','buchungsart','umsatzart'},
+        'Verwendungszweck': {'verwendungszweck','verwendungszweck1','vz','zahlungsreferenz'},
+        'Verwendungszweck 2': {'verwendungszweck2','verwendungszweckii','vz2'},
+        'Betrag': {'betrag','umsatz','umsatzbetrag','betragwaehrung'},
+        'Währung': {'währung','waehrung','currency'},
+        'GVC': {'gvc'}, 'BTC': {'btc'},
+    }
+    alias_norm={k:{_fm505b_normalize_header(x) for x in vals} for k,vals in aliases.items()}
+    required={'Buchung','Wertstellung','Buchungstext','Verwendungszweck','Betrag'}
+    best=None
+    for ws in workbook.worksheets:
+        for row_idx in range(1,min(max(1,int(ws.max_row or 1)),50)+1):
+            mapping={}; raw=[]
+            for col_idx in range(1,min(max(1,int(ws.max_column or 1)),100)+1):
+                value=ws.cell(row=row_idx,column=col_idx).value
+                if value is None or str(value).strip()=='': continue
+                raw.append(str(value).strip())
+                norm=_fm505b_normalize_header(value)
+                for canonical,variants in alias_norm.items():
+                    if norm in variants and canonical not in mapping:
+                        mapping[canonical]=col_idx; break
+            score=len(required.intersection(mapping))
+            if best is None or score>best[0]: best=(score,ws,row_idx,mapping,raw)
+            if required.issubset(mapping): return ws,row_idx,mapping
+    score,ws,row_idx,mapping,raw=best or (0,workbook.active,1,{},[])
+    missing=sorted(required.difference(mapping))
+    raise ValueError('Die SFIRM-Kopfzeile konnte nicht vollständig erkannt werden. Fehlende Spalten: '+', '.join(missing)+f'\n\nBestes Ergebnis: Tabellenblatt "{ws.title}", Zeile {row_idx}. Gefundene Spalten: '+(', '.join(raw[:20]) if raw else 'keine'))
+
+def _fm505_import_excel(path, app=None, bank=None, konto=None, replace_existing=False):
+    from openpyxl import load_workbook
+    _fm505_db_init()
+    if not bank or not konto:
+        if app is not None:
+            sel = _fm505_ask_bank_konto(app, path)
+            if not sel:
+                return {'filename': os.path.basename(path), 'closings': 0, 'details': 0, 'skipped': 0, 'duplicate': False, 'cancelled': True, 'db': _fm501_konto_db_path()}
+            bank, konto = sel['bank'], sel['konto']
+        else:
+            bank = bank or 'Unbekannte Bank'
+            konto = konto or _fm505_guess_konto_from_filename(path) or 'Unbekanntes Konto'
+    bank = str(bank).strip()
+    konto = str(konto).strip()
+    wb = load_workbook(path, data_only=True, read_only=False)
+    ws, header_row, h = _fm505b_find_header(wb)
+    file_hash = _fm501_hash_file(path)
+    filename = os.path.basename(path)
+    user = getattr(app, 'current_user_display', '') or getattr(app, 'current_user_key', '') or ''
+    now = datetime.now().isoformat(timespec='seconds')
+    con = _fm501_db_connect()
+    closing_count = 0; detail_count = 0; skipped = 0
+    duplicate = False
+    try:
+        cur = con.cursor()
+        # Doppelimport global über Dateiinhalt erkennen: Die Datenbank hat UNIQUE(filename,file_hash).
+        # Wenn der Nutzer das Ersetzen bestätigt, werden die bestehenden Detaildaten gelöscht
+        # und derselbe Import-Datensatz neu aufgebaut. Dadurch bleibt filename+file_hash eindeutig.
+        existing = cur.execute("SELECT id, COALESCE(bank,'') bank, COALESCE(konto,'') konto FROM imports WHERE filename=? AND file_hash=?", (filename, file_hash)).fetchone()
+        if existing and not replace_existing:
+            return {'filename': filename, 'closings': 0, 'details': 0, 'skipped': 0, 'duplicate': True, 'cancelled': False, 'db': _fm501_konto_db_path(), 'bank': bank, 'konto': konto, 'existing_bank': existing['bank'], 'existing_konto': existing['konto'], 'existing_import_id': int(existing['id'])}
+        if existing and replace_existing:
+            import_id = int(existing['id'])
+            old_closing_ids = cur.execute('SELECT id FROM closings WHERE import_id=?', (import_id,)).fetchall()
+            for old in old_closing_ids:
+                old_id = old['id'] if hasattr(old, 'keys') else old[0]
+                cur.execute('DELETE FROM fee_items WHERE closing_id=?', (old_id,))
+            cur.execute('DELETE FROM closings WHERE import_id=?', (import_id,))
+            cur.execute('UPDATE imports SET file_mtime=?, imported_at=?, imported_by=?, row_count=?, closing_count=0, detail_count=0, bank=?, konto=?, deleted=0, deleted_at=NULL, deleted_by=NULL WHERE id=?',
+                        (str(os.path.getmtime(path)) if os.path.exists(path) else '', now, user, max(0, ws.max_row - header_row), bank, konto, import_id))
+        else:
+            cur.execute('INSERT INTO imports(filename,file_mtime,imported_at,imported_by,row_count,closing_count,detail_count,file_hash,bank,konto,deleted) VALUES(?,?,?,?,?,?,?,?,?,?,0)',
+                        (filename, str(os.path.getmtime(path)) if os.path.exists(path) else '', now, user, max(0, ws.max_row - header_row), 0, 0, file_hash, bank, konto))
+            import_id = cur.lastrowid
+        for r in range(header_row + 1, ws.max_row + 1):
+            bt = ws.cell(r, h['Buchungstext']).value
+            if not (bt and 'ENTGELTABSCHLUSS' in str(bt).upper()):
+                continue
+            vz = str(ws.cell(r, h.get('Verwendungszweck')).value or '')
+            raw_text = vz
+            if 'Verwendungszweck 2' in h and ws.cell(r, h['Verwendungszweck 2']).value:
+                raw_text = vz + '\n' + str(ws.cell(r, h['Verwendungszweck 2']).value or '')
+            parsed = _fm501_parse_entgelt_text(vz)
+            buchungsdatum = _fm501_date_iso(ws.cell(r, h['Buchung']).value)
+            wertstellung = _fm501_date_iso(ws.cell(r, h['Wertstellung']).value)
+            abschluss = parsed.get('abschlussdatum') or wertstellung or buchungsdatum
+            monat_key = _fm501_month_key_from_iso(abschluss)
+            betrag = ws.cell(r, h['Betrag']).value
+            brutto = abs(float(betrag)) if isinstance(betrag, (int, float)) else _fm501_de_float(betrag)
+            base_rechnung = parsed.get('rechnungsnummer') or f'{filename}:row:{r}'
+            rechnung = f'{bank}|{konto}|{base_rechnung}'
+            cur.execute('''INSERT OR IGNORE INTO closings(import_id,source_file,source_row,buchungsdatum,wertstellungsdatum,abschlussdatum,monat_key,zeitraum_von,zeitraum_bis,rechnungsnummer,betrag_brutto,betrag_netto,ust,waehrung,gvc,btc,raw_text,created_at,bank,konto)
+                           VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)''',
+                        (import_id, filename, r, buchungsdatum, wertstellung, abschluss, monat_key, parsed.get('zeitraum_von',''), parsed.get('zeitraum_bis',''), rechnung,
+                         brutto, parsed.get('betrag_netto'), parsed.get('ust'), ws.cell(r, h.get('Währung', h['Betrag'])).value if 'Währung' in h else 'EUR',
+                         ws.cell(r, h['GVC']).value if 'GVC' in h else '', ws.cell(r, h['BTC']).value if 'BTC' in h else '', raw_text, now, bank, konto))
+            row = cur.execute('SELECT id FROM closings WHERE rechnungsnummer=? AND abschlussdatum=?', (rechnung, abschluss)).fetchone()
+            if not row:
+                skipped += 1; continue
+            closing_id = row[0]
+            closing_count += 1
+            cur.execute('DELETE FROM fee_items WHERE closing_id=?', (closing_id,))
+            for item in parsed.get('items', []):
+                cur.execute('''INSERT OR IGNORE INTO fee_items(closing_id,abschlussdatum,monat_key,geschaeftsvorfall,positionstyp,anzahl,stueckkosten,gesamtbetrag,berechneter_betrag,abweichung,plausibel,sort_order,raw_line,bank,konto)
+                               VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)''',
+                            (closing_id, abschluss, monat_key, item.get('geschaeftsvorfall'), item.get('positionstyp'), item.get('anzahl'), item.get('stueckkosten'), item.get('gesamtbetrag'), item.get('berechneter_betrag'), item.get('abweichung'), item.get('plausibel'), item.get('sort_order'), item.get('raw_line'), bank, konto))
+                detail_count += 1
+        cur.execute('UPDATE imports SET closing_count=?, detail_count=? WHERE id=?', (closing_count, detail_count, import_id))
+        con.commit()
+    finally:
+        con.close()
+    return {'filename': filename, 'closings': closing_count, 'details': detail_count, 'skipped': skipped, 'duplicate': duplicate, 'cancelled': False, 'db': _fm501_konto_db_path(), 'bank': bank, 'konto': konto}
+
+
+def _fm505_filter_match(row, filters):
+    if not filters:
+        return True
+    def get(k): return str(row.get(k, '') if row.get(k, '') is not None else '')
+    if filters.get('bank') and get('bank') != filters['bank']:
+        return False
+    if filters.get('konto') and get('konto') != filters['konto']:
+        return False
+    if filters.get('monat') and filters['monat'].lower() not in get('monat_key').lower():
+        return False
+    if filters.get('von') and get('abschlussdatum') and get('abschlussdatum') < filters['von']:
+        return False
+    if filters.get('bis') and get('abschlussdatum') and get('abschlussdatum') > filters['bis']:
+        return False
+    if filters.get('gv') and filters['gv'].lower() not in get('geschaeftsvorfall').lower():
+        return False
+    if filters.get('typ') and get('positionstyp') != filters['typ']:
+        return False
+    if filters.get('plausibel') in ('Ja','Nein'):
+        want = 1 if filters['plausibel']=='Ja' else 0
+        if int(row.get('plausibel') or 0) != want:
+            return False
+    if filters.get('mindest') in ('Ja','Nein'):
+        is_min = 'mindestbetrag' in get('positionstyp').lower() or 'mindestbetrag' in get('geschaeftsvorfall').lower()
+        if (filters['mindest']=='Ja') != is_min:
+            return False
+    q = str(filters.get('q') or '').strip().lower()
+    if q:
+        blob = ' '.join(str(v or '') for v in row.values()).lower()
+        if q not in blob:
+            return False
+    return True
+
+
+def _fm505_fetch_imports(filters=None):
+    _fm505_db_init()
+    con = _fm501_db_connect()
+    try:
+        rows=[dict(r) for r in con.execute("SELECT * FROM imports WHERE COALESCE(deleted,0)=0 ORDER BY imported_at DESC, id DESC").fetchall()]
+        if filters:
+            rows=[r for r in rows if _fm505_filter_match(r, filters)]
+        return rows
+    finally:
+        con.close()
+
+
+def _fm505_fetch_closings(filters=None):
+    _fm505_db_init()
+    con = _fm501_db_connect()
+    try:
+        rows=[dict(r) for r in con.execute('SELECT * FROM closings WHERE import_id NOT IN (SELECT id FROM imports WHERE COALESCE(deleted,0)=1) ORDER BY abschlussdatum DESC, id DESC').fetchall()]
+        if filters:
+            rows=[r for r in rows if _fm505_filter_match(r, filters)]
+        return rows
+    finally:
+        con.close()
+
+
+def _fm505_fetch_items(filters=None, closing_id=None):
+    _fm505_db_init()
+    con = _fm501_db_connect()
+    try:
+        if closing_id:
+            rows=[dict(r) for r in con.execute('SELECT * FROM fee_items WHERE closing_id=? ORDER BY sort_order, id', (closing_id,)).fetchall()]
+        else:
+            rows=[dict(r) for r in con.execute('SELECT * FROM fee_items WHERE closing_id NOT IN (SELECT id FROM closings WHERE import_id IN (SELECT id FROM imports WHERE COALESCE(deleted,0)=1)) ORDER BY abschlussdatum DESC, geschaeftsvorfall').fetchall()]
+        if filters:
+            rows=[r for r in rows if _fm505_filter_match(r, filters)]
+        return rows
+    finally:
+        con.close()
+
+
+def _fm505_summary_stats(filters=None):
+    closings = _fm505_fetch_closings(filters)
+    items = _fm505_fetch_items(filters)
+    brutto=sum(float(r.get('betrag_brutto') or 0) for r in closings)
+    netto=sum(float(r.get('betrag_netto') or 0) for r in closings)
+    ust=sum(float(r.get('ust') or 0) for r in closings)
+    months=[]
+    by_month={}
+    for r in closings:
+        mk=r.get('monat_key') or r.get('abschlussdatum') or ''
+        by_month[mk]=by_month.get(mk,0)+float(r.get('betrag_brutto') or 0)
+    for mk,val in sorted(by_month.items()):
+        months.append({'monat_key':mk,'betrag_brutto':val})
+    top_map={}
+    for i in items:
+        key=i.get('geschaeftsvorfall') or ''
+        rec=top_map.setdefault(key, {'geschaeftsvorfall':key,'gesamt':0.0,'anzahl':0.0,'weighted_unit_num':0.0,'unit_values':[]})
+        ges=float(i.get('gesamtbetrag') or 0); anz=float(i.get('anzahl') or 0); stk=i.get('stueckkosten')
+        rec['gesamt']+=ges; rec['anzahl']+=anz
+        if anz and stk is not None:
+            rec['weighted_unit_num']+=float(stk)*anz
+            rec['unit_values'].append(float(stk))
+    top=[]
+    for rec in top_map.values():
+        rec['avg_unit']=(rec['weighted_unit_num']/rec['anzahl']) if rec.get('anzahl') else (sum(rec['unit_values'])/len(rec['unit_values']) if rec['unit_values'] else 0)
+        top.append(rec)
+    top.sort(key=lambda x:x.get('gesamt') or 0, reverse=True)
+    return {'closings':len(closings),'details':len(items),'brutto':brutto,'netto':netto,'ust':ust,'months':months,'top':top[:30]}
+
+
+def _fm505_delete_import(import_id, app=None):
+    _fm505_db_init()
+    user = getattr(app, 'current_user_display', '') or getattr(app, 'current_user_key', '') or ''
+    now = datetime.now().isoformat(timespec='seconds')
+    con = _fm501_db_connect()
+    try:
+        con.execute('UPDATE imports SET deleted=1, deleted_at=?, deleted_by=? WHERE id=?', (now,user,import_id))
+        con.commit()
+        return True
+    finally:
+        con.close()
+
+
+def _fm505_tree_sort(tree, col, descending=False, numeric=False):
+    items=[]
+    for iid in tree.get_children(''):
+        val=tree.set(iid, col)
+        if numeric:
+            try:
+                key=float(str(val).replace('€','').replace('.','').replace(',','.').strip())
+            except Exception:
+                key=0.0
+        else:
+            key=str(val).lower()
+        items.append((key,iid))
+    items.sort(reverse=descending)
+    for idx, (_, iid) in enumerate(items):
+        tree.move(iid,'',idx)
+    tree.heading(col, command=lambda: _fm505_tree_sort(tree, col, not descending, numeric))
+
+
+def _fm505_draw_line_chart(canvas, x, y, w, h, data, title, value_key, label_key):
+    canvas.create_rectangle(x,y,x+w,y+h,fill=WHITE,outline=LINE)
+    canvas.create_text(x+14,y+14,text=title,fill=BLUE,font=body_font(12,'bold'),anchor='w')
+    if not data:
+        canvas.create_text(x+w/2,y+h/2,text='Keine Daten für die gewählten Filter.',fill=TEXT2,font=body_font(10))
+        return
+    vals=[float(d.get(value_key) or 0) for d in data]
+    max_v=max(vals) or 1
+    min_v=min(vals) if vals else 0
+    if max_v==min_v: min_v=0
+    left=x+35; right=x+w-20; top=y+42; bottom=y+h-34
+    canvas.create_line(left,bottom,right,bottom,fill=LINE)
+    canvas.create_line(left,top,left,bottom,fill=LINE)
+    n=len(data)
+    points=[]
+    for i,d in enumerate(data):
+        xx=left+(right-left)*(i/(max(1,n-1)))
+        yy=bottom-(bottom-top)*((float(d.get(value_key) or 0)-min_v)/(max_v-min_v if max_v!=min_v else 1))
+        points.append((xx,yy,d))
+    for i in range(len(points)-1):
+        canvas.create_line(points[i][0],points[i][1],points[i+1][0],points[i+1][1],fill=BLUE,width=2)
+    for xx,yy,d in points:
+        canvas.create_oval(xx-3,yy-3,xx+3,yy+3,fill=RED,outline=RED)
+        canvas.create_text(xx,bottom+12,text=str(d.get(label_key) or '')[:8],fill=TEXT2,font=body_font(8))
+
+
+def _fm505_chart_data(filters, metric='brutto', chart_type='months'):
+    items=_fm505_fetch_items(filters)
+    closings=_fm505_fetch_closings(filters)
+    if chart_type=='top':
+        return _fm505_summary_stats(filters).get('top',[])[:10], 'gesamt', 'geschaeftsvorfall'
+    if chart_type=='unit_dev':
+        gv=str(filters.get('gv') or '').strip()
+        data_map={}
+        for i in items:
+            if gv and gv.lower() not in str(i.get('geschaeftsvorfall') or '').lower():
+                continue
+            mk=i.get('monat_key') or ''
+            anz=float(i.get('anzahl') or 0); ges=float(i.get('gesamtbetrag') or 0)
+            rec=data_map.setdefault(mk, {'monat_key':mk,'gesamt':0.0,'anzahl':0.0})
+            rec['gesamt']+=ges; rec['anzahl']+=anz
+        out=[]
+        for mk,rec in sorted(data_map.items()):
+            out.append({'monat_key':mk,'avg_unit':(rec['gesamt']/rec['anzahl']) if rec['anzahl'] else 0})
+        return out, 'avg_unit', 'monat_key'
+    by={}
+    for c in closings:
+        mk=c.get('monat_key') or ''
+        if metric=='netto': val=float(c.get('betrag_netto') or 0)
+        elif metric=='ust': val=float(c.get('ust') or 0)
+        else: val=float(c.get('betrag_brutto') or 0)
+        by[mk]=by.get(mk,0)+val
+    return [{'monat_key':mk,'value':val} for mk,val in sorted(by.items())], 'value', 'monat_key'
+
+
+def _fm505_render_account_analysis_tool(self):
+    _fm505_db_init()
+    w,h=self.canvas.winfo_width(),self.canvas.winfo_height()
+    top_y=112
+    outer=tk.Frame(self.root,bg=BG)
+    self.widget_items.append(outer)
+    self.canvas.create_window(0,top_y,window=outer,anchor='nw',width=w,height=max(460,h-top_y-55))
+    main=tk.Frame(outer,bg=BG)
+    main.pack(fill='both',expand=True,padx=16,pady=(6,8))
+    status_var=tk.StringVar(value='Datenbank: '+_fm501_konto_db_path())
+    kpi_var=tk.StringVar(value='')
+    selected={'closing_id':None,'import_id':None}
+    sort_state={}
+    filters={'bank':'','konto':'','monat':'','von':'','bis':'','gv':'','typ':'','mindest':'','plausibel':'','q':''}
+
+    controls=tk.Frame(main,bg=BG); controls.pack(fill='x',pady=(0,6))
+    def make_combo(parent,var,values,width=14):
+        cb=ttk.Combobox(parent,textvariable=var,values=values,state='normal',font=body_font(9),width=width)
+        return cb
+    def current_filters():
+        for k,v in filter_vars.items(): filters[k]=v.get().strip()
+        return dict(filters)
+    def current_chart_filters():
+        f=dict(current_filters())
+        f.update({
+            'bank': chart_bank.get().strip(), 'konto': chart_konto.get().strip(), 'von': chart_von.get().strip(), 'bis': chart_bis.get().strip(), 'gv': chart_gv.get().strip(), '_window_offset': chart_window_offset.get() if 'chart_window_offset' in locals() else 0
+        })
+        return f
+
+    def refresh_filter_values():
+        banks=['']+_fm506_distinct_values_fast('imports','bank')
+        konten=['']+_fm506_distinct_values_fast('imports','konto')
+        dates=['']+_fm506_distinct_values_fast('closings','abschlussdatum')
+        for cb in [bank_cb, chart_bank_cb]: cb.configure(values=banks)
+        for cb in [konto_cb, chart_konto_cb]: cb.configure(values=konten)
+        for cb in [filter_von_cb, filter_bis_cb, chart_von_cb, chart_bis_cb]: cb.configure(values=dates)
+        gvs=['']+_fm506_distinct_values_fast('fee_items','geschaeftsvorfall')
+        types=['']+_fm506_distinct_values_fast('fee_items','positionstyp')
+        gv_cb.configure(values=gvs); typ_cb.configure(values=types)
+        try:
+            chart_gv_values[:] = [x for x in gvs if x]
+            chart_gv_btn.configure(text=('Geschäftsvorfälle: ' + (chart_gv.get()[:60] if chart_gv.get() else 'auswählen')))
+        except Exception:
+            pass
+
+    def fill_tree(tree, rows, cols, formatter):
+        tree.delete(*tree.get_children())
+        for row in rows:
+            iid=str(row.get('_iid') or row.get('id') or '')
+            try: tree.insert('', 'end', iid=iid if iid else None, values=formatter(row))
+            except Exception: tree.insert('', 'end', values=formatter(row))
+
+    def refresh_tables():
+        f=current_filters()
+        imports=_fm505_fetch_imports(f)
+        closings=_fm505_fetch_closings(f)
+        items=_fm505_fetch_items(f, selected.get('closing_id')) if selected.get('closing_id') else _fm505_fetch_items(f)
+        stats=_fm505_summary_stats(f)
+        kpi_var.set(f"Entgeltabschlüsse: {stats['closings']}   |   Einzelpositionen: {stats['details']}   |   Brutto: {_fm501_fmt_eur(stats['brutto'])}   |   Netto: {_fm501_fmt_eur(stats['netto'])}   |   USt: {_fm501_fmt_eur(stats['ust'])}")
+        fill_tree(import_tree, imports, None, lambda r:(r.get('bank') or '', r.get('konto') or '', r.get('filename') or '', r.get('imported_at') or '', r.get('closing_count') or 0, r.get('detail_count') or 0))
+        fill_tree(closing_tree, closings, None, lambda r:(r.get('bank') or '', r.get('konto') or '', r.get('monat_key') or '', r.get('abschlussdatum') or '', r.get('buchungsdatum') or '', _fm501_fmt_eur(r.get('betrag_brutto')), _fm501_fmt_eur(r.get('betrag_netto')), _fm501_fmt_eur(r.get('ust')), str(r.get('rechnungsnummer') or '').split('|')[-1], r.get('source_file') or ''))
+        fill_tree(item_tree, items, None, lambda r:(r.get('bank') or '', r.get('konto') or '', r.get('monat_key') or '', r.get('geschaeftsvorfall') or '', r.get('positionstyp') or '', _fm501_fmt_num(r.get('anzahl')) if r.get('anzahl') is not None else '', _fm501_fmt_eur(r.get('stueckkosten')) if r.get('stueckkosten') is not None else '', _fm501_fmt_eur(r.get('gesamtbetrag')), _fm501_fmt_eur(r.get('abweichung')), 'Ja' if r.get('plausibel') else 'Nein'))
+        top=_fm505_summary_stats(f).get('top',[])
+        fill_tree(top_tree, top, None, lambda r:(r.get('geschaeftsvorfall') or '', _fm501_fmt_eur(r.get('gesamt')), _fm501_fmt_num(r.get('anzahl')), _fm501_fmt_eur(r.get('avg_unit'))))
+        status_var.set(f"Datenbank: {_fm501_konto_db_path()}   |   Sichtbare Importe: {len(imports)}")
+
+    def draw_charts():
+        # Tk meldet vor dem ersten Layoutdurchlauf Breite 1. Erst Layout abschließen,
+        # dann zwei gleich breite Diagrammflächen mit festen Außen-/Innenabständen berechnen.
+        try: charts.update_idletasks()
+        except Exception: pass
+        charts.delete('all')
+        f=current_chart_filters()
+        metric=chart_metric.get()
+        measured=int(charts.winfo_width() or 0)
+        available=max(900, measured, int(w)-32)
+        outer=12; gap=18
+        each=max(420, int((available-(2*outer)-gap)/2))
+        chart_h=244
+        d1,key1,label1=_fm505_chart_data(f, metric, 'months')
+        d2,key2,label2=_fm505_chart_data(f, metric, 'unit_dev' if chart_kind.get()=='Stückkostenentwicklung' else 'top')
+        off=int(f.get('_window_offset') or 0)
+        if chart_kind.get()=='Stückkostenentwicklung':
+            def _slice12(rows):
+                if isinstance(rows, dict) and 'months' in rows:
+                    months=list(rows.get('months') or []); end=max(0,len(months)-off); start=max(0,end-12)
+                    rows=dict(rows); rows['months']=months[start:end]; return rows
+                rows=list(rows or []); end=max(0,len(rows)-off); start=max(0,end-12); return rows[start:end]
+            d1=_slice12(d1); d2=_slice12(d2)
+        _fm501_draw_bar_chart(charts, outer, 6, each, chart_h, d1, 'Entwicklung nach Monat', key1, label1)
+        second_x=outer+each+gap
+        if chart_kind.get()=='Stückkostenentwicklung':
+            _fm505_draw_line_chart(charts, second_x, 6, each, chart_h, d2, 'Ø Stückkosten je Geschäftsvorfall pro Bank', key2, label2)
+        else:
+            _fm501_draw_bar_chart(charts, second_x, 6, each, chart_h, d2, 'Top Gebührenpositionen', key2, label2)
+        charts.configure(scrollregion=(0,0,second_x+each+outer,chart_h+12))
+
+    def refresh_all():
+        refresh_filter_values(); refresh_tables()
+
+    def import_file():
+        try:
+            from tkinter import filedialog
+            path=filedialog.askopenfilename(title='SFIRM-Excel-Export auswählen', filetypes=[('Excel-Dateien','*.xlsx *.xlsm *.xltx *.xltm'),('Alle Dateien','*.*')])
+            if not path: return
+            res=_fm505_import_excel(path,self)
+            if res.get('cancelled'): return
+            if res.get('duplicate'):
+                replace=False
+                try:
+                    replace=messagebox.askyesno(
+                        'Kontenauswertung',
+                        f"Diese Excel-Datei wurde bereits verarbeitet.\n\nBisher: {res.get('existing_bank') or '-'} / {res.get('existing_konto') or '-'}\nNeu: {res.get('bank') or '-'} / {res.get('konto') or '-'}\n\nBestehende Daten durch den aktuellen Import ersetzen?"
+                    )
+                except Exception:
+                    replace=False
+                if replace:
+                    res=_fm505_import_excel(path,self,bank=res.get('bank'),konto=res.get('konto'),replace_existing=True)
+                    try: messagebox.showinfo('Kontenauswertung', f"Daten ersetzt.\n\nBank: {res.get('bank')}\nKonto: {res.get('konto')}\nEntgeltabschlüsse: {res['closings']}\nDetailpositionen: {res['details']}")
+                    except Exception: pass
+                else:
+                    try: messagebox.showinfo('Kontenauswertung','Bestehende Daten wurden nicht verändert.')
+                    except Exception: pass
+            else:
+                try: messagebox.showinfo('Kontenauswertung', f"Daten aufgenommen.\n\nBank: {res.get('bank')}\nKonto: {res.get('konto')}\nEntgeltabschlüsse: {res['closings']}\nDetailpositionen: {res['details']}")
+                except Exception: pass
+            refresh_all()
+        except Exception as exc:
+            try: messagebox.showerror('Kontenauswertung','Aufnahme fehlgeschlagen:\n'+str(exc))
+            except Exception: pass
+
+    def delete_selected_import():
+        sel=import_tree.selection()
+        if not sel:
+            try: messagebox.showwarning('Kontenauswertung','Bitte zuerst einen Importdatensatz auswählen.')
+            except Exception: pass
+            return
+        iid=int(sel[0])
+        ok=True
+        try: ok=messagebox.askyesno('Kontenauswertung','Ausgewählten Importdatensatz inklusive Entgeltabschlüssen und Einzelpositionen aus der aktiven Auswertung entfernen?')
+        except Exception: ok=True
+        if ok:
+            _fm505_delete_import(iid,self); selected['import_id']=None; selected['closing_id']=None; refresh_all(); draw_charts()
+
+    def on_closing_select(_=None):
+        sel=closing_tree.selection(); selected['closing_id']=int(sel[0]) if sel else None; refresh_tables()
+    def on_import_select(_=None):
+        sel=import_tree.selection(); selected['import_id']=int(sel[0]) if sel else None
+
+    tk.Button(controls,text='Excel-Daten aufnehmen',command=import_file,bg='#CFEAD6',fg=TEXT,font=body_font(10,'bold'),relief='solid',bd=1,padx=12,pady=5).pack(side='left',padx=(0,8))
+    tk.Button(controls,text='Aktualisieren',command=refresh_all,bg=WHITE,fg=TEXT,font=body_font(10),relief='solid',bd=1,padx=12,pady=5).pack(side='left',padx=(0,8))
+    tk.Button(controls,text='Import löschen',command=delete_selected_import,bg='#FDDDDD',fg=TEXT,font=body_font(10),relief='solid',bd=1,padx=12,pady=5).pack(side='left',padx=(0,8))
+    tk.Button(controls,text='Excel-Auswertung exportieren',command=lambda:_fm501_export_analysis_excel(self),bg=WHITE,fg=BLUE,font=body_font(10),relief='solid',bd=1,padx=12,pady=5).pack(side='left',padx=(0,8))
+    tk.Label(controls,textvariable=status_var,bg=BG,fg=TEXT2,font=body_font(8)).pack(side='right')
+
+    filter_box=tk.Frame(main,bg=WHITE,highlightbackground=LINE,highlightthickness=1); filter_box.pack(fill='x',pady=(0,6))
+    filter_vars={k:tk.StringVar(value='') for k in ['bank','konto','monat','von','bis','gv','typ','mindest','plausibel','q']}
+    tk.Label(filter_box,text='Tabellenfilter',bg=WHITE,fg=BLUE,font=body_font(10,'bold')).grid(row=0,column=0,sticky='w',padx=8,pady=(5,1))
+    bank_cb=make_combo(filter_box,filter_vars['bank'],[''],12); konto_cb=make_combo(filter_box,filter_vars['konto'],[''],10); gv_cb=make_combo(filter_box,filter_vars['gv'],[''],18); typ_cb=make_combo(filter_box,filter_vars['typ'],[''],18)
+    filter_von_cb=ttk.Combobox(filter_box,textvariable=filter_vars['von'],values=[''],state='readonly',font=body_font(9),width=10)
+    filter_bis_cb=ttk.Combobox(filter_box,textvariable=filter_vars['bis'],values=[''],state='readonly',font=body_font(9),width=10)
+    widgets=[('Bank',bank_cb),('Konto',konto_cb),('Monat',tk.Entry(filter_box,textvariable=filter_vars['monat'],font=body_font(9),width=7)),('Von',filter_von_cb),('Bis',filter_bis_cb),('Geschäftsvorfall',gv_cb),('Typ',typ_cb),('Mindestbetrag',ttk.Combobox(filter_box,textvariable=filter_vars['mindest'],values=['','Ja','Nein'],state='readonly',width=8,font=body_font(9))),('Plausibel',ttk.Combobox(filter_box,textvariable=filter_vars['plausibel'],values=['','Ja','Nein'],state='readonly',width=8,font=body_font(9))),('Suche',tk.Entry(filter_box,textvariable=filter_vars['q'],font=body_font(9),width=18))]
+    for idx,(lab,wdg) in enumerate(widgets):
+        tk.Label(filter_box,text=lab,bg=WHITE,fg=TEXT2,font=body_font(8)).grid(row=1,column=idx,sticky='w',padx=(8,2),pady=(0,1))
+        wdg.grid(row=2,column=idx,sticky='ew',padx=(8,2),pady=(0,6))
+    tk.Button(filter_box,text='Tabellen filtern',command=refresh_tables,bg=WHITE,fg=TEXT,font=body_font(9),relief='solid',bd=1).grid(row=2,column=len(widgets),padx=8,pady=(0,6),sticky='e')
+    for c in range(len(widgets)): filter_box.grid_columnconfigure(c,weight=1)
+
+    tk.Label(main,textvariable=kpi_var,bg=WHITE,fg=TEXT,font=body_font(10,'bold'),anchor='w',padx=10,pady=6,relief='solid',bd=1).pack(fill='x',pady=(0,6))
+
+    chart_config_visible=tk.BooleanVar(value=False); chart_window_offset=tk.IntVar(value=0)
+    chart_config_bar=tk.Frame(main,bg=BG); chart_config_bar.pack(fill='x',pady=(0,4))
+    chart_filter=tk.Frame(main,bg=WHITE,highlightbackground=LINE,highlightthickness=1); chart_filter.pack(fill='x',pady=(0,6))
+    tk.Label(chart_filter,text='Schaubilder filtern',bg=WHITE,fg=BLUE,font=body_font(10,'bold')).grid(row=0,column=0,sticky='w',padx=8,pady=(5,1))
+    chart_bank=tk.StringVar(value=''); chart_konto=tk.StringVar(value=''); chart_von=tk.StringVar(value=''); chart_bis=tk.StringVar(value=''); chart_gv=tk.StringVar(value=''); chart_metric=tk.StringVar(value='brutto'); chart_kind=tk.StringVar(value='Top-Kostentreiber')
+    chart_gv_values=[]
+    chart_bank_cb=make_combo(chart_filter,chart_bank,[''],12); chart_konto_cb=make_combo(chart_filter,chart_konto,[''],10)
+    chart_von_cb=ttk.Combobox(chart_filter,textvariable=chart_von,values=[''],state='readonly',font=body_font(9),width=10)
+    chart_bis_cb=ttk.Combobox(chart_filter,textvariable=chart_bis,values=[''],state='readonly',font=body_font(9),width=10)
+    def open_chart_gv_selector():
+        win=tk.Toplevel(self.root); win.title('Geschäftsvorfälle auswählen'); win.configure(bg=WHITE); win.transient(self.root); win.grab_set()
+        tk.Label(win,text='Mehrfachauswahl Geschäftsvorfälle',bg=WHITE,fg=BLUE,font=body_font(12,'bold')).pack(anchor='w',padx=14,pady=(12,6))
+        tk.Label(win,text='Mehrere Einträge können gleichzeitig für Stückkostenentwicklungen als Linien angezeigt werden.',bg=WHITE,fg=TEXT2,font=body_font(9),wraplength=520,justify='left').pack(anchor='w',padx=14,pady=(0,8))
+        frame=tk.Frame(win,bg=WHITE); frame.pack(fill='both',expand=True,padx=14,pady=(0,8))
+        lb=tk.Listbox(frame,selectmode='multiple',height=16,width=72,font=body_font(9),exportselection=False)
+        ys=ttk.Scrollbar(frame,orient='vertical',command=lb.yview); lb.configure(yscrollcommand=ys.set)
+        lb.grid(row=0,column=0,sticky='nsew'); ys.grid(row=0,column=1,sticky='ns'); frame.grid_rowconfigure(0,weight=1); frame.grid_columnconfigure(0,weight=1)
+        selected_now=[x.strip() for x in re.split(r'[;,]\s*|\n+', chart_gv.get() or '') if x.strip()]
+        for val in chart_gv_values:
+            lb.insert('end',val)
+            if val in selected_now: lb.selection_set(lb.size()-1)
+        def apply():
+            vals=[lb.get(i) for i in lb.curselection()]
+            chart_gv.set('; '.join(vals))
+            chart_gv_btn.configure(text='Geschäftsvorfälle: ' + (chart_gv.get()[:60] if chart_gv.get() else 'auswählen'))
+            win.destroy(); draw_charts()
+        btns=tk.Frame(win,bg=WHITE); btns.pack(fill='x',padx=14,pady=(0,12))
+        tk.Button(btns,text='Übernehmen',command=apply,bg='#CFEAD6',fg=TEXT,font=body_font(10,'bold'),relief='solid',bd=1,padx=12,pady=4).pack(side='left',padx=(0,8))
+        tk.Button(btns,text='Auswahl leeren',command=lambda:(chart_gv.set(''),chart_gv_btn.configure(text='Geschäftsvorfälle: auswählen'),win.destroy(),draw_charts()),bg=WHITE,fg=TEXT,font=body_font(10),relief='solid',bd=1,padx=12,pady=4).pack(side='left',padx=(0,8))
+        tk.Button(btns,text='Abbrechen',command=win.destroy,bg=WHITE,fg=TEXT,font=body_font(10),relief='solid',bd=1,padx=12,pady=4).pack(side='left')
+    chart_gv_btn=tk.Button(chart_filter,text='Geschäftsvorfälle: auswählen',command=open_chart_gv_selector,bg=WHITE,fg=BLUE,font=body_font(9),relief='solid',bd=1,padx=8,pady=3)
+    cw=[('Bank',chart_bank_cb),('Konto',chart_konto_cb),('Von',chart_von_cb),('Bis',chart_bis_cb),('Kennzahl',ttk.Combobox(chart_filter,textvariable=chart_metric,values=['brutto','netto','ust'],state='readonly',font=body_font(9),width=10)),('Geschäftsvorfall',chart_gv_btn),('Diagramm 2',ttk.Combobox(chart_filter,textvariable=chart_kind,values=['Top-Kostentreiber','Stückkostenentwicklung'],state='readonly',font=body_font(9),width=18))]
+    for idx,(lab,wdg) in enumerate(cw):
+        tk.Label(chart_filter,text=lab,bg=WHITE,fg=TEXT2,font=body_font(8)).grid(row=1,column=idx,sticky='w',padx=(8,2),pady=(0,1))
+        wdg.grid(row=2,column=idx,sticky='ew',padx=(8,2),pady=(0,6))
+    tk.Button(chart_filter,text='Schaubilder aktualisieren',command=draw_charts,bg=WHITE,fg=BLUE,font=body_font(9,'bold'),relief='solid',bd=1).grid(row=2,column=len(cw),padx=8,pady=(0,6),sticky='e')
+    def toggle_chart_config():
+        if chart_config_visible.get():
+            chart_filter.pack_forget(); chart_config_visible.set(False)
+        else:
+            chart_filter.pack(fill='x',pady=(0,6),after=chart_config_bar); chart_config_visible.set(True)
+    tk.Button(chart_config_bar,text='Schaubild konfigurieren',command=toggle_chart_config,bg=WHITE,fg=BLUE,font=body_font(9,'bold'),relief='solid',bd=1,padx=10,pady=4).pack(side='left',padx=(0,8))
+    def older_months(): chart_window_offset.set(chart_window_offset.get()+1); draw_charts()
+    def newer_months(): chart_window_offset.set(max(0,chart_window_offset.get()-1)); draw_charts()
+    tk.Button(chart_config_bar,text='◀ ältere 12 Monate',command=older_months,bg=WHITE,fg=TEXT,font=body_font(9),relief='solid',bd=1,padx=10,pady=4).pack(side='left',padx=(0,8))
+    tk.Button(chart_config_bar,text='neuere 12 Monate ▶',command=newer_months,bg=WHITE,fg=TEXT,font=body_font(9),relief='solid',bd=1,padx=10,pady=4).pack(side='left',padx=(0,8))
+    chart_filter.pack_forget()
+    charts_visible=tk.BooleanVar(value=True)
+    def toggle_charts():
+        if charts_visible.get(): charts.pack_forget(); charts_visible.set(False)
+        else: charts.pack(fill='x',pady=(0,8),after=chart_filter if chart_config_visible.get() else chart_config_bar); charts_visible.set(True); draw_charts()
+    tk.Button(chart_config_bar,text='Schaubilder ein-/ausklappen',command=toggle_charts,bg=WHITE,fg=TEXT,font=body_font(9),relief='solid',bd=1,padx=10,pady=4).pack(side='left',padx=(0,8))
+    charts=tk.Canvas(main,bg=BG,height=262,highlightthickness=0); charts.pack(fill='x',pady=(0,8))
+
+    table_toggle_bar=tk.Frame(main,bg=BG); table_toggle_bar.pack(fill='x',pady=(0,4))
+    split=tk.Frame(main,bg=BG); split.pack(fill='both',expand=True)
+    left=tk.Frame(split,bg=WHITE,highlightbackground=LINE,highlightthickness=1); left.pack(side='left',fill='both',expand=True,padx=(0,6))
+    right=tk.Frame(split,bg=WHITE,highlightbackground=LINE,highlightthickness=1); right.pack(side='left',fill='both',expand=True,padx=(6,0))
+    bottom=tk.Frame(main,bg=WHITE,highlightbackground=LINE,highlightthickness=1); bottom.pack(fill='both',expand=True,pady=(6,0))
+    def _toggle_panel(frame, var, pack_opts):
+        if var.get(): frame.pack_forget(); var.set(False)
+        else: frame.pack(**pack_opts); var.set(True)
+    left_vis=tk.BooleanVar(value=True); right_vis=tk.BooleanVar(value=True); bottom_vis=tk.BooleanVar(value=True)
+    tk.Button(table_toggle_bar,text='Importe/Abschlüsse ein-/ausklappen',command=lambda:_toggle_panel(left,left_vis,{'side':'left','fill':'both','expand':True,'padx':(0,6)}),bg=WHITE,fg=TEXT,font=body_font(9),relief='solid',bd=1,padx=10,pady=4).pack(side='left',padx=(0,8))
+    tk.Button(table_toggle_bar,text='Einzelpositionen ein-/ausklappen',command=lambda:_toggle_panel(right,right_vis,{'side':'left','fill':'both','expand':True,'padx':(6,0)}),bg=WHITE,fg=TEXT,font=body_font(9),relief='solid',bd=1,padx=10,pady=4).pack(side='left',padx=(0,8))
+    tk.Button(table_toggle_bar,text='Top-Kostentreiber ein-/ausklappen',command=lambda:_toggle_panel(bottom,bottom_vis,{'fill':'both','expand':True,'pady':(6,0)}),bg=WHITE,fg=TEXT,font=body_font(9),relief='solid',bd=1,padx=10,pady=4).pack(side='left',padx=(0,8))
+
+    def build_tree(parent,title,cols,defs,height=7):
+        tk.Label(parent,text=title,bg=WHITE,fg=BLUE,font=body_font(11,'bold')).pack(anchor='w',padx=8,pady=(6,2))
+        wrap=tk.Frame(parent,bg=WHITE); wrap.pack(fill='both',expand=True,padx=8,pady=(0,8))
+        tree=ttk.Treeview(wrap,columns=cols,show='headings',height=height)
+        ysb=ttk.Scrollbar(wrap,orient='vertical',command=tree.yview); xsb=ttk.Scrollbar(wrap,orient='horizontal',command=tree.xview)
+        tree.configure(yscrollcommand=ysb.set,xscrollcommand=xsb.set)
+        for col,label,width_col,num in defs:
+            tree.heading(col,text=label,command=lambda c=col,n=num:_fm505_tree_sort(tree,c,False,n))
+            tree.column(col,width=width_col,stretch=True)
+        tree.grid(row=0,column=0,sticky='nsew'); ysb.grid(row=0,column=1,sticky='ns'); xsb.grid(row=1,column=0,sticky='ew')
+        wrap.grid_rowconfigure(0,weight=1); wrap.grid_columnconfigure(0,weight=1)
+        return tree
+
+    import_tree=build_tree(left,'Importierte Datensätze',('bank','konto','datei','zeit','abschl','pos'),[('bank','Bank',90,False),('konto','Konto',80,False),('datei','Datei',180,False),('zeit','Importiert',140,False),('abschl','Abschl.',60,True),('pos','Pos.',60,True)],height=4)
+    closing_tree=build_tree(left,'Entgeltabschlüsse',('bank','konto','monat','abschluss','buchung','brutto','netto','ust','rechnung','quelle'),[('bank','Bank',80,False),('konto','Konto',80,False),('monat','Monat',60,False),('abschluss','Abschluss',90,False),('buchung','Buchung',90,False),('brutto','Brutto',90,True),('netto','Netto',90,True),('ust','USt',80,True),('rechnung','Rechnung',150,False),('quelle','Quelle',160,False)],height=7)
+    item_tree=build_tree(right,'Einzelpositionen / Stückkosten',('bank','konto','monat','gv','typ','anzahl','stk','gesamt','abw','ok'),[('bank','Bank',75,False),('konto','Konto',75,False),('monat','Monat',60,False),('gv','Geschäftsvorfall',180,False),('typ','Typ',140,False),('anzahl','Anzahl',70,True),('stk','Stückkosten',90,True),('gesamt','Gesamt',90,True),('abw','Abw.',70,True),('ok','OK',50,False)],height=14)
+    top_tree=build_tree(bottom,'Top-Kostentreiber',('gv','gesamt','anzahl','avg'),[('gv','Geschäftsvorfall',260,False),('gesamt','Gesamtkosten',120,True),('anzahl','Anzahl gesamt',110,True),('avg','Ø Stückkosten gewichtet',150,True)],height=6)
+    closing_tree.bind('<<TreeviewSelect>>',on_closing_select); import_tree.bind('<<TreeviewSelect>>',on_import_select)
+    refresh_all()
+    try: self.root.after_idle(draw_charts)
+    except Exception: draw_charts()
+
+# Finale v0.505-Zuweisungen.
+try:
+    FiBuMateApp.render_account_analysis_tool = _fm505_render_account_analysis_tool
+except Exception:
+    pass
+
+
+# FIBU_MATE_V0505_FIX_HEADER_ROW_UND_SCHAUBILD_LAYOUT
+# Datum: 2026-07-13
+# Behebt NameError header_row und negative Diagrammbreiten vor dem ersten Tk-Layout.
+
+
+# FIBU_MATE_V0505_FIX_UNIQUE_IMPORT_UND_PASSWORTFOKUS_FINAL
+# Datum: 2026-07-13
+# Keine Layoutänderung: nur Doppelimport-Fehler und Passwort-Fokus korrigiert.
+
+# FIBU_MATE_V0505_HOTFIX_UNIQUE_IMPORT_DELETED_ROWS
+# Datum: 2026-07-13
+# Doppelimport wird nun auch dann vor INSERT erkannt, wenn ein gleiches filename+file_hash bereits als gelöscht markiert ist.
+
+# FIBU_MATE_V0505_REPLACE_EXISTING_IMPORT_FINAL
+# Datum: 2026-07-13
+# Doppelimport: bestehende Importdaten können nach Abfrage durch aktuellen Import ersetzt werden.
+
+
+# ------------------------------------------------------------------
+# FiBu Mate 0.506 - Treasury-Stammdaten + Schaubild-/Tabellen-Collapse
+# Datum: 2026-07-13
+# Zweck:
+# - Neues Treasury-Modul Banken- und Kontenstammdaten.
+# - Synchronisation Stammdaten <-> Kontenauswertung.
+# - Importdialog darf neue Bank/Konto-Kombinationen in Stammdaten übernehmen.
+# - Vorhandene Werte aus Kontenauswertung werden automatisch in Stammdaten übernommen.
+# - Schaubildkonfiguration hinter Button versteckt.
+# - Schaubildbereich und Tabellenbereiche einklappbar.
+# - Stückkostenentwicklung unterstützt mehrere Geschäftsvorfälle als Linien und 12-Monats-Fenster.
+# ------------------------------------------------------------------
+
+FM506_VERSION = "0.506"
+
+try:
+    _FM506_PREV_DB_INIT = _fm505_db_init
+except Exception:
+    _FM506_PREV_DB_INIT = _fm501_db_init
+
+
+def _fm506_role_rank(app):
+    try:
+        key = getattr(app, 'current_user_key', '') or ''
+        user = (getattr(app, 'user_data', {}) or {}).get('users', {}).get(key, {}) or {}
+        role = user.get('permission') or user.get('role') or ''
+        if str(key).lower() == SUPERUSER_KEY or 'admin' in str(key).lower():
+            return 4
+        return int(ROLE_RANK.get(role, ROLE_RANK.get(str(role), 1)) or 1)
+    except Exception:
+        return 1
+
+
+def _fm506_can_edit_master(app):
+    return _fm506_role_rank(app) >= 3
+
+
+def _fm506_db_init():
+    _FM506_PREV_DB_INIT()
+    con = _fm501_db_connect()
+    try:
+        cur = con.cursor()
+        cur.execute('''CREATE TABLE IF NOT EXISTS treasury_banks (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            bankname TEXT NOT NULL,
+            kurzname TEXT,
+            bic TEXT,
+            blz TEXT,
+            kommentar TEXT,
+            active INTEGER DEFAULT 1,
+            created_at TEXT,
+            updated_at TEXT,
+            UNIQUE(bankname)
+        )''')
+        cur.execute('''CREATE TABLE IF NOT EXISTS treasury_accounts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            bank_id INTEGER NOT NULL,
+            account_name TEXT NOT NULL,
+            kontonummer TEXT,
+            iban TEXT,
+            waehrung TEXT DEFAULT 'EUR',
+            sap_konto TEXT,
+            kommentar TEXT,
+            active INTEGER DEFAULT 1,
+            created_at TEXT,
+            updated_at TEXT,
+            UNIQUE(bank_id, account_name)
+        )''')
+        con.commit()
+    finally:
+        con.close()
+    try:
+        _fm506_seed_master_from_imports()
+    except Exception:
+        pass
+
+
+# Ab 0.506 nutzt auch die Kontenauswertung die erweiterte Initialisierung.
+_fm505_db_init = _fm506_db_init
+
+
+def _fm506_now():
+    return datetime.now().isoformat(timespec='seconds')
+
+
+def _fm506_norm(value):
+    return ' '.join(str(value or '').strip().split())
+
+
+def _fm506_find_or_create_bank(bankname, kurzname='', bic='', blz='', kommentar='', active=1):
+    bankname = _fm506_norm(bankname)
+    if not bankname:
+        return None
+    con = _fm501_db_connect()
+    try:
+        cur = con.cursor(); now = _fm506_now()
+        row = cur.execute('SELECT id FROM treasury_banks WHERE bankname=?', (bankname,)).fetchone()
+        if row:
+            bid = row['id'] if hasattr(row, 'keys') else row[0]
+            cur.execute('UPDATE treasury_banks SET kurzname=COALESCE(NULLIF(?,\'\'),kurzname), bic=COALESCE(NULLIF(?,\'\'),bic), blz=COALESCE(NULLIF(?,\'\'),blz), kommentar=COALESCE(NULLIF(?,\'\'),kommentar), active=?, updated_at=? WHERE id=?', (kurzname, bic, blz, kommentar, active, now, bid))
+        else:
+            cur.execute('INSERT INTO treasury_banks(bankname,kurzname,bic,blz,kommentar,active,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?)', (bankname, kurzname, bic, blz, kommentar, active, now, now))
+            bid = cur.lastrowid
+        con.commit(); return bid
+    finally:
+        con.close()
+
+
+def _fm506_find_or_create_account(bankname, account_name, kontonummer='', iban='', waehrung='EUR', sap_konto='', kommentar='', active=1):
+    bankname = _fm506_norm(bankname); account_name = _fm506_norm(account_name)
+    if not bankname or not account_name:
+        return None
+    bid = _fm506_find_or_create_bank(bankname)
+    con = _fm501_db_connect()
+    try:
+        cur = con.cursor(); now = _fm506_now()
+        row = cur.execute('SELECT id FROM treasury_accounts WHERE bank_id=? AND account_name=?', (bid, account_name)).fetchone()
+        if row:
+            aid = row['id'] if hasattr(row, 'keys') else row[0]
+            cur.execute('UPDATE treasury_accounts SET kontonummer=COALESCE(NULLIF(?,\'\'),kontonummer), iban=COALESCE(NULLIF(?,\'\'),iban), waehrung=COALESCE(NULLIF(?,\'\'),waehrung), sap_konto=COALESCE(NULLIF(?,\'\'),sap_konto), kommentar=COALESCE(NULLIF(?,\'\'),kommentar), active=?, updated_at=? WHERE id=?', (kontonummer, iban, waehrung or 'EUR', sap_konto, kommentar, active, now, aid))
+        else:
+            cur.execute('INSERT INTO treasury_accounts(bank_id,account_name,kontonummer,iban,waehrung,sap_konto,kommentar,active,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?)', (bid, account_name, kontonummer, iban, waehrung or 'EUR', sap_konto, kommentar, active, now, now))
+            aid = cur.lastrowid
+        con.commit(); return aid
+    finally:
+        con.close()
+
+
+def _fm506_seed_master_from_imports():
+    con = _fm501_db_connect()
+    try:
+        rows = con.execute("SELECT DISTINCT COALESCE(bank,'') bank, COALESCE(konto,'') konto FROM imports WHERE COALESCE(bank,'')<>'' OR COALESCE(konto,'')<>''").fetchall()
+    finally:
+        con.close()
+    for r in rows:
+        bank = _fm506_norm(r['bank'] if hasattr(r, 'keys') else r[0])
+        konto = _fm506_norm(r['konto'] if hasattr(r, 'keys') else r[1])
+        if bank:
+            _fm506_find_or_create_bank(bank)
+            if konto:
+                _fm506_find_or_create_account(bank, konto, kontonummer=konto)
+
+
+def _fm506_banks(active_only=True):
+    _fm506_db_init()
+    con = _fm501_db_connect()
+    try:
+        q = 'SELECT * FROM treasury_banks ' + ('WHERE COALESCE(active,1)=1 ' if active_only else '') + 'ORDER BY bankname'
+        return [dict(r) for r in con.execute(q).fetchall()]
+    finally:
+        con.close()
+
+
+def _fm506_accounts(bankname=None, active_only=True):
+    _fm506_db_init()
+    con = _fm501_db_connect()
+    try:
+        sql = '''SELECT a.*, b.bankname FROM treasury_accounts a JOIN treasury_banks b ON b.id=a.bank_id WHERE 1=1'''
+        params = []
+        if active_only:
+            sql += ' AND COALESCE(a.active,1)=1 AND COALESCE(b.active,1)=1'
+        if bankname:
+            sql += ' AND b.bankname=?'; params.append(bankname)
+        sql += ' ORDER BY b.bankname, a.account_name'
+        return [dict(r) for r in con.execute(sql, params).fetchall()]
+    finally:
+        con.close()
+
+
+def _fm506_distinct_master_banks():
+    return [r.get('bankname') or '' for r in _fm506_banks(True) if r.get('bankname')]
+
+
+def _fm506_distinct_master_accounts(bankname=None):
+    return [r.get('account_name') or '' for r in _fm506_accounts(bankname, True) if r.get('account_name')]
+
+
+def _fm506_ask_bank_konto(app, path):
+    default_konto = _fm505_guess_konto_from_filename(path)
+    result = {'ok': False, 'bank': '', 'konto': default_konto}
+    try:
+        win = tk.Toplevel(app.root)
+        win.title('Bank und Konto zum Import')
+        win.configure(bg=WHITE)
+        win.transient(app.root); win.grab_set()
+        tk.Label(win, text='Excel-Daten aufnehmen', bg=WHITE, fg=BLUE, font=body_font(14, 'bold')).grid(row=0, column=0, columnspan=2, sticky='w', padx=18, pady=(14,6))
+        tk.Label(win, text='Bank und Konto können aus den Treasury-Stammdaten gewählt oder direkt neu angelegt werden.', bg=WHITE, fg=TEXT2, font=body_font(9), wraplength=520, justify='left').grid(row=1, column=0, columnspan=2, sticky='w', padx=18, pady=(0,12))
+        bank_var = tk.StringVar(value=''); konto_var = tk.StringVar(value=default_konto); add_var = tk.BooleanVar(value=True)
+        banks = _fm506_distinct_master_banks()
+        tk.Label(win, text='Bank', bg=WHITE, fg=TEXT, font=body_font(10, 'bold')).grid(row=2, column=0, sticky='w', padx=18, pady=(0,3))
+        bank_cb = ttk.Combobox(win, textvariable=bank_var, values=banks, state='normal', font=body_font(10), width=34)
+        bank_cb.grid(row=3, column=0, sticky='ew', padx=18, pady=(0,10))
+        tk.Label(win, text='Konto', bg=WHITE, fg=TEXT, font=body_font(10, 'bold')).grid(row=2, column=1, sticky='w', padx=(8,18), pady=(0,3))
+        konto_cb = ttk.Combobox(win, textvariable=konto_var, values=[], state='normal', font=body_font(10), width=24)
+        konto_cb.grid(row=3, column=1, sticky='ew', padx=(8,18), pady=(0,10))
+        def refresh_accounts(_=None):
+            konto_cb.configure(values=_fm506_distinct_master_accounts(bank_var.get().strip()))
+        bank_cb.bind('<<ComboboxSelected>>', refresh_accounts); bank_cb.bind('<KeyRelease>', refresh_accounts)
+        tk.Checkbutton(win, text='Neue Bank/Konto-Kombination in Stammdaten übernehmen', variable=add_var, bg=WHITE, fg=TEXT, font=body_font(9), anchor='w').grid(row=4, column=0, columnspan=2, sticky='w', padx=18, pady=(0,8))
+        win.grid_columnconfigure(0, weight=1); win.grid_columnconfigure(1, weight=1)
+        def ok():
+            b = bank_var.get().strip(); k = konto_var.get().strip()
+            if not b:
+                try: messagebox.showwarning('Kontenauswertung', 'Bitte eine Bank eingeben oder auswählen.')
+                except Exception: pass
+                return
+            if not k:
+                try: messagebox.showwarning('Kontenauswertung', 'Bitte ein Konto eingeben.')
+                except Exception: pass
+                return
+            if add_var.get():
+                _fm506_find_or_create_account(b, k, kontonummer=k)
+            result.update({'ok': True, 'bank': b, 'konto': k}); win.destroy()
+        btns = tk.Frame(win, bg=WHITE); btns.grid(row=5, column=0, columnspan=2, sticky='e', padx=18, pady=(2,14))
+        tk.Button(btns, text='Übernehmen', command=ok, bg='#CFEAD6', fg=TEXT, font=body_font(10,'bold'), relief='solid', bd=1, padx=14, pady=5).pack(side='left', padx=(0,8))
+        tk.Button(btns, text='Abbrechen', command=win.destroy, bg=WHITE, fg=TEXT, font=body_font(10), relief='solid', bd=1, padx=14, pady=5).pack(side='left')
+        try: win.wait_window()
+        except Exception: pass
+    except Exception:
+        pass
+    return result if result.get('ok') else None
+
+_fm505_ask_bank_konto = _fm506_ask_bank_konto
+
+
+def _fm506_open_treasury_master_tool(self):
+    try: self.clear_widgets()
+    except Exception: pass
+    self.current_page = 'treasury_master_data'; self.current_title = 'Banken- und Kontenstammdaten'
+    try: self.update_breadcrumb('treasury_master_data', 'Banken- und Kontenstammdaten')
+    except Exception: pass
+    return _fm506_render_special_page(self, 'treasury_master_data', 'Banken- und Kontenstammdaten')
+
+
+def _fm506_render_treasury_tools_menu(self):
+    w, h = self.canvas.winfo_width(), self.canvas.winfo_height()
+    tile_w = int(max(280, min(380, w * 0.21))); tile_h = int(max(120, min(170, h * 0.15)))
+    t1 = Tile(self.root, self, 'treasury_kontenauswertung', 'Kontenauswertung', command=lambda: _fm504_open_account_analysis_tool(self), favorite_enabled=False, center_text=True, icon_type='modules')
+    t2 = Tile(self.root, self, 'treasury_master_data', 'Banken- und Kontenstammdaten', command=lambda: _fm506_open_treasury_master_tool(self), favorite_enabled=False, center_text=True, icon_type='modules')
+    for t in (t1, t2):
+        t.resize_tile(tile_w, tile_h); self.widget_items.append(t); self.focusable_tiles.append(t)
+    self.canvas.create_window(x_pct(w, 39), y_pct(h, 55), window=t1, anchor='center')
+    self.canvas.create_window(x_pct(w, 61), y_pct(h, 55), window=t2, anchor='center')
+    self.draw_bottom_logo()
+
+
+def _fm506_render_special_page(self, page_name, title=''):
+    try: self.clear_widgets()
+    except Exception: pass
+    try: self.draw_background(); self.draw_header(title or getattr(self, 'current_title', '') or APP_NAME, show_back=True)
+    except Exception: pass
+    if page_name == 'treasury_tools': return _fm506_render_treasury_tools_menu(self)
+    if page_name == 'account_analysis': return _fm505_render_account_analysis_tool(self)
+    if page_name == 'treasury_master_data': return _fm506_render_treasury_master_tool(self)
+
+
+def _fm506_render_page(self):
+    page = getattr(self, 'current_page', '')
+    if page in ('treasury_tools', 'account_analysis', 'treasury_master_data'):
+        return _fm506_render_special_page(self, page, getattr(self, 'current_title', '') or '')
+    return _FM506_PREV_RENDER_PAGE(self)
+
+
+def _fm506_show_page(self, page_name, title=None, add_to_history=True):
+    if page_name == 'treasury_master_data':
+        return _fm506_open_treasury_master_tool(self)
+    if page_name == 'treasury_tools':
+        return _fm504_open_treasury_tools_menu(self)
+    return _FM506_PREV_SHOW_PAGE(self, page_name, title, add_to_history)
+
+
+def _fm506_render_treasury_master_tool(self):
+    _fm506_db_init()
+    editable = _fm506_can_edit_master(self)
+    w,h=self.canvas.winfo_width(), self.canvas.winfo_height(); top_y=112
+    outer=tk.Frame(self.root,bg=BG); self.widget_items.append(outer)
+    self.canvas.create_window(0,top_y,window=outer,anchor='nw',width=w,height=max(460,h-top_y-55))
+    main=tk.Frame(outer,bg=BG); main.pack(fill='both',expand=True,padx=16,pady=(6,8))
+    info = 'Bearbeitung: E3/E4' if editable else 'Nur Lesen: Bearbeitung nur für E3/E4'
+    tk.Label(main,text=info,bg=BG,fg=TEXT2,font=body_font(9)).pack(anchor='w',pady=(0,6))
+    selected={'bank_id':None,'account_id':None}
+    panels=tk.Frame(main,bg=BG); panels.pack(fill='both',expand=True)
+    left=tk.Frame(panels,bg=WHITE,highlightbackground=LINE,highlightthickness=1); left.pack(side='left',fill='both',expand=True,padx=(0,6))
+    right=tk.Frame(panels,bg=WHITE,highlightbackground=LINE,highlightthickness=1); right.pack(side='left',fill='both',expand=True,padx=(6,0))
+    # Bank form
+    bank_vars={k:tk.StringVar(value='') for k in ['bankname','kurzname','bic','blz','kommentar']}; bank_active=tk.BooleanVar(value=True)
+    form=tk.Frame(left,bg=WHITE); form.pack(fill='x',padx=10,pady=(8,4))
+    tk.Label(form,text='Banken',bg=WHITE,fg=BLUE,font=body_font(12,'bold')).grid(row=0,column=0,columnspan=4,sticky='w')
+    fields=[('Bankname','bankname'),('Kurzname','kurzname'),('BIC','bic'),('Bankleitzahl','blz'),('Kommentar','kommentar')]
+    for i,(lab,key) in enumerate(fields):
+        tk.Label(form,text=lab,bg=WHITE,fg=TEXT2,font=body_font(8)).grid(row=1+i//2*2,column=(i%2)*2,sticky='w',padx=(0,6),pady=(4,0))
+        tk.Entry(form,textvariable=bank_vars[key],font=body_font(9),state='normal' if editable else 'readonly').grid(row=2+i//2*2,column=(i%2)*2,sticky='ew',padx=(0,10),pady=(0,3))
+    tk.Checkbutton(form,text='Aktiv',variable=bank_active,bg=WHITE,state='normal' if editable else 'disabled').grid(row=7,column=0,sticky='w')
+    form.grid_columnconfigure(0,weight=1); form.grid_columnconfigure(2,weight=1)
+    # Account form
+    acc_vars={k:tk.StringVar(value='') for k in ['account_name','kontonummer','iban','waehrung','sap_konto','kommentar']}; acc_active=tk.BooleanVar(value=True)
+    aform=tk.Frame(right,bg=WHITE); aform.pack(fill='x',padx=10,pady=(8,4))
+    tk.Label(aform,text='Konten',bg=WHITE,fg=BLUE,font=body_font(12,'bold')).grid(row=0,column=0,columnspan=4,sticky='w')
+    afields=[('Bankkonto Name','account_name'),('Kontonummer','kontonummer'),('IBAN','iban'),('Währung','waehrung'),('SAP Konto optional','sap_konto'),('Kommentar','kommentar')]
+    for i,(lab,key) in enumerate(afields):
+        tk.Label(aform,text=lab,bg=WHITE,fg=TEXT2,font=body_font(8)).grid(row=1+i//2*2,column=(i%2)*2,sticky='w',padx=(0,6),pady=(4,0))
+        tk.Entry(aform,textvariable=acc_vars[key],font=body_font(9),state='normal' if editable else 'readonly').grid(row=2+i//2*2,column=(i%2)*2,sticky='ew',padx=(0,10),pady=(0,3))
+    tk.Checkbutton(aform,text='Aktiv',variable=acc_active,bg=WHITE,state='normal' if editable else 'disabled').grid(row=7,column=0,sticky='w')
+    aform.grid_columnconfigure(0,weight=1); aform.grid_columnconfigure(2,weight=1)
+    # Trees
+    def mk_tree(parent, cols, defs):
+        wrap=tk.Frame(parent,bg=WHITE); wrap.pack(fill='both',expand=True,padx=10,pady=(4,10))
+        tr=ttk.Treeview(wrap,columns=cols,show='headings')
+        ys=ttk.Scrollbar(wrap,orient='vertical',command=tr.yview); tr.configure(yscrollcommand=ys.set)
+        for c,l,wid in defs: tr.heading(c,text=l); tr.column(c,width=wid,stretch=True)
+        tr.grid(row=0,column=0,sticky='nsew'); ys.grid(row=0,column=1,sticky='ns')
+        wrap.grid_rowconfigure(0,weight=1); wrap.grid_columnconfigure(0,weight=1)
+        return tr
+    bank_tree=mk_tree(left,('bankname','kurz','bic','blz','aktiv'),[('bankname','Bankname',170),('kurz','Kurzname',90),('bic','BIC',100),('blz','BLZ',80),('aktiv','Aktiv',60)])
+    acc_tree=mk_tree(right,('bank','name','konto','iban','waehrung','aktiv'),[('bank','Bank',120),('name','Name',120),('konto','Kontonummer',100),('iban','IBAN',180),('waehrung','Währung',70),('aktiv','Aktiv',60)])
+    def refresh():
+        bank_tree.delete(*bank_tree.get_children()); acc_tree.delete(*acc_tree.get_children())
+        for b in _fm506_banks(False): bank_tree.insert('', 'end', iid=str(b['id']), values=(b.get('bankname',''),b.get('kurzname',''),b.get('bic',''),b.get('blz',''),'Ja' if b.get('active') else 'Nein'))
+        bname = None
+        if selected.get('bank_id'):
+            try: bname = next((b['bankname'] for b in _fm506_banks(False) if int(b['id'])==int(selected['bank_id'])), None)
+            except Exception: bname=None
+        for a in _fm506_accounts(bname if bname else None, False): acc_tree.insert('', 'end', iid=str(a['id']), values=(a.get('bankname',''),a.get('account_name',''),a.get('kontonummer',''),a.get('iban',''),a.get('waehrung',''),'Ja' if a.get('active') else 'Nein'))
+    def select_bank(_=None):
+        sel=bank_tree.selection(); selected['bank_id']=int(sel[0]) if sel else None
+        if selected['bank_id']:
+            b=next((x for x in _fm506_banks(False) if int(x['id'])==selected['bank_id']),{})
+            for k in bank_vars: bank_vars[k].set(b.get(k,'') or '')
+            bank_active.set(bool(b.get('active',1)))
+        refresh()
+    def select_acc(_=None):
+        sel=acc_tree.selection(); selected['account_id']=int(sel[0]) if sel else None
+        if selected['account_id']:
+            a=next((x for x in _fm506_accounts(None, False) if int(x['id'])==selected['account_id']),{})
+            for k in acc_vars: acc_vars[k].set(a.get(k,'') or '')
+            acc_active.set(bool(a.get('active',1)))
+    bank_tree.bind('<<TreeviewSelect>>',select_bank); acc_tree.bind('<<TreeviewSelect>>',select_acc)
+    def save_bank():
+        if not editable: return
+        _fm506_find_or_create_bank(bank_vars['bankname'].get(), bank_vars['kurzname'].get(), bank_vars['bic'].get(), bank_vars['blz'].get(), bank_vars['kommentar'].get(), 1 if bank_active.get() else 0); refresh()
+    def save_acc():
+        if not editable: return
+        bname=bank_vars['bankname'].get().strip()
+        if not bname:
+            try: messagebox.showwarning('Treasury-Stammdaten','Bitte zuerst eine Bank auswählen oder speichern.')
+            except Exception: pass
+            return
+        _fm506_find_or_create_account(bname, acc_vars['account_name'].get(), acc_vars['kontonummer'].get(), acc_vars['iban'].get(), acc_vars['waehrung'].get() or 'EUR', acc_vars['sap_konto'].get(), acc_vars['kommentar'].get(), 1 if acc_active.get() else 0); refresh()
+    btns=tk.Frame(main,bg=BG); btns.pack(fill='x',pady=(6,0))
+    tk.Button(btns,text='Bank speichern',command=save_bank,bg='#CFEAD6' if editable else WHITE,fg=TEXT,font=body_font(10,'bold'),relief='solid',bd=1,state='normal' if editable else 'disabled').pack(side='left',padx=(0,8))
+    tk.Button(btns,text='Konto speichern',command=save_acc,bg='#CFEAD6' if editable else WHITE,fg=TEXT,font=body_font(10,'bold'),relief='solid',bd=1,state='normal' if editable else 'disabled').pack(side='left',padx=(0,8))
+    tk.Button(btns,text='Aktualisieren',command=refresh,bg=WHITE,fg=TEXT,font=body_font(10),relief='solid',bd=1).pack(side='left')
+    refresh()
+
+# Schaubild-/Tabellen-Collapse und 12-Monats-Fenster werden per Quellpatch auf die bestehende v0.505-Funktion gelegt.
+
+try:
+    _FM506_PREV_RENDER_PAGE = FiBuMateApp.render_page
+    _FM506_PREV_SHOW_PAGE = FiBuMateApp.show_page
+except Exception:
+    pass
+try:
+    FiBuMateApp.render_page = _fm506_render_page
+    FiBuMateApp.show_page = _fm506_show_page
+    FiBuMateApp.render_treasury_tools_menu = _fm506_render_treasury_tools_menu
+    FiBuMateApp.render_treasury_master_tool = _fm506_render_treasury_master_tool
+except Exception:
+    pass
+
+
+
+# FiBu Mate 0.506 Ergänzung: Mehrlinien-Stückkostenentwicklung.
+_FM506_PREV_CHART_DATA = _fm505_chart_data
+_FM506_PREV_LINE_CHART = _fm505_draw_line_chart
+
+def _fm506_split_gv_selection(text):
+    raw = str(text or '').strip()
+    if not raw:
+        return []
+    parts = re.split(r'[;,]\s*|\n+', raw)
+    return [p.strip() for p in parts if p.strip()]
+
+
+def _fm506_chart_data(filters, metric='brutto', chart_type='months'):
+    if chart_type != 'unit_dev':
+        return _FM506_PREV_CHART_DATA(filters, metric, chart_type)
+    items = _fm505_fetch_items(filters)
+    selected = _fm506_split_gv_selection(filters.get('gv'))
+    if not selected:
+        selected = ['Alle ausgewählten Kosten']
+    series_map = {name: {} for name in selected}
+    all_months = set()
+    for item in items:
+        gv = str(item.get('geschaeftsvorfall') or '')
+        monat = item.get('monat_key') or ''
+        if not monat:
+            continue
+        for name in selected:
+            if name != 'Alle ausgewählten Kosten' and name.lower() not in gv.lower():
+                continue
+            anz = float(item.get('anzahl') or 0)
+            ges = float(item.get('gesamtbetrag') or 0)
+            rec = series_map.setdefault(name, {}).setdefault(monat, {'gesamt': 0.0, 'anzahl': 0.0})
+            rec['gesamt'] += ges; rec['anzahl'] += anz; all_months.add(monat)
+    months = sorted(all_months)
+    out_series = []
+    for name, month_map in series_map.items():
+        values = {}
+        for m, rec in month_map.items():
+            values[m] = (rec['gesamt'] / rec['anzahl']) if rec.get('anzahl') else 0
+        if values:
+            out_series.append({'name': name, 'values': values})
+    return {'months': months, 'series': out_series}, 'avg_unit', 'monat_key'
+
+
+def _fm506_draw_line_chart(canvas, x, y, w, h, data, title, value_key, label_key):
+    if not (isinstance(data, dict) and data.get('series') is not None):
+        return _FM506_PREV_LINE_CHART(canvas, x, y, w, h, data, title, value_key, label_key)
+    canvas.create_rectangle(x, y, x+w, y+h, fill=WHITE, outline=LINE)
+    canvas.create_text(x+14, y+14, text=title, fill=BLUE, font=body_font(12,'bold'), anchor='w')
+    months = list(data.get('months') or [])
+    series = list(data.get('series') or [])
+    if not months or not series:
+        canvas.create_text(x+w/2, y+h/2, text='Keine Daten für die gewählten Kostenarten.', fill=TEXT2, font=body_font(10))
+        return
+    vals=[]
+    for srec in series:
+        vals.extend([float(srec.get('values', {}).get(m) or 0) for m in months])
+    max_v=max(vals) if vals else 1; min_v=min(vals) if vals else 0
+    if max_v == min_v: min_v = 0
+    left=x+42; right=x+w-28; top=y+46; bottom=y+h-42
+    canvas.create_line(left,bottom,right,bottom,fill=LINE)
+    canvas.create_line(left,top,left,bottom,fill=LINE)
+    colors=[BLUE, RED, '#2E7D32', '#7B1FA2', '#EF6C00', '#00695C', '#5D4037']
+    n=len(months)
+    for si,srec in enumerate(series):
+        pts=[]; values=srec.get('values', {})
+        for i,m in enumerate(months):
+            val=float(values.get(m) or 0)
+            xx=left+(right-left)*(i/(max(1,n-1)))
+            yy=bottom-(bottom-top)*((val-min_v)/(max_v-min_v if max_v!=min_v else 1))
+            pts.append((xx,yy,m,val))
+        color=colors[si % len(colors)]
+        for a,b in zip(pts, pts[1:]): canvas.create_line(a[0],a[1],b[0],b[1],fill=color,width=2)
+        for xx,yy,m,val in pts: canvas.create_oval(xx-2,yy-2,xx+2,yy+2,fill=color,outline=color)
+        canvas.create_text(x+14, y+36+(si*14), text=str(srec.get('name') or '')[:34], fill=color, font=body_font(8), anchor='w')
+    for i,m in enumerate(months):
+        xx=left+(right-left)*(i/(max(1,n-1)))
+        canvas.create_text(xx,bottom+14,text=str(m)[-5:],fill=TEXT2,font=body_font(8))
+
+_fm505_chart_data = _fm506_chart_data
+_fm505_draw_line_chart = _fm506_draw_line_chart
+
+
+
+# ------------------------------------------------------------------
+# FiBu Mate 0.507 - Performance Kontenauswertung/Treasury-Stammdaten
+# Datum: 2026-07-13
+# ------------------------------------------------------------------
+FM507_VERSION = "0.507"
+_FM507_DB_READY = False
+_FM507_SEEDED = False
+
+def _fm507_db_init_fast():
+    global _FM507_DB_READY, _FM507_SEEDED
+    if _FM507_DB_READY:
+        return
+    _FM506_PREV_DB_INIT()
+    con = _fm501_db_connect()
+    try:
+        cur = con.cursor()
+        cur.execute('''CREATE TABLE IF NOT EXISTS treasury_banks (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            bankname TEXT NOT NULL,
+            kurzname TEXT,
+            bic TEXT,
+            blz TEXT,
+            kommentar TEXT,
+            active INTEGER DEFAULT 1,
+            created_at TEXT,
+            updated_at TEXT,
+            UNIQUE(bankname)
+        )''')
+        cur.execute('''CREATE TABLE IF NOT EXISTS treasury_accounts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            bank_id INTEGER NOT NULL,
+            account_name TEXT NOT NULL,
+            kontonummer TEXT,
+            iban TEXT,
+            waehrung TEXT DEFAULT 'EUR',
+            sap_konto TEXT,
+            kommentar TEXT,
+            active INTEGER DEFAULT 1,
+            created_at TEXT,
+            updated_at TEXT,
+            UNIQUE(bank_id, account_name)
+        )''')
+        cur.execute('CREATE INDEX IF NOT EXISTS idx_imports_bank_konto_deleted ON imports(bank,konto,deleted)')
+        cur.execute('CREATE INDEX IF NOT EXISTS idx_closings_import_date_month ON closings(import_id,abschlussdatum,monat_key)')
+        cur.execute('CREATE INDEX IF NOT EXISTS idx_fee_items_lookup ON fee_items(closing_id,monat_key,geschaeftsvorfall,positionstyp)')
+        cur.execute('CREATE INDEX IF NOT EXISTS idx_treasury_accounts_bank ON treasury_accounts(bank_id,active)')
+        con.commit()
+    finally:
+        con.close()
+    _FM507_DB_READY = True
+    if not _FM507_SEEDED:
+        _FM507_SEEDED = True
+        try: _fm506_seed_master_from_imports()
+        except Exception: pass
+
+def _fm506_db_init():
+    return _fm507_db_init_fast()
+_fm505_db_init = _fm507_db_init_fast
+
+def _fm506_distinct_values_fast(table, col):
+    allowed = {
+        'imports': {'bank','konto'},
+        'closings': {'abschlussdatum','monat_key'},
+        'fee_items': {'geschaeftsvorfall','positionstyp'}
+    }
+    if table not in allowed or col not in allowed[table]:
+        return []
+    _fm507_db_init_fast()
+    con = _fm501_db_connect()
+    try:
+        if table == 'imports':
+            q=f"SELECT DISTINCT COALESCE({col},'') v FROM imports WHERE COALESCE(deleted,0)=0 AND COALESCE({col},'')<>'' ORDER BY v"
+        elif table == 'closings':
+            q=f"SELECT DISTINCT COALESCE({col},'') v FROM closings WHERE COALESCE({col},'')<>'' ORDER BY v"
+        else:
+            q=f"SELECT DISTINCT COALESCE({col},'') v FROM fee_items WHERE COALESCE({col},'')<>'' ORDER BY v"
+        return [r['v'] if hasattr(r,'keys') else r[0] for r in con.execute(q).fetchall()]
+    finally:
+        con.close()
+
+def _fm506_banks(active_only=True):
+    _fm507_db_init_fast()
+    con = _fm501_db_connect()
+    try:
+        q = 'SELECT * FROM treasury_banks ' + ('WHERE COALESCE(active,1)=1 ' if active_only else '') + 'ORDER BY bankname'
+        return [dict(r) for r in con.execute(q).fetchall()]
+    finally:
+        con.close()
+
+def _fm506_accounts(bankname=None, active_only=True):
+    _fm507_db_init_fast()
+    con = _fm501_db_connect()
+    try:
+        sql = '''SELECT a.*, b.bankname FROM treasury_accounts a JOIN treasury_banks b ON b.id=a.bank_id WHERE 1=1'''
+        params = []
+        if active_only:
+            sql += ' AND COALESCE(a.active,1)=1 AND COALESCE(b.active,1)=1'
+        if bankname:
+            sql += ' AND b.bankname=?'; params.append(bankname)
+        sql += ' ORDER BY b.bankname, a.account_name'
+        return [dict(r) for r in con.execute(sql, params).fetchall()]
+    finally:
+        con.close()
+
+try:
+    FiBuMateApp.render_account_analysis_tool = _fm505_render_account_analysis_tool
+except Exception:
+    pass
+
+
+
+# ------------------------------------------------------------------
+# FiBu Mate 0.508 - Benutzeranlage E3/E4 und neue Hauptmenue-Icons
+# Datum: 2026-07-14
+# ------------------------------------------------------------------
+FM508_VERSION = "0.508"
+try:
+    ICON_FILES["fibu_data_prep"] = "Fibu_Mate_Datenaufbereitung_transparent_256x256.ico"
+    ICON_FILES["fibu_treasury"] = "Fibu_Mate_Kontenauswertung_transparent_256x256.ico"
+    ICON_FILES["file_explorer"] = "File_Explorer_23583.ico"
+except Exception:
+    pass
+try:
+    _FM508_PREV_DRAW_TILE_ICON_IMAGE = FiBuMateApp.draw_tile_icon_image
+except Exception:
+    _FM508_PREV_DRAW_TILE_ICON_IMAGE = None
+
+def _fm508_draw_tile_icon_image(self, tile, icon_type, cx, cy):
+    if icon_type in ("fibu_data_prep", "fibu_treasury", "file_explorer"):
+        photo = self.get_icon_photo(icon_type, 54, 54)
+        if photo:
+            tile.create_image(cx, cy, image=photo)
+            return True
+        try:
+            fallback = "pdf_xls" if icon_type == "fibu_data_prep" else ("modules" if icon_type == "fibu_treasury" else "doc_file")
+            return _FM508_PREV_DRAW_TILE_ICON_IMAGE(self, tile, fallback, cx, cy)
+        except Exception:
+            return False
+    if _FM508_PREV_DRAW_TILE_ICON_IMAGE:
+        return _FM508_PREV_DRAW_TILE_ICON_IMAGE(self, tile, icon_type, cx, cy)
+    return False
+
+def _fm508_allowed_new_user_roles(app):
+    try:
+        role = app.my_role()
+        if role == ROLE_E4 or getattr(app, 'current_user_key', '') == SUPERUSER_KEY:
+            return ROLE_ORDER
+        if role == ROLE_E3:
+            return [r for r in ROLE_ORDER if r != ROLE_E4]
+    except Exception:
+        pass
+    return []
+
+def _fm508_auth_default():
+    try:
+        return _fm488_default_auth()
+    except Exception:
+        return {"password_hash": None, "enabled": False, "password_must_set": True}
+
+def _fm508_open_new_user_dialog(app):
+    if app.my_role() not in (ROLE_E3, ROLE_E4) and getattr(app, 'current_user_key', '') != SUPERUSER_KEY:
+        try: messagebox.showwarning('FiBu Mate','Keine Berechtigung zum Anlegen neuer Benutzer.')
+        except Exception: pass
+        return
+    users = app.user_data.setdefault('users', {})
+    roles = _fm508_allowed_new_user_roles(app)
+    if not roles: return
+    win = tk.Toplevel(app.root); win.title('Neuen Benutzer anlegen'); win.configure(bg=BG); win.transient(app.root); win.grab_set()
+    tk.Label(win,text='Neuen Benutzer anlegen',bg=BG,fg=TEXT,font=body_font(14,'bold')).grid(row=0,column=0,columnspan=2,sticky='w',padx=16,pady=(14,10))
+    display_var=tk.StringVar(value=''); first_var=tk.StringVar(value=''); email_var=tk.StringVar(value=''); role_var=tk.StringVar(value=roles[0])
+    for r,(label,var) in enumerate([('Anzeigename / Nachname',display_var),('Vorname',first_var),('E-Mail',email_var)],1):
+        tk.Label(win,text=label,bg=BG,fg=TEXT2,font=body_font(9)).grid(row=r,column=0,sticky='w',padx=16,pady=(4,2))
+        tk.Entry(win,textvariable=var,bg=WHITE,fg=TEXT,font=body_font(10),width=32,relief='solid',bd=1).grid(row=r,column=1,sticky='ew',padx=16,pady=(4,2))
+    tk.Label(win,text='Rolle',bg=BG,fg=TEXT2,font=body_font(9)).grid(row=4,column=0,sticky='w',padx=16,pady=(4,2))
+    ttk.Combobox(win,textvariable=role_var,values=roles,state='readonly',font=body_font(10),width=30).grid(row=4,column=1,sticky='ew',padx=16,pady=(4,2))
+    win.grid_columnconfigure(1,weight=1)
+    def create_user():
+        raw=' '.join(display_var.get().strip().split())
+        if not raw:
+            try: messagebox.showwarning('FiBu Mate','Bitte einen Anzeigenamen/Nachnamen eingeben.')
+            except Exception: pass
+            return
+        key=normalize_username(raw)
+        if not key or key in users:
+            try: messagebox.showwarning('FiBu Mate','Benutzername ist ungültig oder bereits vorhanden.')
+            except Exception: pass
+            return
+        role=role_var.get() or ROLE_E1
+        if role not in roles:
+            try: messagebox.showwarning('FiBu Mate','Diese Rolle darf nicht vergeben werden.')
+            except Exception: pass
+            return
+        first=first_var.get().strip()
+        users[key]={'display_name':raw,'first_name':first,'full_name':' '.join(x for x in [first,raw] if x).strip() or raw,'email':email_var.get().strip(),'favorites':[],'auth':_fm508_auth_default(),'permission':role}
+        app.ensure_permissions_defaults(); app.save_user_data()
+        try: messagebox.showinfo('FiBu Mate',f'Benutzer wurde angelegt:\n\n{raw}')
+        except Exception: pass
+        win.destroy(); app.render_page()
+    footer=tk.Frame(win,bg=BG); footer.grid(row=5,column=0,columnspan=2,sticky='e',padx=16,pady=(14,16))
+    tk.Button(footer,text='Anlegen',command=create_user,bg=BLUE,fg='white',font=body_font(10,'bold'),bd=0,padx=14,pady=7,cursor='hand2').pack(side='left',padx=(0,8))
+    tk.Button(footer,text='Abbrechen',command=win.destroy,bg=WHITE,fg=TEXT,font=body_font(10),relief='solid',bd=1,padx=14,pady=6).pack(side='left')
+    try: win.wait_window()
+    except Exception: pass
+try:
+    FiBuMateApp.draw_tile_icon_image = _fm508_draw_tile_icon_image
+except Exception:
+    pass
+
+# FIBU_MATE_V0508_ICON_MAIN_MENU_FINAL
+# Datum: 2026-07-14
+# Aktuelle Hauptmenue-Kacheln verwenden die neuen Icondateien fuer Hauptbuch, Debitoren, Treasury und Dateiausgabe.
+
+
+
+# ------------------------------------------------------------------
+# FIBU_MATE_V0510_WZ_COLLAPSE_READABILITY
+# Datum: 2026-07-14
+# Zweck:
+# - Wissenszentrale: Trefferbereich einklappbar, Status persistent pro Benutzer.
+# - Wissenszentrale: Hauptbereich nutzt bei eingeklapptem Trefferfenster den frei gewordenen Platz.
+# - Wissenszentrale: Treffer- und Hauptfenster nutzen den Bildschirmplatz effizienter.
+# - Global: kleine Schriften konservativ besser lesbar machen, ohne Kachel-/Hauptlayout zu verschieben.
+# ------------------------------------------------------------------
+FM510_VERSION = "0.510"
+
+try:
+    _FM510_OLD_BODY_FONT = body_font
+except Exception:
+    _FM510_OLD_BODY_FONT = None
+
+
+def _fm510_body_font(size=10, weight=None, underline=False, scale=1.0):
+    """Konservative Lesbarkeitsstufe: nur kleine Body-Fonts leicht anheben."""
+    try:
+        s = int(size or 10)
+        if s <= 8:
+            s = 10
+        elif s == 9:
+            s = 10
+        elif s == 10:
+            s = 11
+        # ab 11 bleibt unverändert, damit bestehende Layouts nicht aufbrechen
+        if _FM510_OLD_BODY_FONT:
+            return _FM510_OLD_BODY_FONT(s, weight=weight, underline=underline, scale=scale)
+    except Exception:
+        pass
+    styles = []
+    if weight:
+        styles.append(weight)
+    if underline:
+        styles.append('underline')
+    return tuple(['Aptos' if 'Aptos' else 'Segoe UI', max(10, int(size or 10))] + styles)
+
+try:
+    body_font = _fm510_body_font
+except Exception:
+    pass
+
+# zentrale Mindestwerte sehr vorsichtig anheben; bestehende Hoehen bleiben weitgehend erhalten
+try:
+    READABILITY_MIN_BUTTON_FONT = max(READABILITY_MIN_BUTTON_FONT, 12)
+    READABILITY_MIN_ENTRY_FONT = max(READABILITY_MIN_ENTRY_FONT, 12)
+    READABILITY_MIN_TEXT_FONT = max(READABILITY_MIN_TEXT_FONT, 12)
+    READABILITY_MIN_TTK_FONT = max(READABILITY_MIN_TTK_FONT, 12)
+    READABILITY_TREEVIEW_ROWHEIGHT = max(READABILITY_TREEVIEW_ROWHEIGHT, 29)
+except Exception:
+    pass
+
+
+def _fm510_user_ui_prefs(app):
+    try:
+        data = app.user_data.setdefault('users', {}).setdefault(getattr(app, 'current_user_key', '') or '', {})
+        return data.setdefault('ui_prefs', {})
+    except Exception:
+        try:
+            return app.user_data.setdefault('settings', {}).setdefault('ui_prefs_global', {})
+        except Exception:
+            return {}
+
+
+def _fm510_kb_hits_collapsed(app):
+    try:
+        return bool(_fm510_user_ui_prefs(app).get('knowledge_hits_collapsed', False))
+    except Exception:
+        return False
+
+
+def _fm510_set_kb_hits_collapsed(app, value):
+    try:
+        _fm510_user_ui_prefs(app)['knowledge_hits_collapsed'] = bool(value)
+        app.save_user_data()
+    except Exception:
+        pass
+
+
+def _fm510_toggle_kb_hits(app):
+    _fm510_set_kb_hits_collapsed(app, not _fm510_kb_hits_collapsed(app))
+    try:
+        app.render_page()
+    except Exception:
+        pass
+
+try:
+    _FM510_PREV_RENDER_HITS_PANE = FiBuMateApp.render_kb_hits_pane
+except Exception:
+    _FM510_PREV_RENDER_HITS_PANE = None
+
+
+def _fm510_render_kb_hits_pane(self, x, y, w, h):
+    if _fm510_kb_hits_collapsed(self):
+        frame = tk.Frame(self.root, bg=WHITE, highlightbackground=LINE, highlightthickness=2)
+        self.widget_items.append(frame)
+        btn = tk.Button(frame, text='▶ Treffer', command=lambda: _fm510_toggle_kb_hits(self),
+                        bg=WHITE, fg=BLUE, font=body_font(10, weight='bold'), relief='solid', bd=1,
+                        cursor='hand2', padx=6, pady=5)
+        btn.pack(fill='both', expand=True, padx=4, pady=4)
+        self.canvas.create_window(ui_s(x), ui_s(y), window=frame, anchor='nw', width=ui_s(w), height=ui_s(h))
+        return
+    if _FM510_PREV_RENDER_HITS_PANE:
+        result = _FM510_PREV_RENDER_HITS_PANE(self, x, y, w, h)
+    else:
+        result = None
+    # kleiner Einklappbutton im Trefferkopf, ohne bestehende Trefferliste zu ersetzen
+    try:
+        btn = tk.Button(self.root, text='◀', command=lambda: _fm510_toggle_kb_hits(self), bg=WHITE, fg=BLUE,
+                        activebackground='#E6EEF8', font=body_font(10, weight='bold'), relief='solid', bd=1,
+                        cursor='hand2')
+        self.widget_items.append(btn)
+        self.canvas.create_window(ui_s(x + max(8, w - 46)), ui_s(y + 12), window=btn, anchor='nw', width=ui_s(32), height=ui_s(28))
+    except Exception:
+        pass
+    return result
+
+
+def _fm510_render_knowledge_work_area(self):
+    self.kb_ensure_state_vars()
+    try:
+        self.root.bind('<Escape>', self.kb_handle_escape, add='+')
+        self.root.option_add('*TCombobox*Listbox.font', body_font(11))
+    except Exception:
+        pass
+    w, h = self.canvas.winfo_width(), self.canvas.winfo_height()
+    nav_y = 136
+    bx = 28
+    bx = self.draw_kb_button(bx, nav_y, 'Start', self.kb_show_start_overlay, False, width=92)
+    bx = self.draw_kb_button(bx, nav_y, 'Übersicht', lambda: self.kb_switch_view_from_start('all'), False, width=112)
+    if self.kb_can_create_or_edit():
+        bx = self.draw_kb_button(bx, nav_y, 'Neuer Eintrag', lambda: self.kb_switch_view_from_start('new'), False, width=128)
+    bx = self.draw_kb_button(bx, nav_y, 'To-Dos', lambda: self.kb_switch_view_from_start('todos'), False, width=92)
+    bx = self.draw_kb_button(bx, nav_y, 'Veraltete Einträge', lambda: self.kb_switch_view_from_start('outdated'), False, width=148)
+    if self.kb_can_manage_categories():
+        bx = self.draw_kb_button(bx, nav_y, 'Kategorien verwalten', lambda: self.kb_switch_view_from_start('categories'), False, width=168)
+
+    bar = tk.Frame(self.root, bg=BG)
+    self.widget_items.append(bar)
+    bar.grid_columnconfigure(0, weight=1)
+    tk.Label(bar, text='Suche', bg=BG, fg=TEXT2, font=body_font(9)).grid(row=0, column=0, sticky='w')
+    for i in range(4):
+        tk.Label(bar, text=f'Kategorie {i+1}', bg=BG, fg=TEXT2, font=body_font(9)).grid(row=0, column=i+2, sticky='w', padx=(12,0))
+    search_row = tk.Frame(bar, bg=BG)
+    search_row.grid(row=1, column=0, sticky='ew')
+    search_row.grid_columnconfigure(0, weight=1)
+    try:
+        ent = tk.Entry(search_row, textvariable=self.kb_search_var, font=body_font(10), bg=WHITE, fg=TEXT, relief='flat', bd=0,
+                       highlightthickness=1, highlightbackground=_FM451_BTN_BORDER, highlightcolor=BLUE)
+    except Exception:
+        ent = tk.Entry(search_row, textvariable=self.kb_search_var, font=body_font(10), bg=WHITE, fg=TEXT, relief='solid', bd=1)
+    ent.grid(row=0, column=0, sticky='ew', ipady=6)
+    ent.bind('<Return>', self.kb_on_search_return)
+    try:
+        _fm451_button(search_row, 'Suchen', command=self.kb_apply_filters, font_size=9).grid(row=0, column=1, padx=(8,0), sticky='ns')
+    except Exception:
+        tk.Button(search_row, text='Suchen', command=self.kb_apply_filters, bg=WHITE, fg=TEXT, font=body_font(9)).grid(row=0, column=1, padx=(8,0), sticky='ns')
+    vals = [''] + self.kb_get_categories()
+    for i, var in enumerate(self.kb_filter_vars):
+        try:
+            dd = _fm451_filter_dropdown(bar, self, var, vals, command=self.kb_apply_filters)
+        except Exception:
+            dd = ttk.Combobox(bar, textvariable=var, values=vals, state='readonly', font=body_font(10), width=15)
+            dd.bind('<<ComboboxSelected>>', self.kb_apply_filters)
+        dd.grid(row=1, column=i+2, sticky='ew', padx=(12,0))
+    selected = [(v.get() or '').strip().lower() for v in self.kb_filter_vars]
+    if self.knowledge_view == 'todos' or 'to-do' in selected:
+        tk.Label(bar, text='Rhythmus', bg=BG, fg=TEXT2, font=body_font(9)).grid(row=0, column=6, sticky='w', padx=(12,0))
+        rhythm = ttk.Combobox(bar, textvariable=self.kb_todo_rhythm_var, values=['','täglich','wöchentlich','monatlich','quartalsweise','jährlich','bei Bedarf'], state='readonly', font=body_font(10), width=15)
+        rhythm.grid(row=1, column=6, sticky='ew', padx=(12,0), ipady=4)
+        rhythm.bind('<<ComboboxSelected>>', self.kb_apply_filters)
+    else:
+        try: self.kb_todo_rhythm_var.set('')
+        except Exception: pass
+    self.canvas.create_window(ui_s(28), ui_s(184), window=bar, anchor='nw', width=ui_s(max(980, w-56)), height=ui_s(66))
+
+    collapsed = _fm510_kb_hits_collapsed(self)
+    left_x = 20
+    left_y = 266
+    pane_h = max(500, h - left_y - 24)
+    if collapsed:
+        left_w = 92
+        gap = 14
+    else:
+        left_w = max(360, min(500, int(w * 0.27)))
+        gap = 24
+    right_x = left_x + left_w + gap
+    right_w = max(760, w - right_x - 24)
+    self.render_kb_hits_pane(left_x, left_y, left_w, pane_h)
+    if self.knowledge_view == 'new':
+        self.render_kb_new_entry_area(right_x, left_y, right_w, pane_h)
+    elif self.knowledge_view == 'todos':
+        self.render_kb_list_area(right_x, left_y, right_w, pane_h, title='To-Dos')
+    elif self.knowledge_view == 'outdated':
+        self.render_kb_list_area(right_x, left_y, right_w, pane_h, title='Veraltete Einträge', status_filter='Veraltet')
+    elif self.knowledge_view == 'categories':
+        self.render_kb_categories_area(right_x, left_y, right_w, pane_h)
+    elif self.knowledge_view == 'detail':
+        self.render_kb_detail_area(right_x, left_y, right_w, pane_h)
+    else:
+        self.render_kb_list_area(right_x, left_y, right_w, pane_h, title='Übersicht')
+
+try:
+    FiBuMateApp.render_kb_hits_pane = _fm510_render_kb_hits_pane
+    FiBuMateApp.render_knowledge_work_area = _fm510_render_knowledge_work_area
+except Exception:
+    pass
+
+
+# ------------------------------------------------------------------
+# FIBU_MATE_V0511_GLOBAL_READABILITY_TUNING
+# Datum: 2026-07-14
+# Zweck:
+# - Globale Lesbarkeit weiter verbessern, auch in nachgeladenen Modulen.
+# - Kleine explizite Tk-/ttk-Schriften konservativ anheben.
+# - Große Überschriften, Kacheln und Hauptmenüabstände bleiben unverändert.
+# ------------------------------------------------------------------
+FM511_VERSION = "0.511"
+
+try:
+    _FM511_PREV_BODY_FONT = body_font
+except Exception:
+    _FM511_PREV_BODY_FONT = None
+
+
+def _fm511_body_font(size=10, weight=None, underline=False, scale=1.0):
+    try:
+        s = int(size or 10)
+        if s <= 9:
+            s = 11
+        elif s in (10, 11):
+            s = 12
+        if _FM511_PREV_BODY_FONT:
+            return _FM511_PREV_BODY_FONT(s, weight=weight, underline=underline, scale=scale)
+    except Exception:
+        pass
+    styles = []
+    if weight:
+        styles.append(weight)
+    if underline:
+        styles.append('underline')
+    return tuple(['Aptos', max(11, int(size or 10))] + styles)
+
+try:
+    body_font = _fm511_body_font
+except Exception:
+    pass
+
+_FM511_ORIGINAL_WIDGET_INITS = {}
+_FM511_ORIGINAL_WIDGET_CONFIGS = {}
+_FM511_ORIGINAL_CANVAS_CREATE_TEXT = None
+
+
+def _fm511_font_minimum_for_widget(widget_cls, default=12):
+    try:
+        if widget_cls in (tk.Button, tk.Menubutton, tk.Checkbutton, tk.Radiobutton, tk.Entry, tk.Text, tk.Listbox, tk.Label):
+            return 12
+    except Exception:
+        pass
+    return default
+
+
+def _fm511_font_tuple(font_value, minimum=12):
+    if font_value is None or font_value == '':
+        return ('Aptos', minimum)
+    try:
+        if isinstance(font_value, tuple):
+            if len(font_value) >= 2 and isinstance(font_value[1], int) and abs(font_value[1]) < minimum:
+                return tuple([font_value[0], minimum] + list(font_value[2:]))
+            return font_value
+        if isinstance(font_value, list):
+            vals = list(font_value)
+            if len(vals) >= 2 and isinstance(vals[1], int) and abs(vals[1]) < minimum:
+                vals[1] = minimum
+            return tuple(vals)
+    except Exception:
+        pass
+    return font_value
+
+
+def _fm511_patch_widget_class(widget_cls):
+    if widget_cls in _FM511_ORIGINAL_WIDGET_INITS:
+        return
+    try:
+        orig_init = widget_cls.__init__
+        orig_configure = getattr(widget_cls, 'configure', None)
+        orig_config = getattr(widget_cls, 'config', None)
+        _FM511_ORIGINAL_WIDGET_INITS[widget_cls] = orig_init
+        _FM511_ORIGINAL_WIDGET_CONFIGS[widget_cls] = (orig_configure, orig_config)
+        minimum = _fm511_font_minimum_for_widget(widget_cls)
+        def patched_init(self, master=None, cnf=None, **kw):
+            cnf = dict(cnf or {})
+            if 'font' in kw:
+                kw['font'] = _fm511_font_tuple(kw.get('font'), minimum)
+            elif 'font' in cnf:
+                cnf['font'] = _fm511_font_tuple(cnf.get('font'), minimum)
+            else:
+                kw['font'] = ('Aptos', minimum)
+            return orig_init(self, master, cnf, **kw)
+        def patched_configure(self, cnf=None, **kw):
+            cnf = dict(cnf or {})
+            if 'font' in kw:
+                kw['font'] = _fm511_font_tuple(kw.get('font'), minimum)
+            if 'font' in cnf:
+                cnf['font'] = _fm511_font_tuple(cnf.get('font'), minimum)
+            return orig_configure(self, cnf, **kw)
+        widget_cls.__init__ = patched_init
+        if callable(orig_configure):
+            widget_cls.configure = patched_configure
+        if callable(orig_config):
+            widget_cls.config = patched_configure
+    except Exception:
+        pass
+
+
+def _fm511_patch_canvas_text():
+    global _FM511_ORIGINAL_CANVAS_CREATE_TEXT
+    try:
+        if _FM511_ORIGINAL_CANVAS_CREATE_TEXT is not None:
+            return
+        _FM511_ORIGINAL_CANVAS_CREATE_TEXT = tk.Canvas.create_text
+        def patched_create_text(self, *args, **kw):
+            try:
+                text_value = str(kw.get('text', '') or '').strip()
+                if text_value not in {'', '★', '+', '-', '−'}:
+                    if 'font' in kw:
+                        kw['font'] = _fm511_font_tuple(kw.get('font'), 12)
+                    else:
+                        kw['font'] = ('Aptos', 12)
+            except Exception:
+                pass
+            return _FM511_ORIGINAL_CANVAS_CREATE_TEXT(self, *args, **kw)
+        tk.Canvas.create_text = patched_create_text
+    except Exception:
+        pass
+
+
+def _fm511_install_readability(root=None):
+    try:
+        for cls in (tk.Label, tk.Button, tk.Entry, tk.Text, tk.Listbox, tk.Checkbutton, tk.Radiobutton, tk.Menubutton):
+            _fm511_patch_widget_class(cls)
+        _fm511_patch_canvas_text()
+        try:
+            style = ttk.Style(root) if root is not None else ttk.Style()
+            style.configure('TLabel', font=('Aptos', 12))
+            style.configure('TButton', font=('Aptos', 12))
+            style.configure('TCheckbutton', font=('Aptos', 12))
+            style.configure('TRadiobutton', font=('Aptos', 12))
+            style.configure('TCombobox', font=('Aptos', 12))
+            style.configure('Treeview', font=('Aptos', 12), rowheight=max(30, ui_s(30)))
+            style.configure('Treeview.Heading', font=('Aptos', 12, 'bold'))
+        except Exception:
+            pass
+        try:
+            if root is not None:
+                root.option_add('*TCombobox*Listbox.font', ('Aptos', 12))
+                root.option_add('*Menu.font', ('Aptos', 12))
+        except Exception:
+            pass
+    except Exception:
+        pass
+
+try:
+    _fm511_old_init = FiBuMateApp.__init__
+    def _fm511_init(self, *args, **kwargs):
+        result = _fm511_old_init(self, *args, **kwargs)
+        try:
+            _fm511_install_readability(getattr(self, 'root', None))
+        except Exception:
+            pass
+        return result
+    FiBuMateApp.__init__ = _fm511_init
+except Exception:
+    pass
+
+try:
+    _fm511_old_render_page = FiBuMateApp.render_page
+    def _fm511_render_page(self, *args, **kwargs):
+        try:
+            _fm511_install_readability(getattr(self, 'root', None))
+        except Exception:
+            pass
+        return _fm511_old_render_page(self, *args, **kwargs)
+    FiBuMateApp.render_page = _fm511_render_page
+except Exception:
+    pass
+
+
+# FIBUMATE_GLOBAL_VERSION_0517: Benutzerverwaltung CRUD und Scrollfix
+
+
+# ------------------------------------------------------------------
+# FIBU_MATE_CENTRAL_PASSWORD_PERSISTENCE_V0516
+# Datum: 2026-07-15
+# Zweck:
+# - Passworthashes ausschliesslich dauerhaft in der zentralen Benutzerdatei auf G: speichern.
+# - Lokale, patch-/installationsabhaengige Benutzerdateien nicht mehr als aktive Quelle verwenden.
+# - Stale Clients duerfen ein bereits zentral gespeichertes Passwort nicht mit leerem Auth-Stand ueberschreiben.
+# - Vor jeder Anmeldung zentrale Benutzerdaten neu laden.
+# - Atomisches Schreiben mit kurzer dateibasierter Schreibsperre.
+# ------------------------------------------------------------------
+FIBU_MATE_CENTRAL_PASSWORD_PERSISTENCE_VERSION = "0.516"
+_FM516_USER_FILE_LOCK_TIMEOUT_SEC = 20.0
+
+
+def _fm516_central_user_path():
+    # Genau eine persistente Quelle, unabhaengig vom Installations-/Patchordner.
+    return os.path.join(NETWORK_ROOT, "Fibu_Mate_Doc", "Config", "fibu_mate_users.json")
+
+
+def _fm516_read_user_json(path):
+    try:
+        if path and os.path.exists(path):
+            with open(path, "r", encoding="utf-8") as f:
+                data=json.load(f)
+            return _fm444_normalize_user_data(data)
+    except Exception:
+        pass
+    return None
+
+
+def _fm516_auth_time(auth):
+    auth=auth if isinstance(auth,dict) else {}
+    return max(str(auth.get("password_set_at") or ""), str(auth.get("password_reset_at") or ""))
+
+
+def _fm516_merge_auth(central_auth, incoming_auth):
+    central=dict(central_auth or {})
+    incoming=dict(incoming_auth or {})
+    c_hash=bool(central.get("password_hash"))
+    i_hash=bool(incoming.get("password_hash"))
+    c_time=_fm516_auth_time(central); i_time=_fm516_auth_time(incoming)
+    # Ein explizit neuerer Set-/Reset-Vorgang gewinnt.
+    if i_time and i_time >= c_time:
+        return incoming
+    # Ein erstmals gesetztes Passwort darf einen leeren Zentralstand fuellen.
+    if i_hash and not c_hash:
+        return incoming
+    # Ein stale/leer geladener Client darf ein bestehendes Zentralpasswort nie loeschen.
+    if c_hash and not i_hash:
+        return central
+    # Bei gleichwertigen Daten bleibt der zentrale persistente Stand fuehrend.
+    if c_hash:
+        return central
+    return incoming or central or {"password_hash":None,"enabled":False,"password_must_set":True}
+
+
+def _fm516_merge_user_data(central, incoming):
+    central=_fm444_normalize_user_data(central or {})
+    incoming=_fm444_normalize_user_data(incoming or {})
+    merged={
+        "last_username_prefill": incoming.get("last_username_prefill", central.get("last_username_prefill", "")),
+        "users": {},
+        "settings": dict(central.get("settings") or {}),
+    }
+    merged["settings"].update(incoming.get("settings") or {})
+    keys=set((central.get("users") or {}).keys()) | set((incoming.get("users") or {}).keys())
+    for key in keys:
+        c=dict((central.get("users") or {}).get(key) or {})
+        i=dict((incoming.get("users") or {}).get(key) or {})
+        if c and i:
+            out=dict(c); out.update(i)
+            out["auth"]=_fm516_merge_auth(c.get("auth"),i.get("auth"))
+        elif i:
+            out=i
+        else:
+            out=c
+        merged["users"][key]=out
+    return _fm444_normalize_user_data(merged)
+
+
+def _fm516_acquire_file_lock(lock_path):
+    import time as _time
+    deadline=_time.time()+_FM516_USER_FILE_LOCK_TIMEOUT_SEC
+    while True:
+        try:
+            fd=os.open(lock_path, os.O_CREAT|os.O_EXCL|os.O_WRONLY)
+            try:
+                os.write(fd, (str(os.getpid())+"|"+datetime.now().isoformat(timespec="seconds")).encode("utf-8"))
+            finally:
+                os.close(fd)
+            return True
+        except FileExistsError:
+            try:
+                if _time.time()-os.path.getmtime(lock_path)>60:
+                    os.remove(lock_path); continue
+            except Exception:
+                pass
+            if _time.time()>=deadline:
+                return False
+            _time.sleep(0.15)
+
+
+def _fm516_atomic_write(path,data):
+    folder=os.path.dirname(path); os.makedirs(folder,exist_ok=True)
+    lock_path=path+".lock"
+    if not _fm516_acquire_file_lock(lock_path):
+        raise RuntimeError("Zentrale Benutzerdatei ist derzeit durch einen anderen Speichervorgang gesperrt.")
+    try:
+        current=_fm516_read_user_json(path) or _fm444_default_user_data()
+        merged=_fm516_merge_user_data(current,data)
+        tmp=path+".tmp."+str(os.getpid())
+        with open(tmp,"w",encoding="utf-8") as f:
+            json.dump(merged,f,ensure_ascii=False,indent=2)
+            f.flush()
+            try: os.fsync(f.fileno())
+            except Exception: pass
+        os.replace(tmp,path)
+        return merged
+    finally:
+        try: os.remove(lock_path)
+        except Exception: pass
+
+
+def _fm516_recover_local_passwords(central):
+    """Einmalige Rettung bereits lokal gespeicherter Hashes, sofern zentral noch leer."""
+    changed=False
+    candidates=[]
+    try: candidates.append(_fm444_local_user_data_path())
+    except Exception: pass
+    try:
+        if LEGACY_USER_DATA_PATH: candidates.append(LEGACY_USER_DATA_PATH)
+    except Exception: pass
+    for candidate in candidates:
+        local=_fm516_read_user_json(candidate)
+        if not local: continue
+        for key,luser in (local.get("users") or {}).items():
+            if key not in (central.get("users") or {}): continue
+            cuser=central["users"][key]
+            cauth=dict(cuser.get("auth") or {}); lauth=dict(luser.get("auth") or {})
+            if not cauth.get("password_hash") and lauth.get("password_hash"):
+                cuser["auth"]=lauth; changed=True
+    return changed
+
+
+def _fm516_load_user_data(self):
+    path=_fm516_central_user_path()
+    data=_fm516_read_user_json(path)
+    if data is None:
+        data=_fm444_default_user_data()
+        try: data=_fm516_atomic_write(path,data)
+        except Exception: pass
+    else:
+        try:
+            if _fm516_recover_local_passwords(data):
+                data=_fm516_atomic_write(path,data)
+        except Exception:
+            pass
+    self._fm444_active_user_data_path=path
+    self._fm516_active_user_data_path=path
+    try: self._user_data_mtime=os.path.getmtime(path) if os.path.exists(path) else 0
+    except Exception: self._user_data_mtime=0
+    return _fm444_normalize_user_data(data)
+
+
+def _fm516_get_user_data_path(self):
+    return _fm516_central_user_path()
+
+
+def _fm516_save_user_data(self):
+    path=_fm516_central_user_path()
+    try:
+        merged=_fm516_atomic_write(path,getattr(self,"user_data",None))
+        self.user_data=merged
+        self._fm444_active_user_data_path=path
+        self._fm516_active_user_data_path=path
+        try: self._user_data_mtime=os.path.getmtime(path)
+        except Exception: pass
+        return True
+    except Exception as exc:
+        try:
+            messagebox.showerror("FiBu Mate","Benutzerdaten konnten nicht zentral gespeichert werden.\n\nEs wird bewusst kein lokaler Passwort-Fallback verwendet.\n\nZiel: "+path+"\n\nTechnische Ursache:\n"+str(exc))
+        except Exception: pass
+        return False
+
+
+_FM516_PREV_LOGIN_USER=_fm488_login_user
+def _fm516_login_user(self,username):
+    # Nach Abmeldung und nach einem Patch immer den aktuellen zentralen Hash laden.
+    try: self.user_data=_fm516_load_user_data(self)
+    except Exception: pass
+    return _FM516_PREV_LOGIN_USER(self,username)
+
+
+FiBuMateApp.load_user_data=_fm516_load_user_data
+FiBuMateApp.get_user_data_path=_fm516_get_user_data_path
+FiBuMateApp.save_user_data=_fm516_save_user_data
+FiBuMateApp.login_user=_fm516_login_user
+
+
+
+# ------------------------------------------------------------------
+# FIBU_MATE_USER_MANAGEMENT_CRUD_SCROLL_V0517
+# Datum: 2026-07-15
+# Zweck:
+# - Benutzeranlage wieder als eigener, jederzeit sichtbarer Vorgang.
+# - Bearbeiten aktualisiert exakt den gewaehlten Benutzer und legt keinen neuen an.
+# - Loeschen entfernt den Benutzer atomar aus der zentralen Benutzerdatei.
+# - Benutzerverwaltung wieder vollstaendig scrollbar, inklusive Mausrad ueber Eingabefeldern.
+# ------------------------------------------------------------------
+FIBU_MATE_USER_MANAGEMENT_CRUD_SCROLL_VERSION = "0.517"
+
+
+def _fm517_can_manage_target(app,key,for_delete=False):
+    users=app.user_data.setdefault('users',{})
+    if key not in users: return False
+    actor=getattr(app,'current_user_key','') or ''
+    if key==SUPERUSER_KEY: return False
+    if for_delete and key==actor: return False
+    try:
+        actor_rank=app.role_rank(app.my_role())
+        target_rank=app.role_rank(users[key].get('permission',ROLE_E1))
+        return actor_rank>=3 and target_rank<=actor_rank
+    except Exception:
+        return False
+
+
+def _fm517_allowed_roles(app,target_key=None):
+    try:
+        rank=app.role_rank(app.my_role())
+        return [r for r in ROLE_ORDER if app.role_rank(r)<=rank and (rank>=4 or r!=ROLE_E4)]
+    except Exception:
+        return [ROLE_E1]
+
+
+def _fm517_update_user(app,key,display_name,first_name,email,role):
+    users=app.user_data.setdefault('users',{})
+    if key not in users:
+        messagebox.showwarning('FiBu Mate','Der gewählte Benutzer ist nicht mehr vorhanden.'); return False
+    if not _fm517_can_manage_target(app,key) and key!=getattr(app,'current_user_key',''):
+        messagebox.showwarning('FiBu Mate','Keine Berechtigung für diesen Benutzer.'); return False
+    allowed=_fm517_allowed_roles(app,key)
+    if role not in allowed:
+        messagebox.showwarning('FiBu Mate','Diese Rolle darf nicht vergeben werden.'); return False
+    # Schlüssel/Anmeldename bleibt stabil. Anzeigename ist nur ein Stammdatenfeld.
+    user=users[key]
+    display=' '.join(str(display_name or '').strip().split()) or user.get('display_name',key)
+    first=str(first_name or '').strip()
+    user['display_name']=display
+    user['first_name']=first
+    user['email']=str(email or '').strip()
+    user['full_name']=' '.join(x for x in (first,display) if x).strip() or display
+    user['permission']=role
+    _fm488_normalize_auth(user)
+    app.ensure_permissions_defaults()
+    if not app.save_user_data(): return False
+    messagebox.showinfo('FiBu Mate','Benutzerdaten wurden gespeichert.')
+    app.render_page(); return True
+
+
+def _fm517_create_user(app,display_name,first_name,email,role):
+    raw=' '.join(str(display_name or '').strip().split())
+    if not raw:
+        messagebox.showwarning('FiBu Mate','Bitte einen Anzeigenamen/Nachnamen eingeben.'); return False
+    key=normalize_username(raw)
+    allowed=_fm517_allowed_roles(app)
+    if app.my_role() not in (ROLE_E3,ROLE_E4) or not key or role not in allowed:
+        messagebox.showwarning('FiBu Mate','Benutzername oder Rolle ist nicht zulässig.'); return False
+    # Zentral unter Lock erneut prüfen. Dadurch entstehen keine Doppelanlagen.
+    path=_fm516_central_user_path(); lock_path=path+'.lock'
+    if not _fm516_acquire_file_lock(lock_path):
+        messagebox.showerror('FiBu Mate','Die zentrale Benutzerverwaltung ist derzeit gesperrt. Bitte erneut versuchen.'); return False
+    try:
+        central=_fm516_read_user_json(path) or _fm444_default_user_data()
+        users=central.setdefault('users',{})
+        if key in users:
+            messagebox.showwarning('FiBu Mate','Dieser Benutzer ist bereits vorhanden.'); return False
+        first=str(first_name or '').strip()
+        users[key]={'display_name':raw,'first_name':first,'full_name':' '.join(x for x in (first,raw) if x).strip() or raw,
+                    'email':str(email or '').strip(),'favorites':[],'auth':_fm488_default_auth(),'permission':role}
+        tmp=path+'.tmp.'+str(os.getpid())
+        with open(tmp,'w',encoding='utf-8') as f:
+            json.dump(_fm444_normalize_user_data(central),f,ensure_ascii=False,indent=2); f.flush()
+            try: os.fsync(f.fileno())
+            except Exception: pass
+        os.replace(tmp,path)
+    finally:
+        try: os.remove(lock_path)
+        except Exception: pass
+    app.user_data=_fm516_load_user_data(app)
+    messagebox.showinfo('FiBu Mate','Benutzer wurde angelegt:\n\n'+raw)
+    app.render_page(); return True
+
+
+def _fm517_delete_user(app,key):
+    if not _fm517_can_manage_target(app,key,for_delete=True):
+        messagebox.showwarning('FiBu Mate','Dieser Benutzer kann nicht gelöscht werden.'); return False
+    display=app.user_data.get('users',{}).get(key,{}).get('display_name',key)
+    if not messagebox.askyesno('Benutzer löschen','Benutzer unwiderruflich löschen?\n\n'+str(display)):
+        return False
+    path=_fm516_central_user_path(); lock_path=path+'.lock'
+    if not _fm516_acquire_file_lock(lock_path):
+        messagebox.showerror('FiBu Mate','Die zentrale Benutzerverwaltung ist derzeit gesperrt. Bitte erneut versuchen.'); return False
+    deleted=False
+    try:
+        central=_fm516_read_user_json(path) or _fm444_default_user_data()
+        users=central.setdefault('users',{})
+        if key in users:
+            users.pop(key); deleted=True
+        tmp=path+'.tmp.'+str(os.getpid())
+        with open(tmp,'w',encoding='utf-8') as f:
+            json.dump(_fm444_normalize_user_data(central),f,ensure_ascii=False,indent=2); f.flush()
+            try: os.fsync(f.fileno())
+            except Exception: pass
+        os.replace(tmp,path)
+    finally:
+        try: os.remove(lock_path)
+        except Exception: pass
+    app.user_data=_fm516_load_user_data(app)
+    if deleted: messagebox.showinfo('FiBu Mate','Benutzer wurde gelöscht.')
+    else: messagebox.showwarning('FiBu Mate','Der Benutzer war zentral bereits nicht mehr vorhanden.')
+    app.render_page(); return deleted
+
+
+def _fm517_open_new_user_dialog(app):
+    if app.my_role() not in (ROLE_E3,ROLE_E4):
+        messagebox.showwarning('FiBu Mate','Keine Berechtigung zum Anlegen neuer Benutzer.'); return
+    roles=_fm517_allowed_roles(app)
+    win=tk.Toplevel(app.root); win.title('Neuen Benutzer anlegen'); win.configure(bg=BG); win.transient(app.root); win.grab_set(); win.resizable(False,False)
+    display=tk.StringVar(); first=tk.StringVar(); email=tk.StringVar(); role=tk.StringVar(value=roles[0])
+    tk.Label(win,text='Neuen Benutzer anlegen',bg=BG,fg=TEXT,font=body_font(14,'bold')).grid(row=0,column=0,columnspan=2,sticky='w',padx=18,pady=(16,10))
+    for row,(label,var) in enumerate((('Anzeigename / Nachname',display),('Vorname',first),('E-Mail',email)),1):
+        tk.Label(win,text=label,bg=BG,fg=TEXT2,font=body_font(10)).grid(row=row,column=0,sticky='w',padx=18,pady=5)
+        tk.Entry(win,textvariable=var,bg=WHITE,fg=TEXT,font=body_font(10),width=34,relief='solid',bd=1).grid(row=row,column=1,sticky='ew',padx=18,pady=5,ipady=4)
+    tk.Label(win,text='Rolle',bg=BG,fg=TEXT2,font=body_font(10)).grid(row=4,column=0,sticky='w',padx=18,pady=5)
+    ttk.Combobox(win,textvariable=role,values=roles,state='readonly',font=body_font(10),width=32).grid(row=4,column=1,sticky='ew',padx=18,pady=5)
+    footer=tk.Frame(win,bg=BG); footer.grid(row=5,column=0,columnspan=2,sticky='e',padx=18,pady=(14,16))
+    def create():
+        if _fm517_create_user(app,display.get(),first.get(),email.get(),role.get()): win.destroy()
+    tk.Button(footer,text='Anlegen',command=create,bg='#CFEAD6',fg=TEXT,font=body_font(10,'bold'),relief='solid',bd=1,padx=16,pady=6).pack(side='left',padx=(0,8))
+    tk.Button(footer,text='Abbrechen',command=win.destroy,bg=WHITE,fg=TEXT,font=body_font(10),relief='solid',bd=1,padx=16,pady=6).pack(side='left')
+    try: win.bind('<Return>',lambda e:create())
+    except Exception: pass
+
+
+def _fm517_render_users_menu(self):
+    if not self.can_view_user_management(): self.render_menu_text('Keine Berechtigung für die Benutzerverwaltung.'); return
+    # Vor jedem Render zentral neu laden, damit Anlage/Löschung anderer Clients sichtbar ist.
+    try: self.user_data=_fm516_load_user_data(self)
+    except Exception: pass
+    users=self.user_data.setdefault('users',{})
+    visible=[self.current_user_key] if self.my_role()==ROLE_E1 and self.current_user_key in users else sorted(users)
+    w,h=self.canvas.winfo_width(),self.canvas.winfo_height(); top=132; vh=max(320,int(h-top-30))
+    outer=tk.Frame(self.root,bg=BG); self.widget_items.append(outer); self.canvas.create_window(0,top,window=outer,anchor='nw',width=w,height=vh)
+    toolbar=tk.Frame(outer,bg=BG); toolbar.pack(fill='x',padx=24,pady=(0,8))
+    tk.Label(toolbar,text='Benutzerverwaltung',font=self.zoomed_content_font(('Segoe UI',15,'bold')),bg=BG,fg=TEXT).pack(side='left')
+    if self.my_role() in (ROLE_E3,ROLE_E4):
+        tk.Button(toolbar,text='Neuen Benutzer anlegen',command=lambda:_fm517_open_new_user_dialog(self),bg='#CFEAD6',fg=TEXT,font=body_font(10,'bold'),relief='solid',bd=1,padx=14,pady=6).pack(side='right')
+    area=tk.Frame(outer,bg=BG); area.pack(fill='both',expand=True,padx=24,pady=(0,10))
+    cv=tk.Canvas(area,bg=BG,highlightthickness=0,bd=0); sb=tk.Scrollbar(area,orient='vertical',command=cv.yview)
+    frame=tk.Frame(cv,bg=BG); win=cv.create_window((0,0),window=frame,anchor='nw')
+    cv.configure(yscrollcommand=sb.set); cv.pack(side='left',fill='both',expand=True); sb.pack(side='right',fill='y')
+    def update_scroll(_=None):
+        cv.itemconfigure(win,width=max(cv.winfo_width(),1320)); cv.configure(scrollregion=cv.bbox('all'))
+    frame.bind('<Configure>',update_scroll); cv.bind('<Configure>',update_scroll)
+    def wheel(event):
+        try: cv.yview_scroll(int(-1*(event.delta/120)),'units')
+        except Exception: pass
+        return 'break'
+    # bind_all while page exists ensures wheel over Entry/Combobox also scrolls.
+    cv.bind_all('<MouseWheel>',wheel,add='+')
+    self.widget_items.append(type('_FM517WheelCleanup',(object,),{'destroy':lambda _s: cv.unbind_all('<MouseWheel>')})())
+    heads=['Benutzer','Anzeigename/Nachname','Vorname','E-Mail','Rolle','Passwort','','','']
+    for col,head in enumerate(heads): tk.Label(frame,text=head,bg=BG,fg=TEXT,font=body_font(10,'bold')).grid(row=0,column=col,sticky='w',padx=(0,12),pady=(0,8))
+    for row,key in enumerate(visible,1):
+        user=users[key]; auth=_fm488_normalize_auth(user); edit=_fm517_can_manage_target(self,key) or key==self.current_user_key
+        display=tk.StringVar(value=user.get('display_name',key)); first=tk.StringVar(value=user.get('first_name','')); email=tk.StringVar(value=user.get('email','')); role=tk.StringVar(value=user.get('permission',ROLE_E1))
+        tk.Label(frame,text=key,bg=BG,fg=TEXT2,font=body_font(10)).grid(row=row,column=0,sticky='w',padx=(0,12),pady=5)
+        tk.Entry(frame,textvariable=display,width=22,bg=WHITE,fg=TEXT,font=body_font(10),relief='solid',bd=1,state='normal' if edit else 'disabled').grid(row=row,column=1,sticky='w',padx=(0,12),pady=5,ipady=3)
+        tk.Entry(frame,textvariable=first,width=18,bg=WHITE,fg=TEXT,font=body_font(10),relief='solid',bd=1,state='normal' if edit else 'disabled').grid(row=row,column=2,sticky='w',padx=(0,12),pady=5,ipady=3)
+        tk.Entry(frame,textvariable=email,width=30,bg=WHITE,fg=TEXT,font=body_font(10),relief='solid',bd=1,state='normal' if edit else 'disabled').grid(row=row,column=3,sticky='w',padx=(0,12),pady=5,ipady=3)
+        ttk.Combobox(frame,textvariable=role,values=_fm517_allowed_roles(self,key),state='readonly' if edit else 'disabled',font=body_font(10),width=24).grid(row=row,column=4,sticky='w',padx=(0,12),pady=5)
+        status='gesetzt' if auth.get('password_hash') and not auth.get('password_must_set') else 'muss gesetzt werden'
+        tk.Label(frame,text=status,bg=BG,fg=TEXT2,font=body_font(10)).grid(row=row,column=5,sticky='w',padx=(0,12),pady=5)
+        tk.Button(frame,text='Speichern',command=lambda k=key,d=display,f=first,e=email,r=role:_fm517_update_user(self,k,d.get(),f.get(),e.get(),r.get()),bg='#CFEAD6' if edit else GREY_DISABLED,fg=TEXT,relief='solid',bd=1,width=10,state='normal' if edit else 'disabled').grid(row=row,column=6,padx=(0,8),pady=5)
+        can_reset=_fm488_can_reset_password(self,key)
+        tk.Button(frame,text='PW Reset',command=lambda k=key:_fm488_reset_password_for_user(self,k),bg=WHITE if can_reset else GREY_DISABLED,fg=TEXT,relief='solid',bd=1,width=10,state='normal' if can_reset else 'disabled').grid(row=row,column=7,padx=(0,8),pady=5)
+        can_delete=_fm517_can_manage_target(self,key,for_delete=True)
+        tk.Button(frame,text='Löschen',command=lambda k=key:_fm517_delete_user(self,k),bg=RED if can_delete else GREY_DISABLED,fg=WHITE,relief='solid',bd=1,width=10,state='normal' if can_delete else 'disabled').grid(row=row,column=8,padx=(0,8),pady=5)
+    update_scroll()
+
+
+FiBuMateApp.render_users_menu=_fm517_render_users_menu
+
 if __name__ == "__main__":
     FiBuMateApp().run()

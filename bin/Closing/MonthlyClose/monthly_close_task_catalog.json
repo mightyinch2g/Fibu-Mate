@@ -1,24 +1,6 @@
 {
   "tasks": [
     {
-      "catalog_id": "rec_20260512124956206120",
-      "team": "Hauptbuch",
-      "title": "Aufgabenpool - Grit Kern (Nach Monatsabschluss)",
-      "owner": "Kern",
-      "owner_user_key": "kern",
-      "due_date": "2026-07-02",
-      "due_mode": "closing_cutoff",
-      "due_day": null,
-      "due_workday": null,
-      "due_fixed_date": "",
-      "deadline_type": "intern",
-      "priority": "normal",
-      "required": true,
-      "recurring": true,
-      "start_period": "2026-05",
-      "task_uid": "M5256"
-    },
-    {
       "catalog_id": "rec_20260513161711664276",
       "team": "Hauptbuch",
       "title": "Aufgabenpool - Nicole Knobloch",
@@ -34,7 +16,7 @@
       "required": true,
       "recurring": true,
       "start_period": "2026-05",
-      "task_uid": "M004"
+      "task_uid": "M001"
     },
     {
       "catalog_id": "rec_20260515091223992363",
@@ -42,7 +24,7 @@
       "title": "Aufgabenpool - Denise Fellhauer",
       "owner": "Fellhauer",
       "owner_user_key": "fellhauer",
-      "due_date": "2026-06-09",
+      "due_date": "2026-08-04",
       "due_mode": "closing_cutoff",
       "due_day": null,
       "due_workday": null,
@@ -52,7 +34,7 @@
       "required": true,
       "recurring": true,
       "start_period": "2026-05",
-      "task_uid": "M005"
+      "task_uid": "M002"
     },
     {
       "catalog_id": "rec_20260526145356313779",
@@ -70,7 +52,7 @@
       "required": true,
       "recurring": true,
       "start_period": "2026-05",
-      "task_uid": "M006"
+      "task_uid": "M003"
     },
     {
       "catalog_id": "rec_20260526150343424796",
@@ -78,9 +60,9 @@
       "title": "Aufgabenpool - Grit Kern (Nach Monatsabschluss)",
       "owner": "Kern",
       "owner_user_key": "kern",
-      "due_date": "2026-06-09",
-      "due_mode": "closing_cutoff",
-      "due_day": null,
+      "due_date": "2026-07-05",
+      "due_mode": "day_after_cutoff",
+      "due_day": 3,
       "due_workday": null,
       "due_fixed_date": "",
       "deadline_type": "intern",
@@ -88,7 +70,7 @@
       "required": true,
       "recurring": true,
       "start_period": "2026-05",
-      "task_uid": "M5257"
+      "task_uid": "M243"
     },
     {
       "catalog_id": "rec_20260526153048867561",
@@ -106,7 +88,7 @@
       "required": true,
       "recurring": true,
       "start_period": "2026-06",
-      "task_uid": "M009"
+      "task_uid": "M006"
     },
     {
       "catalog_id": "rec_20260526153105105952",
@@ -124,7 +106,7 @@
       "required": true,
       "recurring": true,
       "start_period": "2026-06",
-      "task_uid": "M010"
+      "task_uid": "M007"
     },
     {
       "catalog_id": "rec_20260609152424578345",
@@ -142,7 +124,7 @@
       "required": true,
       "recurring": true,
       "start_period": "2026-06",
-      "task_uid": "M001"
+      "task_uid": "M008"
     },
     {
       "catalog_id": "rec_20260609163253940392",
@@ -160,7 +142,7 @@
       "required": true,
       "recurring": true,
       "start_period": "2026-06",
-      "task_uid": "M008"
+      "task_uid": "M005"
     },
     {
       "catalog_id": "rec_20260512114625817784",
@@ -215,6 +197,24 @@
       "recurring": true,
       "start_period": "2026-06",
       "task_uid": "MQ003"
+    },
+    {
+      "catalog_id": "rec_20260624092524451194",
+      "team": "Hauptbuch",
+      "title": "Aufgabenpool - Julia Neuwirth 1/2",
+      "owner": "Neuwirth",
+      "owner_user_key": "neuwirth",
+      "due_date": "2026-08-04",
+      "due_mode": "closing_cutoff",
+      "due_day": null,
+      "due_workday": null,
+      "due_fixed_date": "",
+      "deadline_type": "intern",
+      "priority": "normal",
+      "required": true,
+      "recurring": true,
+      "start_period": "2026-07",
+      "task_uid": "M11667"
     }
   ]
 }

@@ -1,15 +1,207 @@
 {
   "entries": [
     {
-      "id": "KB20260616153359613671",
-      "title": "Testeintrag 1",
-      "categories": [],
-      "user": "Wagnerm",
+      "id": "KB20260616160935543741",
+      "title": "Post Abholen",
+      "categories": [
+        "To-Do"
+      ],
+      "user": "Matthias Wagner",
+      "status": "Aktiv",
+      "rhythm": "täglich",
+      "text": "Täglich gegen 11:30 Uhr - Zu Finden im Postregal am Empfang, Fach Fibu.\n\n-Rechnungen:\n\nIn die Posteingang-Ablage und bei nächster Gelegenheit mit AFI-Scanner erfassen. Amer Sports Rechnungen werden nicht gescannt und gehen direkt an C. Ungerer.\n\n-Persönlich Adressiert:\n\nMeist z.H. Team Debitoren, J. Neuwirth oder C. Müller - direkt an den Schreibtisch bringen.",
+      "created_at": "2026-06-16 16:09:35",
+      "updated_at": "2026-06-23 15:28:19",
+      "comments": [],
+      "attachments": [],
+      "text_formatting": [
+        {
+          "start": "1.0",
+          "end": "1.71",
+          "size": 16,
+          "bold": false,
+          "italic": true,
+          "underline": false,
+          "color": "standard"
+        },
+        {
+          "start": "3.0",
+          "end": "3.12",
+          "size": 16,
+          "bold": true,
+          "italic": false,
+          "underline": false,
+          "color": "standard"
+        },
+        {
+          "start": "7.0",
+          "end": "7.23",
+          "size": 16,
+          "bold": true,
+          "italic": false,
+          "underline": false,
+          "color": "standard"
+        }
+      ],
+      "inline_images": [],
+      "inline_tables": []
+    },
+    {
+      "id": "KB20260618130350496064",
+      "title": "Weiterberechnungen Intercompany / IDG / IMS / SABU",
+      "categories": [
+        "Weiterberechnungen",
+        "IDG",
+        "IMS",
+        "SABU"
+      ],
+      "user": "Matthias Wagner",
       "status": "Aktiv",
       "rhythm": "",
-      "text": "",
-      "created_at": "2026-06-16 15:33:59",
-      "updated_at": "2026-06-16 15:33:59",
+      "text": "Platzhalter-",
+      "created_at": "2026-06-18 13:03:50",
+      "updated_at": "2026-06-23 15:28:39",
+      "comments": [],
+      "attachments": [],
+      "text_formatting": [
+        {
+          "start": "1.11",
+          "end": "1.12",
+          "size": 16,
+          "bold": false,
+          "italic": false,
+          "underline": false,
+          "color": "standard"
+        }
+      ],
+      "inline_images": [],
+      "inline_tables": []
+    },
+    {
+      "id": "KB20260623143225517725",
+      "title": "Eingangsrechnungen einscannen",
+      "categories": [
+        "To-Do",
+        "AFI"
+      ],
+      "user": "Matthias Wagner",
+      "status": "Aktiv",
+      "rhythm": "",
+      "text": "Die physischen Eingangsrechnungen, die täglich mit der Post ankommen, müssen für die Rechnungskontrolle, Freigabe und Archivierung erfasst werden. Hierfür steht im Büro von K.Laukhuf eine PC-Arbeitsstation mit dem zugehörigen Scanner zur Verfügung:\n-Das Passwort für den PC befindet sich unter der Tastatur. \n-Der Scanner ist empfindlich und darf nur von einer authorisierten Person angeschalten werden - bitte an N. Knobloch wenden.\n-Dann ist das Programm Kofax-Express zu starten\n\n1. Zunächst werden die Rechnungen sortiert und in einseitige und mehrseitige Rechnungen aufgeteilt. \n1.1.1 \nEinseitige Rechnungen können ohne weiteres in den Scanner eingelegt werden. Diese werden dann unter der Scanoption \"Einzelseiten\" mit dem Scanpfeil-Button eingescannt.\n1.1.2\nBei mehrseitigen Rechnungen ist zwischen Deckseite und dem Anhang ein Anlagentrennblatt einzulegen - es genügt eines vor dem gesamten Anhang. Nach dem letzten Anhang muss dann ein Dokumententrennblatt eingelegt werden um dem Scanner zu signalisieren, dass ein neues Dokument beginnt. Dies ist für alle mehrseitigen Rechnungen durchzuführen. Dann werden die Rechnungen unter der Scanoption \"Mehrseiten\" mit dem Scanpfeil-Button eingescannt.\n1.2 \nNach erfassen der Rechnungen müssen diese mit dem Zahnrad-Button \"Stapel exportieren\" über die AFI-SAP-Schnittstelle eingespielt werden.\nNun werden die Trennblätter entfernt und der Stapel der erfassten Rechnungen mit einer Büroklammer versehen. Auf diesen Stapel ist eines kleines Vermerkblatt anzulegen mit den Daten:\nErfasst - Datum - Kurzzeichen Erfasser\nDer Stapel kann dann im Sammelkarton im Schrank links der Ausgangstür in Richtung Treppenhaus abgelegt werden.\n\nHinweise:\n-Zu erfassende Rechnungen in das untere Fach einlegen; Mit dem bedruckten Seite nach oben und so ausgerichtet, dass der Benutzer den Text lesen kann. \n-Der Drucker bleibt stets eingeschalten - der Rechner kann herunter gefahren werden.",
+      "text_formatting": [
+        {
+          "start": "1.0",
+          "end": "6.0",
+          "size": 16,
+          "bold": false,
+          "italic": false,
+          "underline": false,
+          "color": "standard"
+        },
+        {
+          "start": "7.6",
+          "end": "9.0",
+          "size": 16,
+          "bold": false,
+          "italic": false,
+          "underline": false,
+          "color": "standard"
+        },
+        {
+          "start": "9.5",
+          "end": "11.0",
+          "size": 16,
+          "bold": false,
+          "italic": false,
+          "underline": false,
+          "color": "standard"
+        },
+        {
+          "start": "11.4",
+          "end": "17.0",
+          "size": 16,
+          "bold": false,
+          "italic": false,
+          "underline": false,
+          "color": "standard"
+        },
+        {
+          "start": "17.9",
+          "end": "19.84",
+          "size": 16,
+          "bold": false,
+          "italic": false,
+          "underline": false,
+          "color": "standard"
+        },
+        {
+          "start": "6.99",
+          "end": "7.0",
+          "size": 16,
+          "bold": true,
+          "italic": false,
+          "underline": false,
+          "color": "standard"
+        },
+        {
+          "start": "6.0",
+          "end": "6.99",
+          "size": 18,
+          "bold": true,
+          "italic": false,
+          "underline": false,
+          "color": "standard"
+        },
+        {
+          "start": "6.100",
+          "end": "7.0",
+          "size": 18,
+          "bold": true,
+          "italic": false,
+          "underline": false,
+          "color": "standard"
+        },
+        {
+          "start": "7.0",
+          "end": "7.6",
+          "size": 16,
+          "bold": true,
+          "italic": true,
+          "underline": false,
+          "color": "standard"
+        },
+        {
+          "start": "9.0",
+          "end": "9.5",
+          "size": 16,
+          "bold": true,
+          "italic": true,
+          "underline": false,
+          "color": "standard"
+        },
+        {
+          "start": "11.0",
+          "end": "11.4",
+          "size": 16,
+          "bold": true,
+          "italic": true,
+          "underline": false,
+          "color": "standard"
+        },
+        {
+          "start": "17.0",
+          "end": "17.9",
+          "size": 16,
+          "bold": true,
+          "italic": false,
+          "underline": false,
+          "color": "rot"
+        }
+      ],
+      "inline_images": [],
+      "inline_tables": [],
+      "created_at": "2026-06-23 14:32:25",
+      "updated_at": "2026-06-23 15:28:30",
       "comments": [],
       "attachments": []
     }

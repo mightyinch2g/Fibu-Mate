@@ -1,0 +1,12 @@
+{
+  "profile_version": "AFI-LOCAL-1.0.2",
+  "model_alias": "phi-4-mini",
+  "model_version": "catalog-selected",
+  "sdk_version": "1.2.3",
+  "temperature": 0.0,
+  "random_seed": 42,
+  "max_output_tokens": 12000,
+  "max_input_characters": 450000,
+  "download_execution_providers": true,
+  "unload_after_request": true
+}

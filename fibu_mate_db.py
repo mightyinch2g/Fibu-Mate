@@ -63,7 +63,7 @@ class FibuMateDb:
         self.timeout_seconds = int(sqlite_cfg.get("timeout_seconds", 30))
         self.retry_attempts = int(sqlite_cfg.get("busy_retry_attempts", 5))
         self.retry_wait_ms = int(sqlite_cfg.get("busy_retry_wait_ms", 500))
-        self.journal_mode = str(sqlite_cfg.get("journal_mode", "WAL")).upper()
+        self.journal_mode = str(sqlite_cfg.get("journal_mode", "DELETE")).upper()
         self.use_foreign_keys = bool(sqlite_cfg.get("foreign_keys", True))
 
     def _load_config(self) -> Dict[str, Any]:
@@ -79,8 +79,12 @@ class FibuMateDb:
         con.row_factory = sqlite3.Row
         if self.use_foreign_keys:
             con.execute("PRAGMA foreign_keys = ON;")
-        if self.journal_mode == "WAL":
-            con.execute("PRAGMA journal_mode = WAL;")
+        # Netzlaufwerk G: darf nicht mit WAL betrieben werden.
+        requested_mode = self.journal_mode if self.journal_mode in {"DELETE", "TRUNCATE", "PERSIST"} else "DELETE"
+        con.execute(f"PRAGMA journal_mode = {requested_mode};")
+        con.execute("PRAGMA synchronous = FULL;")
+        con.execute(f"PRAGMA busy_timeout = {max(1000, self.timeout_seconds * 1000)};")
+        con.execute("PRAGMA locking_mode = NORMAL;")
         return con
 
     @contextmanager
@@ -96,7 +100,7 @@ class FibuMateDb:
         """Transaktion mit automatischem Commit/Rollback."""
         con = self.connect()
         try:
-            con.execute("BEGIN;")
+            con.execute("BEGIN IMMEDIATE;")
             yield con
             con.commit()
         except Exception:

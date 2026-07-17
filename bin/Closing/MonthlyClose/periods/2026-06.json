@@ -53,55 +53,7 @@
       "task_uid": "MQ002"
     },
     {
-      "id": "hauptbuch_12",
-      "team": "Hauptbuch",
-      "title": "Aufgabenpool - Grit Kern (Nach Monatsabschluss)",
-      "owner": "Kern",
-      "owner_user_key": "kern",
-      "due_mode": "closing_cutoff",
-      "due_day": null,
-      "due_workday": null,
-      "due_fixed_date": "",
-      "deadline_type": "intern",
-      "priority": "normal",
-      "required": true,
-      "recurring": true,
-      "catalog_id": "rec_20260512124956206120",
-      "status": "Offen",
-      "attachments": [],
-      "comments": [],
-      "subtasks": [
-        {
-          "id": "sub_01_145812682224",
-          "title": "Umbuchung USt-Konten",
-          "status": "Offen",
-          "attachments": [],
-          "comments": [],
-          "documentation": {},
-          "done_at": null,
-          "done_by": null,
-          "task_uid": "M5236-u1"
-        },
-        {
-          "id": "sub_02_145818932750",
-          "title": "Prüfung und evtl. Korrektur der Partnerinformationen in Lucanet",
-          "status": "Offen",
-          "attachments": [],
-          "comments": [],
-          "documentation": {},
-          "done_at": null,
-          "done_by": null,
-          "task_uid": "M5236-u2"
-        }
-      ],
-      "done_at": null,
-      "done_by": null,
-      "due_date": "2026-07-02",
-      "documentation": {},
-      "task_uid": "M5236"
-    },
-    {
-      "id": "hauptbuch_04",
+      "id": "hauptbuch_11",
       "team": "Hauptbuch",
       "title": "Aufgabenpool - Nicole Knobloch",
       "owner": "Knobloch",
@@ -128,7 +80,7 @@
           "documentation": {},
           "done_at": null,
           "done_by": null,
-          "task_uid": "M004-u1"
+          "task_uid": "M001-u1"
         },
         {
           "id": "sub_02_161612013507",
@@ -139,7 +91,7 @@
           "documentation": {},
           "done_at": null,
           "done_by": null,
-          "task_uid": "M004-u2"
+          "task_uid": "M001-u2"
         },
         {
           "id": "sub_03_161627158732",
@@ -150,7 +102,7 @@
           "documentation": {},
           "done_at": null,
           "done_by": null,
-          "task_uid": "M004-u3"
+          "task_uid": "M001-u3"
         },
         {
           "id": "sub_04_161637304527",
@@ -161,7 +113,7 @@
           "documentation": {},
           "done_at": null,
           "done_by": null,
-          "task_uid": "M004-u4"
+          "task_uid": "M001-u4"
         },
         {
           "id": "sub_05_161656079484",
@@ -172,7 +124,7 @@
           "documentation": {},
           "done_at": null,
           "done_by": null,
-          "task_uid": "M004-u5"
+          "task_uid": "M001-u5"
         },
         {
           "id": "sub_06_161710241590",
@@ -183,17 +135,17 @@
           "documentation": {},
           "done_at": null,
           "done_by": null,
-          "task_uid": "M004-u6"
+          "task_uid": "M001-u6"
         }
       ],
       "done_at": null,
       "done_by": null,
       "due_date": "2026-07-02",
       "documentation": {},
-      "task_uid": "M004"
+      "task_uid": "M001"
     },
     {
-      "id": "hauptbuch_05",
+      "id": "hauptbuch_04",
       "team": "Hauptbuch",
       "title": "Aufgabenpool - Denise Fellhauer",
       "owner": "Fellhauer",
@@ -222,7 +174,7 @@
           "owner": "Fellhauer",
           "done_at": null,
           "done_by": null,
-          "task_uid": "M005-u1"
+          "task_uid": "M002-u1"
         },
         {
           "id": "sub_02_090704058104",
@@ -235,7 +187,7 @@
           "owner": "Fellhauer",
           "done_at": null,
           "done_by": null,
-          "task_uid": "M005-u2"
+          "task_uid": "M002-u2"
         },
         {
           "id": "sub_03_090723276152",
@@ -248,7 +200,7 @@
           "owner": "Fellhauer",
           "done_at": null,
           "done_by": null,
-          "task_uid": "M005-u3"
+          "task_uid": "M002-u3"
         },
         {
           "id": "sub_04_090728460974",
@@ -261,7 +213,7 @@
           "owner": "Fellhauer",
           "done_at": null,
           "done_by": null,
-          "task_uid": "M005-u4"
+          "task_uid": "M002-u4"
         },
         {
           "id": "sub_05_090751671577",
@@ -274,7 +226,7 @@
           "owner": "Fellhauer",
           "done_at": null,
           "done_by": null,
-          "task_uid": "M005-u5"
+          "task_uid": "M002-u5"
         },
         {
           "id": "sub_06_090802668325",
@@ -287,7 +239,7 @@
           "owner": "Fellhauer",
           "done_at": null,
           "done_by": null,
-          "task_uid": "M005-u6"
+          "task_uid": "M002-u6"
         },
         {
           "id": "sub_07_090815384336",
@@ -300,14 +252,14 @@
           "owner": "Fellhauer",
           "done_at": null,
           "done_by": null,
-          "task_uid": "M005-u7"
+          "task_uid": "M002-u7"
         }
       ],
       "done_at": null,
       "done_by": null,
       "due_date": "2026-07-02",
       "documentation": {},
-      "task_uid": "M005"
+      "task_uid": "M002"
     },
     {
       "id": "treasury_02",
@@ -331,16 +283,16 @@
       "done_at": null,
       "done_by": null,
       "due_date": "2026-07-02",
-      "task_uid": "M006"
+      "task_uid": "M003"
     },
     {
-      "id": "hauptbuch_06",
+      "id": "hauptbuch_05",
       "team": "Hauptbuch",
       "title": "Aufgabenpool - Grit Kern (Nach Monatsabschluss)",
       "owner": "Kern",
       "owner_user_key": "kern",
-      "due_mode": "closing_cutoff",
-      "due_day": null,
+      "due_mode": "day_after_cutoff",
+      "due_day": 3,
       "due_workday": null,
       "due_fixed_date": "",
       "deadline_type": "intern",
@@ -361,7 +313,7 @@
           "documentation": {},
           "done_at": null,
           "done_by": null,
-          "task_uid": "M5237-u1"
+          "task_uid": "M243-u1"
         },
         {
           "id": "sub_02_145818932750",
@@ -372,14 +324,14 @@
           "documentation": {},
           "done_at": null,
           "done_by": null,
-          "task_uid": "M5237-u2"
+          "task_uid": "M243-u2"
         }
       ],
       "done_at": null,
       "done_by": null,
-      "due_date": "2026-07-02",
+      "due_date": "2026-07-05",
       "documentation": {},
-      "task_uid": "M5237"
+      "task_uid": "M243"
     },
     {
       "id": "hauptbuch_07",
@@ -409,7 +361,7 @@
           "documentation": {},
           "done_at": null,
           "done_by": null,
-          "task_uid": "M008-u1"
+          "task_uid": "M005-u1"
         },
         {
           "id": "sub_02_145642198289",
@@ -420,14 +372,14 @@
           "documentation": {},
           "done_at": null,
           "done_by": null,
-          "task_uid": "M008-u2"
+          "task_uid": "M005-u2"
         }
       ],
       "done_at": null,
       "done_by": null,
       "due_date": "2026-07-02",
       "documentation": {},
-      "task_uid": "M008"
+      "task_uid": "M005"
     },
     {
       "id": "hauptbuch_08",
@@ -457,7 +409,7 @@
           "documentation": {},
           "done_at": null,
           "done_by": null,
-          "task_uid": "M009-u1"
+          "task_uid": "M006-u1"
         },
         {
           "id": "sub_02_152858450204",
@@ -468,7 +420,7 @@
           "documentation": {},
           "done_at": null,
           "done_by": null,
-          "task_uid": "M009-u2"
+          "task_uid": "M006-u2"
         },
         {
           "id": "sub_03_152906271939",
@@ -479,7 +431,7 @@
           "documentation": {},
           "done_at": null,
           "done_by": null,
-          "task_uid": "M009-u3"
+          "task_uid": "M006-u3"
         },
         {
           "id": "sub_04_152911391021",
@@ -490,7 +442,7 @@
           "documentation": {},
           "done_at": null,
           "done_by": null,
-          "task_uid": "M009-u4"
+          "task_uid": "M006-u4"
         },
         {
           "id": "sub_05_152917963102",
@@ -501,7 +453,7 @@
           "documentation": {},
           "done_at": null,
           "done_by": null,
-          "task_uid": "M009-u5"
+          "task_uid": "M006-u5"
         },
         {
           "id": "sub_06_152922845934",
@@ -512,7 +464,7 @@
           "documentation": {},
           "done_at": null,
           "done_by": null,
-          "task_uid": "M009-u6"
+          "task_uid": "M006-u6"
         },
         {
           "id": "sub_07_152925672739",
@@ -523,7 +475,7 @@
           "documentation": {},
           "done_at": null,
           "done_by": null,
-          "task_uid": "M009-u7"
+          "task_uid": "M006-u7"
         },
         {
           "id": "sub_08_152930126962",
@@ -534,7 +486,7 @@
           "documentation": {},
           "done_at": null,
           "done_by": null,
-          "task_uid": "M009-u8"
+          "task_uid": "M006-u8"
         },
         {
           "id": "sub_09_152934036417",
@@ -545,7 +497,7 @@
           "documentation": {},
           "done_at": null,
           "done_by": null,
-          "task_uid": "M009-u9"
+          "task_uid": "M006-u9"
         },
         {
           "id": "sub_10_152937408136",
@@ -556,7 +508,7 @@
           "documentation": {},
           "done_at": null,
           "done_by": null,
-          "task_uid": "M009-u10"
+          "task_uid": "M006-u10"
         },
         {
           "id": "sub_11_152941634078",
@@ -567,7 +519,7 @@
           "documentation": {},
           "done_at": null,
           "done_by": null,
-          "task_uid": "M009-u11"
+          "task_uid": "M006-u11"
         },
         {
           "id": "sub_12_152947718057",
@@ -578,14 +530,14 @@
           "documentation": {},
           "done_at": null,
           "done_by": null,
-          "task_uid": "M009-u12"
+          "task_uid": "M006-u12"
         }
       ],
       "done_at": null,
       "done_by": null,
       "due_date": "2026-07-02",
       "documentation": {},
-      "task_uid": "M009"
+      "task_uid": "M006"
     },
     {
       "id": "hauptbuch_09",
@@ -617,7 +569,7 @@
           "done_by": null,
           "owner": "Wall",
           "owner_user_key": "wall",
-          "task_uid": "M010-u1"
+          "task_uid": "M007-u1"
         },
         {
           "id": "sub_02_153212859310",
@@ -630,7 +582,7 @@
           "done_by": null,
           "owner": "Wall",
           "owner_user_key": "wall",
-          "task_uid": "M010-u2"
+          "task_uid": "M007-u2"
         },
         {
           "id": "sub_03_153216801728",
@@ -643,7 +595,7 @@
           "done_by": null,
           "owner": "Wall",
           "owner_user_key": "wall",
-          "task_uid": "M010-u3"
+          "task_uid": "M007-u3"
         },
         {
           "id": "sub_04_153221181539",
@@ -656,7 +608,7 @@
           "done_by": null,
           "owner": "Wall",
           "owner_user_key": "wall",
-          "task_uid": "M010-u4"
+          "task_uid": "M007-u4"
         },
         {
           "id": "sub_05_153225184684",
@@ -669,7 +621,7 @@
           "done_by": null,
           "owner": "Wall",
           "owner_user_key": "wall",
-          "task_uid": "M010-u5"
+          "task_uid": "M007-u5"
         },
         {
           "id": "sub_06_153229314092",
@@ -682,7 +634,7 @@
           "done_by": null,
           "owner": "Wall",
           "owner_user_key": "wall",
-          "task_uid": "M010-u6"
+          "task_uid": "M007-u6"
         },
         {
           "id": "sub_07_153233447868",
@@ -695,7 +647,7 @@
           "done_by": null,
           "owner": "Wall",
           "owner_user_key": "wall",
-          "task_uid": "M010-u7"
+          "task_uid": "M007-u7"
         },
         {
           "id": "sub_08_153236915856",
@@ -708,14 +660,14 @@
           "done_by": null,
           "owner": "Wall",
           "owner_user_key": "wall",
-          "task_uid": "M010-u8"
+          "task_uid": "M007-u8"
         }
       ],
       "done_at": null,
       "done_by": null,
       "due_date": "2026-07-02",
       "documentation": {},
-      "task_uid": "M010"
+      "task_uid": "M007"
     },
     {
       "id": "hauptbuch_10",
@@ -743,7 +695,7 @@
           "attachments": [],
           "comments": [],
           "documentation": {},
-          "task_uid": "M001-u1"
+          "task_uid": "M008-u1"
         },
         {
           "id": "sub_02_151756396116",
@@ -752,7 +704,7 @@
           "attachments": [],
           "comments": [],
           "documentation": {},
-          "task_uid": "M001-u2"
+          "task_uid": "M008-u2"
         },
         {
           "id": "sub_03_151849396157",
@@ -761,7 +713,7 @@
           "attachments": [],
           "comments": [],
           "documentation": {},
-          "task_uid": "M001-u3"
+          "task_uid": "M008-u3"
         },
         {
           "id": "sub_04_151909163601",
@@ -770,7 +722,7 @@
           "attachments": [],
           "comments": [],
           "documentation": {},
-          "task_uid": "M001-u4"
+          "task_uid": "M008-u4"
         },
         {
           "id": "sub_05_151941796578",
@@ -779,7 +731,7 @@
           "attachments": [],
           "comments": [],
           "documentation": {},
-          "task_uid": "M001-u5"
+          "task_uid": "M008-u5"
         },
         {
           "id": "sub_06_152121254842",
@@ -788,7 +740,7 @@
           "attachments": [],
           "comments": [],
           "documentation": {},
-          "task_uid": "M001-u6"
+          "task_uid": "M008-u6"
         },
         {
           "id": "sub_07_152152335891",
@@ -797,7 +749,7 @@
           "attachments": [],
           "comments": [],
           "documentation": {},
-          "task_uid": "M001-u7"
+          "task_uid": "M008-u7"
         },
         {
           "id": "sub_08_152314785229",
@@ -806,7 +758,7 @@
           "attachments": [],
           "comments": [],
           "documentation": {},
-          "task_uid": "M001-u8"
+          "task_uid": "M008-u8"
         },
         {
           "id": "sub_09_152325606649",
@@ -815,7 +767,7 @@
           "attachments": [],
           "comments": [],
           "documentation": {},
-          "task_uid": "M001-u9"
+          "task_uid": "M008-u9"
         },
         {
           "id": "sub_10_152348161368",
@@ -824,17 +776,17 @@
           "attachments": [],
           "comments": [],
           "documentation": {},
-          "task_uid": "M001-u10"
+          "task_uid": "M008-u10"
         }
       ],
       "done_at": null,
       "done_by": null,
       "due_date": "2026-07-02",
       "documentation": {},
-      "task_uid": "M001"
+      "task_uid": "M008"
     },
     {
-      "id": "hauptbuch_11",
+      "id": "hauptbuch_12",
       "team": "Hauptbuch",
       "required": true,
       "status": "Offen",

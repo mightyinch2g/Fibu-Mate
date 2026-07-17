@@ -1,5 +1,5 @@
 #define MyAppName "FiBu Mate"
-#define MyAppVersion "0.461"
+#define MyAppVersion "0.520"
 #define MyAppPublisher "Wagnerm"
 #define MyAppExeName "FiBuMate.exe"
 

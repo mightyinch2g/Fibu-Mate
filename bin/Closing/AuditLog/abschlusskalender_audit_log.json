@@ -1,0 +1,26 @@
+{
+  "version": "0.458-live-audit-overview",
+  "entries": [
+    {
+      "id": "AUD20260713104307812437",
+      "timestamp": "2026-07-13T10:43:07",
+      "user_key": "wagnerm",
+      "user_display": "Matthias Wagner",
+      "module": "abschlusskalender",
+      "calendar_type": "Monatsabschluss",
+      "period": "2026-07",
+      "period_label": "Juli 2026",
+      "object_type": "task",
+      "object_id": "hauptbuch_12",
+      "task_title": "Aufgabe X",
+      "team": "Hauptbuch",
+      "action": "task_deleted",
+      "field_name": "title",
+      "old_value": "Aufgabe X",
+      "new_value": "",
+      "details_json": {},
+      "app_version": "v0.495",
+      "audit_patch_version": "0.458-live-audit-overview"
+    }
+  ]
+}

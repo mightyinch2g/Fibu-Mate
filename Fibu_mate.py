@@ -1,3 +1,4 @@
+# FiBuMate_PATCH_MARKER: 20260716_FOUNDRY_LOCAL_AFI_PILOT_102
 # FiBuMate_PATCH_MARKER: 20260609_MENUZEILEN_DEBITOREN_PROTOCOL
 # FiBuMate_PATCH_MARKER: 20260609_v0436_DIREKT_ABSCHLUSSKALENDER_EIN_MODUL
 # FiBuMate_PATCH_MARKER: 20260609_v0436_DREI_MODULE_STICHTAGSPFLEGE_OHNE_IDS
@@ -367,7 +368,7 @@ TOOL_REGISTRY = {
     "nike_op_liste_pdf_check": {"title": "Nike - OP-Liste: Vollständigkeit PDF-Rechnungen prüfen", "module": "bin.tools.nike_op_liste_pdf_check", "favorite_label": "Nike OP PDF"},
     "invoice_pdf_collector": {"title": "Nike - Rechnungs-PDFs in Sammelordner", "module": "bin.tools.invoice_pdf_collector", "favorite_label": "Nike RE sammeln"},
     "enbw_strom_tanken_upload": {"title": "EnBW - Strom-Tanken Upload-Erstellung", "module": "bin.tools.enbw_strom_tanken_upload", "favorite_label": "EnBW Strom"},
-    "supplier_invoice_afi_upload": {"title": "Lieferanten-Rechnung zu AFI-Upload", "module": "bin.tools.supplier_invoice_afi_upload", "favorite_label": "Lieferanten AFI"},
+    "supplier_invoice_afi_upload": {"title": "AFI-Upload (lokale KI)", "module": "bin.tools.supplier_invoice_afi_upload", "favorite_label": "AFI KI"},
     "aramark_monatsabrechnungen_pdf_to_excel": {"title": "Aramark Monatsabrechnungen - PDF zu Excel", "module": "bin.tools.aramark_monatsabrechnungen_pdf_to_excel", "favorite_label": "Aramark Monat"},
     "debitoren_serienbrief": {"title": "Debitoren-Serienbrief", "module": "bin.tools.debitoren_serienbrief", "favorite_label": "Debitoren SB"},
     "monthly_close": {"title": "Monatsabschluss", "module": "bin.tools.abschlusskalender", "favorite_label": "Monatsabschluss"},
@@ -394,7 +395,7 @@ MODULE_DESCRIPTIONS = {
     "invoice_pdf_collector": "In Excel gefilterte Rechnungsnummern aus PDF-Verzeichnis wählen und in neuen Sammelordner kopieren.",
     "enbw_strom_tanken_upload": "Erstellt aus EnBW E-Tankkosten-Abrechnungen eine SAP-AFI-uploadfähige CSV anhand der bestehenden Upload-Vorlage; Zuordnung nach Kennzeichen, Steuerlogik, Grundgebühren und Hinweis-Popup bei Abweichungen.",
     "page:compliance_audit": "Entwicklungsbereich für Compliance- und Audit-Funktionen: Steuermeldungen, Audit-Cockpit und Dokumentationszentrale bleiben gebündelt, werden aber nicht im produktiven Hauptmenü angezeigt.",
-    "supplier_invoice_afi_upload": "Generisches CSV-Modul für Lieferantenrechnungen: erkennt relevante Spalten logisch, gleicht gegen eine wählbare AFI-/Kontierungsvorlage ab und exportiert eine uploadfähige AFI-CSV mit Spalten A-J.",
+    "supplier_invoice_afi_upload": "Lokaler KI-Pilot: verarbeitet Rechnung und gewählte Kontierungs-/Stammdaten vollständig auf dem Client und exportiert die AFI-CSV.",
     "aramark_monatsabrechnungen_pdf_to_excel": "Erstellt aus einer oder mehreren Aramark-Monatsabrechnungs-PDFs eine gemeinsame Excel-Datei nach der festen Aramark-Vorlage; pro PDF entsteht eine frei benennbare eigene Umsatz-Spalte inklusive Plausibilitätsprüfung und Exportvorschau.",
 }
 DESCRIPTION_FONT = ("Segoe UI", 11)
@@ -1171,7 +1172,7 @@ class FiBuMateApp:
         self.canvas.bind("<Configure>", self.on_resize)
         self.active_scroll_canvas = None
         # v0.436: keine globalen Zoom-Bindings mehr; automatische Skalierung übernimmt die Darstellung.
-        for key, handler in [("<Escape>", self.handle_escape), ("<Return>", self.handle_enter), ("<Tab>", self.handle_tab), ("<Shift-Tab>", self.handle_shift_tab), ("<ISO_Left_Tab>", self.handle_shift_tab)]:
+        for key, handler in [("<Escape>", self.handle_escape), ("<Return>", self.handle_enter), ("<Tab>", self.handle_tab), ("<Shift-Tab>", self.handle_shift_tab)]:
             self.root.bind_all(key, handler)
         self.show_page("launch", add_to_history=False)
 
@@ -3383,7 +3384,7 @@ class FiBuMateApp:
         modules = [
             # EnBW ist fachlich in "Lieferanten-Rechnung zu AFI-Upload" integriert.
             # Der alte Toolcode bleibt im TOOL_REGISTRY erhalten, wird aber nicht mehr angezeigt.
-            ("Lieferanten-Rechnung zu AFI-Upload", "supplier_invoice_afi_upload"),
+            ("AFI-Upload (lokale KI)", "supplier_invoice_afi_upload"),
         ]
         self.render_module_menu(modules, show_descriptions=True)
         self.draw_bottom_logo()
@@ -19531,7 +19532,7 @@ except Exception:
     pass
 
 
-# FIBUMATE_GLOBAL_VERSION_0517: Benutzerverwaltung CRUD und Scrollfix
+# FIBUMATE_GLOBAL_VERSION_0519: Fristenwarnungen Buchungskreise Outlook-Erinnerungen
 
 
 # ------------------------------------------------------------------
@@ -19926,6 +19927,16 @@ def _fm517_render_users_menu(self):
 
 
 FiBuMateApp.render_users_menu=_fm517_render_users_menu
+
+
+
+# FIBU_MATE_CLOSING_REMINDERS_V0519
+FIBU_MATE_CLOSING_REMINDERS_VERSION = "0.519"
+def _fm519_render_closing_calendar_menu(self):
+    modules = [("Monatsabschluss", "monthly_close"), ("Quartalsabschluss", "quarterly_close"), ("Jahresabschluss", "yearly_close"), ("Stichtagspflege", "deadline_maintenance")]
+    self.render_module_menu(modules, show_descriptions=True)
+    self.draw_bottom_logo()
+FiBuMateApp.render_closing_calendar_menu = _fm519_render_closing_calendar_menu
 
 if __name__ == "__main__":
     FiBuMateApp().run()
