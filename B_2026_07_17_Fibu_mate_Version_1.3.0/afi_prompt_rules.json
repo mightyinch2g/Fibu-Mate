@@ -1,0 +1,35 @@
+{
+  "general_prompt": "Verarbeite Rechnungen nachvollziehbar und konservativ. Verwende ausschließlich Sachkonten und Kostenstellen aus den ausgewählten Datenbanken. Erfinde keine Kontierung. Der Buchungstext muss den Lieferanten, den Namen und - soweit vorhanden - Kennzeichen, Rufnummer oder Auftragsnummer enthalten. Nicht eindeutig auflösbare Positionen müssen als Prüfhinweis ausgegeben und für den Export gesperrt werden.",
+  "suppliers": {
+    "enbw": {
+      "label": "EnBW Charging",
+      "tax_code_19": "VD",
+      "text_template": "EnBW Stromtanken {kennzeichen} {name}",
+      "fee_text_template": "EnBW Grundgebühr {gesellschaft}",
+      "prompt": "Grundgebühr Netto je Gesellschaft in einem Posten zusammenfassen. Grundgebühr je Nutzer Netto in die Energiekostenposition des Nutzers einrechnen. Kennzeichen und Name im Buchungstext ausgeben. Gib eine Saldenzeile unterhalb der Positionen aus.",
+      "aggregate_company_fee": true,
+      "user_fee_into_energy": true
+    },
+    "dkv": {
+      "label": "DKV Tanken Inland",
+      "tax_code_19": "VD",
+      "text_template": "DKV Tanken {kennzeichen} {name}",
+      "prompt": "Je Fahrzeug/Kennzeichen kontieren. Kostenstelle über Kennzeichen, Namen und Weiterberechnungsregeln bestimmen. Kennzeichen und Name im Text ausgeben."
+    },
+    "vodafone": {
+      "label": "Vodafone Mobilfunk",
+      "tax_code_19": "VD",
+      "text_template": "Vodafone {rufnummer} {name}",
+      "aggregate_text_template": "Vodafone Mobilfunk {gesellschaft} {kostenstelle} ({anzahl} Anschlüsse)",
+      "prompt": "Rufnummern über die Telefonzuordnung kontieren. Beträge je Kostenstelle und Gesellschaft zusammenfassen; Einzelzuordnung im Prüfprotokoll erhalten."
+    },
+    "kazenmaier": {
+      "label": "Kazenmaier Bike Leasing",
+      "tax_code_19": "VD",
+      "text_template": "Kazenmaier {auftragsnummer} {name}",
+      "prompt": "Je Auftragsgruppe und Fahrer kontieren. Auftragsnummer und Name im Text ausgeben. Das Sachkonto aus der Kostenart Bike Leasing verwenden."
+    }
+  },
+  "saved_at": "2026-07-16T16:42:40+02:00",
+  "module_version": "1.2.0"
+}

@@ -1,4 +1,4 @@
-"""FiBu Mate – AFI-Upload, deterministisches Lieferanten-Regelwerk 1.2.0.
+"""FiBu Mate – AFI-Upload, Lieferanten-Regelwerk 1.3.0.
 
 Standardfälle werden ohne LLM/ONNX verarbeitet. Dadurch können native Modellfehler
 FiBu Mate nicht mehr beenden. Unterstützte Regeln: EnBW Charging CSV, DKV,
@@ -1143,16 +1143,568 @@ class AFIUI:
             Path(path).write_text(json.dumps(self.result, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
+
+# AFI 1.3.0 - direkt integrierte Erweiterungen
+"""FiBu Mate AFI-Upload UI/rules extension.
+
+Loaded by supplier_invoice_afi_upload.py. Keeps the stable deterministic parsers and
+adds central supplier management, AI prompt review, enhanced previews and CSV export.
+"""
+
+import csv
+import json
+import os
+import re
+import subprocess
+import sys
+import tempfile
+import traceback
+import shutil
+import time
+import urllib.request
+import urllib.error
+from collections import defaultdict
+from pathlib import Path
+
+GREEN = "#E6F4EA"
+
+DEFAULT_SUPPLIERS = {
+    "enbw": {
+        "label": "EnBW Charging",
+        "tax_code_19": "VD",
+        "text_template": "EnBW Stromtanken {kennzeichen} {name}",
+        "prompt": "Grundgebühr je Gesellschaft zusammenfassen. Grundgebühr je Nutzer Netto in Energiekosten einrechnen. Kennzeichen und Name im Text ausgeben.",
+        "regions": {"inland": {"tax_code": "VD"}, "ausland": {"tax_code": "V0"}},
+        "cost_types": [{"name": "Tanken Strom", "account_key": "Tanken Strom"}],
+        "use_ai": True,
+    },
+    "dkv": {
+        "label": "DKV",
+        "tax_code_19": "VD",
+        "text_template": "DKV {kostenart} {kennzeichen} {name}",
+        "prompt": "Kostenart bestimmen. Tanken je Kennzeichen kontieren. Versicherungen nach Versicherungsregel kontieren. Kennzeichen und Name im Text ausgeben.",
+        "regions": {"inland": {"tax_code": "VD"}, "ausland": {"tax_code": "V0"}},
+        "cost_types": [
+            {"name": "Tanken", "terms": ["diesel", "benzin", "kraftstoff"], "account_key": "DKV"},
+            {"name": "Versicherung", "terms": ["versicherung", "insurance"], "account_key": "DEAS-Versicherungen"},
+        ],
+        "use_ai": True,
+    },
+    "vodafone": {
+        "label": "Vodafone Mobilfunk",
+        "tax_code_19": "VD",
+        "text_template": "Vodafone {rufnummer} {name}",
+        "prompt": "Rufnummern über die Telefonzuordnung kontieren und je Kostenstelle/Gesellschaft zusammenfassen.",
+        "regions": {"inland": {"tax_code": "VD"}, "ausland": {"tax_code": "V0"}},
+        "cost_types": [{"name": "Mobilfunk", "account_key": "Vodafone"}],
+        "use_ai": True,
+    },
+    "kazenmaier": {
+        "label": "Kazenmaier Bike Leasing",
+        "tax_code_19": "VD",
+        "text_template": "Kazenmaier {auftragsnummer} {name}",
+        "prompt": "Je Auftragsgruppe und Person kontieren. Auftragsnummer und Name im Text ausgeben.",
+        "regions": {"inland": {"tax_code": "VD"}, "ausland": {"tax_code": "V0"}},
+        "cost_types": [{"name": "Bike Leasing", "account_key": "Bike Leasing"}],
+        "use_ai": True,
+    },
+    "telekom": {
+        "label": "Telekom",
+        "tax_code_19": "VD",
+        "text_template": "Telekom {rufnummer} {name}",
+        "prompt": "Rufnummer und Name im Text. Kostenstelle aus Telefon- und Mitarbeiterstamm.",
+        "regions": {"inland": {"tax_code": "VD"}, "ausland": {"tax_code": "V0"}},
+        "cost_types": [{"name": "Telekommunikation", "account_key": "Telekom"}],
+        "use_ai": True,
+    },
+    "deas": {
+        "label": "DEAS",
+        "tax_code_19": "VD",
+        "text_template": "DEAS {kostenart} {name}",
+        "prompt": "Kostenart Versicherung oder sonstige Leistung erkennen und passendes Sachkonto verwenden.",
+        "regions": {"inland": {"tax_code": "VD"}, "ausland": {"tax_code": "V0"}},
+        "cost_types": [
+            {"name": "Versicherung", "account_key": "DEAS-Versicherungen"},
+            {"name": "Sonstige", "account_key": "DEAS"},
+        ],
+        "use_ai": True,
+    },
+    "vw_leasing": {
+        "label": "VW Leasing",
+        "tax_code_19": "VD",
+        "text_template": "VW Leasing {kennzeichen} {name}",
+        "prompt": "Leasing je Fahrzeug und Kostenstelle kontieren.",
+        "regions": {"inland": {"tax_code": "VD"}, "ausland": {"tax_code": "V0"}},
+        "cost_types": [{"name": "Leasing", "account_key": "VW-Leasing"}],
+        "use_ai": True,
+    },
+    "vw_versicherung": {
+        "label": "VW Versicherungen",
+        "tax_code_19": "VD",
+        "text_template": "VW Versicherung {kennzeichen} {name}",
+        "prompt": "Versicherung je Fahrzeug und Kostenstelle kontieren.",
+        "regions": {"inland": {"tax_code": "VD"}, "ausland": {"tax_code": "V0"}},
+        "cost_types": [{"name": "Versicherung", "account_key": "VW-Versicherungen"}],
+        "use_ai": True,
+    },
+    "generic": {
+        "label": "Weitere Lieferanten",
+        "tax_code_19": "VD",
+        "text_template": "{lieferant} {kostenart} {kennzeichen} {rufnummer} {name}",
+        "prompt": "Lieferant, Kostenart und Kontierungsmerkmale ermitteln. Keine Kontierung erfinden.",
+        "regions": {"inland": {"tax_code": "VD"}, "ausland": {"tax_code": "V0"}},
+        "cost_types": [{"name": "Sonstige", "account_key": "Sonstige"}],
+        "use_ai": True,
+    },
+}
+
+
+def _merge(first, second):
+    result = dict(first)
+    for key, value in (second or {}).items():
+        result[key] = _merge(result.get(key, {}), value) if isinstance(value, dict) and isinstance(result.get(key), dict) else value
+    return result
+
+
+def _supplier_key(result, rules):
+    supplier = str(result.get("invoice", {}).get("supplier", "")).casefold()
+    for key, rule in rules.get("suppliers", {}).items():
+        words = [word for word in str(rule.get("label", key)).casefold().split() if len(word) > 3]
+        if key.casefold() in supplier or any(word in supplier for word in words):
+            return key
+    return "generic" if "generic" in rules.get("suppliers", {}) else ""
+
+
+def _foundry_run(arguments, timeout=300, json_output=False):
+    executable = shutil.which("foundry")
+    if not executable:
+        raise RuntimeError("Foundry Local ist nicht installiert.")
+    command = [executable] + list(arguments)
+    if json_output and "--output" not in command:
+        command += ["--output", "json"]
+    completed = subprocess.run(command, capture_output=True, text=True, timeout=timeout, encoding="utf-8", errors="replace", creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+    if completed.returncode != 0:
+        raise RuntimeError((completed.stderr or completed.stdout or "Foundry-Befehl fehlgeschlagen").strip()[-1200:])
+    output = (completed.stdout or "").strip()
+    return json.loads(output) if json_output else output
+
+
+def _foundry_endpoint(status):
+    for value in status.get("webUrls", []):
+        match = re.search(r"https?://127\.0\.0\.1:\d+", str(value))
+        if match:
+            return match.group(0)
+    raise RuntimeError("Foundry meldet keine lokale REST-Adresse.")
+
+
+def _ensure_foundry_ready(model_alias="qwen2.5-0.5b", progress=lambda _message: None):
+    try:
+        status = _foundry_run(["server", "status"], 30, True)
+    except Exception:
+        progress("Foundry-Server wird automatisch gestartet …")
+        _foundry_run(["server", "start"], 180)
+        status = _foundry_run(["server", "status"], 30, True)
+    if not status.get("running") or status.get("state") != "ready":
+        _foundry_run(["server", "start"], 180)
+        status = _foundry_run(["server", "status"], 30, True)
+    endpoint = _foundry_endpoint(status)
+    info = _foundry_run(["model", "info", model_alias], 60, True).get("model", {})
+    model_id = str(info.get("id") or model_alias)
+    if not info.get("cached"):
+        progress("Lokales KI-Modell wird einmalig vorbereitet …")
+        _foundry_run(["model", "download", model_alias], 1800)
+    state = _foundry_run(["status"], 60, True)
+    if int(state.get("models", {}).get("loaded", 0) or 0) < 1:
+        progress("Lokales KI-Modell wird geladen …")
+        _foundry_run(["model", "load", model_alias], 600)
+    return endpoint, model_id
+
+
+def _extract_json_object(text):
+    value = re.sub(r"^```(?:json)?\s*|\s*```$", "", str(text or "").strip(), flags=re.I)
+    try:
+        return json.loads(value)
+    except Exception:
+        a,b=value.find("{"),value.rfind("}")
+        if a>=0 and b>a:return json.loads(value[a:b+1])
+        raise RuntimeError("Die lokale KI lieferte kein gültiges JSON.")
+
+
+def _ai_review(globals_dict, result, rules, supplier_key, progress=lambda _message: None):
+    rule = rules.get("suppliers", {}).get(supplier_key, {})
+    if not rule.get("use_ai", False):
+        result.setdefault("technical", {})["ai_prompt_status"]="deaktiviert"
+        return result
+    endpoint, model_id = _ensure_foundry_ready("qwen2.5-0.5b", progress)
+    original=result.get("upload_rows",[])
+    snapshot={"general_prompt":rules.get("general_prompt",""),"supplier_prompt":rule.get("prompt",""),"structured_rule":rule,"upload_rows":original}
+    instruction=("Prüfe die AFI-Zeilen anhand aller Regeln. Antworte nur mit JSON {\"upload_rows\":[...]}. Anzahl und Reihenfolge unverändert. Ändere nur TEXT und TAX_CODE. PRICE, PRICE_UNIT, QUANTITY, UNIT, NET_VALUE, GL_ACCOUNT, COSTCENTER und ORDERID exakt beibehalten. TEXT maximal 120 Zeichen. EINGABE: "+json.dumps(snapshot,ensure_ascii=False))
+    payload={"model":model_id,"messages":[{"role":"system","content":"Du bist der lokale AFI-Regelprüfer von FiBu Mate. Gib nur gültiges JSON zurück."},{"role":"user","content":instruction}],"temperature":0,"max_tokens":2048,"stream":False}
+    request=urllib.request.Request(endpoint.rstrip("/")+"/v1/chat/completions",data=json.dumps(payload,ensure_ascii=False).encode("utf-8"),headers={"Content-Type":"application/json","Authorization":"Bearer notneeded"},method="POST")
+    progress("Gespeicherte Prompts werden durch die lokale KI angewendet …")
+    try:
+        with urllib.request.urlopen(request,timeout=240) as response:data=json.loads(response.read().decode("utf-8"))
+    except urllib.error.HTTPError as exc:
+        raise RuntimeError(f"Foundry-REST-Fehler HTTP {exc.code}: {exc.read().decode('utf-8',errors='replace')[-600:]}") from exc
+    reviewed=_extract_json_object(data["choices"][0]["message"]["content"]).get("upload_rows",[])
+    if len(reviewed)!=len(original):raise RuntimeError("Die KI änderte die Anzahl der AFI-Zeilen.")
+    protected=("PRICE","PRICE_UNIT","QUANTITY","UNIT","NET_VALUE","GL_ACCOUNT","COSTCENTER","ORDERID")
+    allowed={str(rule.get("tax_code_19","VD"))}
+    for region in (rule.get("regions",{}) or {}).values():
+        if isinstance(region,dict) and region.get("tax_code"):allowed.add(str(region["tax_code"]))
+    for old,new in zip(original,reviewed):
+        if not isinstance(new,dict):raise RuntimeError("Ungültige AFI-Zeile aus KI.")
+        for field in protected:
+            if str(new.get(field,""))!=str(old.get(field,"")):raise RuntimeError(f"KI änderte geschütztes Feld {field}.")
+        tax=str(new.get("TAX_CODE",old.get("TAX_CODE",""))).strip()
+        if tax not in allowed:raise RuntimeError(f"Nicht freigegebenes Steuerkennzeichen {tax!r}.")
+        old["TEXT"]=str(new.get("TEXT",old.get("TEXT",""))).strip()[:120];old["TAX_CODE"]=tax
+    result.setdefault("technical",{}).update({"ai_prompts_applied":True,"ai_prompt_status":"angewendet","ai_transport":"foundry_local_rest","ai_endpoint":endpoint,"ai_model":model_id})
+    return result
+
+def apply_enhancements(g):
+    tk, ttk = g["tk"], g["ttk"]
+    messagebox, filedialog, simpledialog = g["messagebox"], g["filedialog"], g["simpledialog"]
+    BaseUI = g["AFIUI"]
+    original_defaults = g["_default_prompt_rules"]
+    original_load = g["_load_prompt_rules"]
+
+    def defaults():
+        result = original_defaults()
+        result["suppliers"] = _merge(DEFAULT_SUPPLIERS, result.get("suppliers", {}))
+        return result
+
+    def load_rules():
+        return _merge(defaults(), original_load())
+
+    g["_default_prompt_rules"] = defaults
+    g["_load_prompt_rules"] = load_rules
+
+    original_process = g["RuleEngine"].process
+
+    def process_with_prompts(self, invoice_path, progress=lambda _message: None):
+        result = original_process(self, invoice_path, progress)
+        rules = getattr(self, "rules", load_rules())
+        key = _supplier_key(result, rules)
+        if key and rules.get("suppliers", {}).get(key, {}).get("use_ai", False):
+            try:
+                progress("Allgemeiner und lieferantenspezifischer Prompt werden durch die lokale KI geprüft ...")
+                result = _ai_review(g, result, rules, key, progress)
+            except Exception as exc:
+                result.setdefault("technical", {})["ai_prompts_applied"] = False
+                result.setdefault("validation", {}).setdefault("warnings", []).append(f"KI-Promptprüfung nicht verfügbar: {exc}")
+        return result
+
+    g["RuleEngine"].process = process_with_prompts
+
+    class EnhancedAFIUI(BaseUI):
+        def __init__(self, app):
+            super().__init__(app)
+            self.rules = load_rules()
+            self.zoom = 1.0
+            self.pan_x = self.pan_y = 0
+            self.drag_start = None
+            self.supplier_tabs = {}
+            self.db_open = False
+
+        def render(self):
+            super().render()
+            self._bind_preview()
+            self._postprocess_work_tab()
+
+        def _walk(self, widget):
+            yield widget
+            for child in widget.winfo_children():
+                yield from self._walk(child)
+
+        def _postprocess_work_tab(self):
+            for widget in list(self._walk(self.work_tab)):
+                try:
+                    if isinstance(widget, tk.Button) and widget.cget("text") == "Prompts & Regeln":
+                        widget.destroy()
+                except Exception:
+                    pass
+            boxes = [widget for widget in self.work_tab.winfo_children() if isinstance(widget, tk.LabelFrame)]
+            if not boxes:
+                return
+            box = boxes[0]
+            for widget in box.grid_slaves(row=0):
+                try:
+                    widget.configure(font=("Segoe UI", 10, "bold"))
+                except Exception:
+                    pass
+            self.db_toggle = tk.Button(box, text="Datenbanken anzeigen ▼", command=lambda: self._toggle_databases(box), bg="#D9E2F3")
+            self.db_toggle.grid(row=4, column=0, columnspan=4, sticky="w", pady=(4, 0))
+            for row in (1, 2, 3):
+                for widget in box.grid_slaves(row=row):
+                    widget.grid_remove()
+
+        def _toggle_databases(self, box):
+            self.db_open = not self.db_open
+            for row in (1, 2, 3):
+                for widget in box.grid_slaves(row=row):
+                    widget.grid() if self.db_open else widget.grid_remove()
+            self.db_toggle.configure(text="Datenbanken ausblenden ▲" if self.db_open else "Datenbanken anzeigen ▼")
+
+        def _render_rules_tab(self):
+            frame = self.rules_tab
+            for child in frame.winfo_children():
+                child.destroy()
+            frame.rowconfigure(1, weight=1)
+            frame.columnconfigure(0, weight=1)
+            header = tk.Frame(frame, bg=self.bg)
+            header.grid(row=0, column=0, sticky="ew", padx=10, pady=8)
+            tk.Label(header, text="Zentrale Prompt- und Regelpflege", bg=self.bg, font=("Segoe UI", 12, "bold")).pack(side="left")
+            tk.Button(header, text="Lieferant hinzufügen", command=self.add_supplier, bg="#D9EAD3").pack(side="right", padx=5)
+            tk.Button(header, text="Speichern", command=self.save_prompt_rules, bg="#0F6CBD", fg="white").pack(side="right", padx=5)
+            notebook = ttk.Notebook(frame)
+            notebook.grid(row=1, column=0, sticky="nsew", padx=10, pady=8)
+            self.rules_notebook = notebook
+            general = tk.Frame(notebook, bg=GREEN)
+            notebook.add(general, text="▰ Allgemeiner Prompt")
+            general.rowconfigure(1, weight=1)
+            general.columnconfigure(0, weight=1)
+            tk.Label(general, text="Allgemeiner Prompt", bg=GREEN, font=("Segoe UI", 11, "bold")).grid(row=0, column=0, sticky="w", padx=8, pady=6)
+            prompt = tk.Text(general, wrap="word", undo=True, font=("Consolas", 10), bg="#F3FBF5")
+            prompt.grid(row=1, column=0, sticky="nsew", padx=8, pady=(0, 8))
+            prompt.insert("1.0", self.rules.get("general_prompt", ""))
+            self.rule_widgets = {"general_prompt": prompt}
+            self.supplier_tabs = {}
+            for key, rule in self.rules.get("suppliers", {}).items():
+                self._add_supplier_tab(notebook, key, rule)
+
+        def _add_supplier_tab(self, notebook, key, rule):
+            tab = tk.Frame(notebook, bg=self.bg)
+            notebook.add(tab, text=rule.get("label", key))
+            tab.columnconfigure(1, weight=1)
+            tab.rowconfigure(7, weight=1)
+            self.supplier_tabs[key] = tab
+            label = tk.StringVar(value=rule.get("label", key))
+            tax = tk.StringVar(value=rule.get("tax_code_19", "VD"))
+            template = tk.StringVar(value=rule.get("text_template", ""))
+            use_ai = tk.BooleanVar(value=rule.get("use_ai", True))
+            for row, (caption, variable) in enumerate((("Bezeichnung", label), ("Steuerkennzeichen 19 %", tax), ("Buchungstext-Vorlage", template))):
+                tk.Label(tab, text=caption, bg=self.bg).grid(row=row, column=0, sticky="w", padx=8, pady=4)
+                tk.Entry(tab, textvariable=variable).grid(row=row, column=1, sticky="ew", padx=8, pady=4)
+            tk.Checkbutton(tab, text="Allgemeinen und lieferantenspezifischen Prompt durch lokale KI berücksichtigen", variable=use_ai, bg=self.bg).grid(row=3, column=0, columnspan=2, sticky="w", padx=8)
+            tk.Label(tab, text="Inland-/Ausland-Regeln (JSON)", bg=self.bg).grid(row=4, column=0, sticky="nw", padx=8, pady=4)
+            regions = tk.Text(tab, height=5, font=("Consolas", 9))
+            regions.grid(row=4, column=1, sticky="ew", padx=8, pady=4)
+            regions.insert("1.0", json.dumps(rule.get("regions", {}), ensure_ascii=False, indent=2))
+            tk.Label(tab, text="Kostenarten (JSON-Liste)", bg=self.bg).grid(row=5, column=0, sticky="nw", padx=8, pady=4)
+            costs = tk.Text(tab, height=7, font=("Consolas", 9))
+            costs.grid(row=5, column=1, sticky="ew", padx=8, pady=4)
+            costs.insert("1.0", json.dumps(rule.get("cost_types", []), ensure_ascii=False, indent=2))
+            tk.Label(tab, text="Lieferantenspezifischer Prompt", bg=self.bg).grid(row=6, column=0, columnspan=2, sticky="w", padx=8)
+            supplier_prompt = tk.Text(tab, wrap="word", undo=True, font=("Consolas", 10))
+            supplier_prompt.grid(row=7, column=0, columnspan=2, sticky="nsew", padx=8, pady=5)
+            supplier_prompt.insert("1.0", rule.get("prompt", ""))
+            tk.Button(tab, text="Lieferant entfernen", command=lambda supplier=key: self.remove_supplier(supplier), fg="#B42318").grid(row=8, column=1, sticky="e", padx=8, pady=4)
+            self.rule_widgets[key] = {"label": label, "tax": tax, "template": template, "use_ai": use_ai, "regions": regions, "costs": costs, "prompt": supplier_prompt, "extra": {}}
+
+        def add_supplier(self):
+            label = simpledialog.askstring("Lieferant hinzufügen", "Bezeichnung des neuen Lieferanten:", parent=self.root)
+            if not label:
+                return
+            key = re.sub(r"[^a-z0-9]+", "_", label.casefold()).strip("_") or "lieferant"
+            base, number = key, 2
+            while key in self.rules["suppliers"]:
+                key = f"{base}_{number}"
+                number += 1
+            self.rules["suppliers"][key] = _merge(DEFAULT_SUPPLIERS["generic"], {"label": label})
+            self._add_supplier_tab(self.rules_notebook, key, self.rules["suppliers"][key])
+            self.rules_notebook.select(self.supplier_tabs[key])
+
+        def remove_supplier(self, key):
+            if messagebox.askyesno("Lieferant entfernen", f"'{self.rules['suppliers'][key].get('label', key)}' entfernen?"):
+                self.rules_notebook.forget(self.supplier_tabs[key])
+                self.supplier_tabs.pop(key, None)
+                self.rule_widgets.pop(key, None)
+                self.rules["suppliers"].pop(key, None)
+
+        def save_prompt_rules(self):
+            rules = load_rules()
+            rules["general_prompt"] = self.rule_widgets["general_prompt"].get("1.0", "end-1c").strip()
+            suppliers = {}
+            try:
+                for key, widgets in self.rule_widgets.items():
+                    if key == "general_prompt":
+                        continue
+                    suppliers[key] = _merge(self.rules["suppliers"].get(key, {}), {
+                        "label": widgets["label"].get().strip() or key,
+                        "tax_code_19": widgets["tax"].get().strip(),
+                        "text_template": widgets["template"].get().strip(),
+                        "use_ai": bool(widgets["use_ai"].get()),
+                        "regions": json.loads(widgets["regions"].get("1.0", "end-1c") or "{}"),
+                        "cost_types": json.loads(widgets["costs"].get("1.0", "end-1c") or "[]"),
+                        "prompt": widgets["prompt"].get("1.0", "end-1c").strip(),
+                    })
+                rules["suppliers"] = suppliers
+                g["_save_prompt_rules"](rules)
+                self.rules = rules
+                messagebox.showinfo("Prompts & Regeln", "Zentrale Regeln wurden gespeichert.")
+            except Exception as exc:
+                messagebox.showerror("Prompts & Regeln", f"Ungültiges JSON oder Speicherfehler:\n{exc}")
+
+        def _bind_preview(self):
+            canvas = self.preview_canvas
+            canvas.bind("<MouseWheel>", self._zoom)
+            canvas.bind("<Button-4>", lambda event: self._zoom(event, 1))
+            canvas.bind("<Button-5>", lambda event: self._zoom(event, -1))
+            canvas.bind("<ButtonPress-1>", self._drag_start)
+            canvas.bind("<B1-Motion>", self._drag)
+            canvas.bind("<ButtonRelease-1>", lambda event: setattr(self, "drag_start", None))
+
+        def _zoom(self, event, direction=None):
+            if not self.preview_images:
+                return
+            step = direction if direction is not None else (1 if event.delta > 0 else -1)
+            self.zoom = max(0.25, min(4.0, self.zoom * (1.15 if step > 0 else 1 / 1.15)))
+            self.show_preview()
+
+        def _drag_start(self, event):
+            self.drag_start = (event.x, event.y, self.pan_x, self.pan_y)
+
+        def _drag(self, event):
+            if not self.drag_start:
+                return
+            x, y, old_x, old_y = self.drag_start
+            self.pan_x = old_x + event.x - x
+            self.pan_y = old_y + event.y - y
+            self.show_preview()
+
+        def show_preview(self):
+            if not self.preview_images or not g.get("PIL_AVAILABLE", False) or not hasattr(self, "preview_canvas"):
+                return
+            source = self.preview_images[self.preview_index]
+            width = max(100, self.preview_canvas.winfo_width())
+            height = max(100, self.preview_canvas.winfo_height())
+            base = min((width - 20) / source.width, (height - 20) / source.height)
+            image_width = max(1, int(source.width * base * self.zoom))
+            image_height = max(1, int(source.height * base * self.zoom))
+            image = source.resize((image_width, image_height))
+            limit_x = max(0, (image_width - width) // 2 + width // 3)
+            limit_y = max(0, (image_height - height) // 2 + height // 3)
+            self.pan_x = max(-limit_x, min(limit_x, self.pan_x))
+            self.pan_y = max(-limit_y, min(limit_y, self.pan_y))
+            self.preview_photo = g["ImageTk"].PhotoImage(image)
+            self.preview_canvas.delete("all")
+            self.preview_canvas.create_image(width // 2 + self.pan_x, height // 2 + self.pan_y, image=self.preview_photo)
+            self.preview_page_var.set(f"Seite {self.preview_index + 1} von {len(self.preview_images)} | Zoom {self.zoom:.0%}")
+            self.prev_button.config(state="normal" if self.preview_index > 0 else "disabled")
+            self.next_button.config(state="normal" if self.preview_index < len(self.preview_images) - 1 else "disabled")
+
+        def _render_document_images(self, path):
+            if path.suffix.lower() in (".xlsx", ".xlsm"):
+                import openpyxl
+                workbook = openpyxl.load_workbook(path, read_only=True, data_only=True)
+                images = []
+                try:
+                    for sheet in workbook.worksheets:
+                        rows = []
+                        for row in sheet.iter_rows(values_only=True):
+                            rows.append([str(value or "")[:35] for value in row[:12]])
+                            if len(rows) >= 45:
+                                break
+                        images.append(self._table_image(sheet.title, rows))
+                finally:
+                    workbook.close()
+                return images
+            return super()._render_document_images(path)
+
+        def _table_image(self, title, rows):
+            Image, ImageDraw, ImageFont = g["Image"], g["ImageDraw"], g["ImageFont"]
+            columns = max([len(row) for row in rows] or [1])
+            cell_width, row_height = 180, 34
+            width = min(2200, columns * cell_width + 40)
+            height = max(300, min(1800, (len(rows) + 2) * row_height + 40))
+            image = Image.new("RGB", (width, height), "white")
+            draw = ImageDraw.Draw(image)
+            try:
+                font = ImageFont.truetype("arial.ttf", 15)
+                bold = ImageFont.truetype("arialbd.ttf", 17)
+            except Exception:
+                font = bold = ImageFont.load_default()
+            draw.rectangle((0, 0, width, row_height + 15), fill="#D9EAD3")
+            draw.text((15, 10), title, fill="black", font=bold)
+            for row_index, row in enumerate(rows):
+                y = row_height + 15 + row_index * row_height
+                for column_index, value in enumerate(row):
+                    x = 20 + column_index * cell_width
+                    draw.rectangle((x, y, x + cell_width, y + row_height), outline="#AAB2BD", fill="#EEF4FB" if row_index == 0 else "white")
+                    draw.text((x + 5, y + 8), value, fill="black", font=font)
+            return image
+
+        def done(self, result):
+            super().done(result)
+            self.export.config(state="normal")
+
+        def export_csv(self):
+            if not self.result:
+                return
+            if not self.result.get("validation", {}).get("export_allowed", False):
+                if not messagebox.askyesno("CSV exportieren", "Es bestehen Prüfhinweise. Sichtbare Vorschau trotzdem exportieren?"):
+                    return
+            path = filedialog.asksaveasfilename(defaultextension=".csv", initialfile="AFI_Upload.csv", filetypes=[("CSV-Datei", "*.csv")])
+            if path:
+                with open(path, "w", encoding="utf-8-sig", newline="") as handle:
+                    writer = csv.DictWriter(handle, fieldnames=g["UPLOAD_COLUMNS"], delimiter=";", extrasaction="ignore")
+                    writer.writeheader()
+                    writer.writerows(self.result["upload_rows"])
+                messagebox.showinfo("CSV exportieren", f"CSV gespeichert:\n{path}")
+
+    g["AFIUI"] = EnhancedAFIUI
+
+
+apply_enhancements(globals())
+
+# Finaler Korrekturblock 1.3.0: Live-Regeln und sicherer Datenbank-Container.
+_afi_process_core = RuleEngine.process
+def _afi_process_live_prompts(self, invoice_path, progress=lambda _message: None):
+    self.rules = _load_prompt_rules()
+    path = _prompt_rules_file(False)
+    result = _afi_process_core(self, invoice_path, progress)
+    technical=result.setdefault("technical",{})
+    technical["prompt_rules_file"]=str(path)
+    technical["prompt_rules_loaded_at"]=datetime.now().astimezone().isoformat(timespec="seconds")
+    try: technical["prompt_rules_sha256"]=hashlib.sha256(Path(path).read_bytes()).hexdigest()
+    except Exception: technical["prompt_rules_sha256"]=""
+    key=_supplier_key(result,self.rules);technical["supplier_rule_key"]=key
+    technical["general_prompt_loaded"]=bool(self.rules.get("general_prompt","").strip())
+    technical["supplier_prompt_loaded"]=bool(self.rules.get("suppliers",{}).get(key,{}).get("prompt","").strip()) if key else False
+    return result
+RuleEngine.process=_afi_process_live_prompts
+
+def _afi_postprocess_work_tab(self):
+    for widget in list(self._walk(self.work_tab)):
+        try:
+            if isinstance(widget,tk.Button) and widget.cget("text")=="Prompts & Regeln":widget.destroy()
+        except Exception:pass
+    boxes=[w for w in self.work_tab.winfo_children() if isinstance(w,tk.LabelFrame)]
+    if not boxes:return
+    box=boxes[0];box.columnconfigure(1,weight=1)
+    for row in (1,2,3):
+        for widget in box.grid_slaves(row=row):widget.grid_remove()
+    self.db_toggle=tk.Button(box,text="Datenbanken anzeigen ▼",command=self._toggle_databases,bg="#D9E2F3")
+    self.db_toggle.grid(row=4,column=0,columnspan=4,sticky="w",pady=(5,2))
+    self.database_container=tk.Frame(box,bg=self.bg);self.database_container.columnconfigure(1,weight=1)
+    self._file_row(self.database_container,0,"Datenbank 1: Mitarbeiter -> Kostenstelle/IA",self.costcenter,lambda:self.pick_db(self.costcenter,"Kostenstellen-Datenbank"),lambda:self.clear_db(self.costcenter))
+    self._file_row(self.database_container,1,"Datenbank 2: Kennzeichen/Rufnummer/Firma + Sachkonten",self.account,lambda:self.pick_db(self.account,"Kontierungs-Generalübersicht"),lambda:self.clear_db(self.account))
+    tk.Label(self.database_container,text=f"Zentral gespeichert: {_shared_settings_file(False)} | Prompts: {_prompt_rules_file(False)}",bg=self.bg,fg="#44536A",anchor="w").grid(row=2,column=0,columnspan=4,sticky="ew")
+    self.database_container.grid(row=5,column=0,columnspan=4,sticky="ew");self.database_container.grid_remove();self.db_open=False
+
+def _afi_toggle_databases(self,*_args):
+    self.db_open=not bool(getattr(self,"db_open",False))
+    if self.db_open:self.database_container.grid();self.db_toggle.configure(text="Datenbanken ausblenden ▲")
+    else:self.database_container.grid_remove();self.db_toggle.configure(text="Datenbanken anzeigen ▼")
+    for widget in (self.database_container,self.work_tab,self.canvas):
+        try:widget.update_idletasks()
+        except Exception:pass
+AFIUI._postprocess_work_tab=_afi_postprocess_work_tab
+AFIUI._toggle_databases=_afi_toggle_databases
+
+
 def render(app):
     ui = AFIUI(app)
     app._afi_local_ai_ui = ui
     ui.render()
-
-
-# AFI-Erweiterungen ab Modul 1.3.0
-try:
-    from afi_upload_enhancements import apply_enhancements
-    apply_enhancements(globals())
-except Exception:
-    import traceback
-    traceback.print_exc()
