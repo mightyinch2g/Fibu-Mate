@@ -369,6 +369,8 @@ TOOL_REGISTRY = {
     "invoice_pdf_collector": {"title": "Nike - Rechnungs-PDFs in Sammelordner", "module": "bin.tools.invoice_pdf_collector", "favorite_label": "Nike RE sammeln"},
     "enbw_strom_tanken_upload": {"title": "EnBW - Strom-Tanken Upload-Erstellung", "module": "bin.tools.enbw_strom_tanken_upload", "favorite_label": "EnBW Strom"},
     "supplier_invoice_afi_upload": {"title": "AFI-Upload (lokale KI)", "module": "bin.tools.supplier_invoice_afi_upload", "favorite_label": "AFI KI"},
+    "afi_copilot_stable": {"title": "AFI-Upload über Copilot (stabil)", "module": "bin.tools.afi_copilot_stable", "favorite_label": "AFI Copilot"},
+    "afi_copilot_auto": {"title": "AFI-Upload über Copilot (Auto)", "module": "bin.tools.afi_copilot_auto", "favorite_label": "AFI Auto"},
     "aramark_monatsabrechnungen_pdf_to_excel": {"title": "Aramark Monatsabrechnungen - PDF zu Excel", "module": "bin.tools.aramark_monatsabrechnungen_pdf_to_excel", "favorite_label": "Aramark Monat"},
     "debitoren_serienbrief": {"title": "Debitoren-Serienbrief", "module": "bin.tools.debitoren_serienbrief", "favorite_label": "Debitoren SB"},
     "monthly_close": {"title": "Monatsabschluss", "module": "bin.tools.abschlusskalender", "favorite_label": "Monatsabschluss"},
@@ -396,6 +398,8 @@ MODULE_DESCRIPTIONS = {
     "enbw_strom_tanken_upload": "Erstellt aus EnBW E-Tankkosten-Abrechnungen eine SAP-AFI-uploadfähige CSV anhand der bestehenden Upload-Vorlage; Zuordnung nach Kennzeichen, Steuerlogik, Grundgebühren und Hinweis-Popup bei Abweichungen.",
     "page:compliance_audit": "Entwicklungsbereich für Compliance- und Audit-Funktionen: Steuermeldungen, Audit-Cockpit und Dokumentationszentrale bleiben gebündelt, werden aber nicht im produktiven Hauptmenü angezeigt.",
     "supplier_invoice_afi_upload": "Lokaler KI-Pilot: verarbeitet Rechnung und gewählte Kontierungs-/Stammdaten vollständig auf dem Client und exportiert die AFI-CSV.",
+    "afi_copilot_stable": "Stabile Zwischenlösung: erstellt den vollständigen Copilot-Prompt, kopiert ihn in die Zwischenablage, öffnet Teams/Copilot und bereitet Rechnung plus Kontierungsdatenbanken für den Upload vor.",
+    "afi_copilot_auto": "Automationsvariante: versucht zusätzlich, Teams/Copilot in den Vordergrund zu bringen und den Prompt automatisch einzufügen. Dateiupload und Modellwahl bleiben wegen Teams/Copilot-Oberfläche prüfpflichtig.",
     "aramark_monatsabrechnungen_pdf_to_excel": "Erstellt aus einer oder mehreren Aramark-Monatsabrechnungs-PDFs eine gemeinsame Excel-Datei nach der festen Aramark-Vorlage; pro PDF entsteht eine frei benennbare eigene Umsatz-Spalte inklusive Plausibilitätsprüfung und Exportvorschau.",
 }
 DESCRIPTION_FONT = ("Segoe UI", 11)
@@ -3382,9 +3386,8 @@ class FiBuMateApp:
 
     def render_afi_uploads_menu(self):
         modules = [
-            # EnBW ist fachlich in "Lieferanten-Rechnung zu AFI-Upload" integriert.
-            # Der alte Toolcode bleibt im TOOL_REGISTRY erhalten, wird aber nicht mehr angezeigt.
-            ("AFI-Upload (lokale KI)", "supplier_invoice_afi_upload"),
+            ("AFI-Upload über Copilot (stabil)", "afi_copilot_stable"),
+            ("AFI-Upload über Copilot (Auto)", "afi_copilot_auto"),
         ]
         self.render_module_menu(modules, show_descriptions=True)
         self.draw_bottom_logo()
@@ -3418,7 +3421,11 @@ class FiBuMateApp:
         self.draw_bottom_logo()
 
     def render_in_dev_menu(self):
-        modules = [("Compliance & Audit", "page:compliance_audit"), ("X001 SAP - Test", "x001_sap_test")]
+        modules = [
+            ("Compliance & Audit", "page:compliance_audit"),
+            ("X001 SAP - Test", "x001_sap_test"),
+            ("AFI-Upload (lokale KI)", "supplier_invoice_afi_upload"),
+        ]
         self.render_module_menu(modules, show_descriptions=True); self.draw_bottom_logo()
 
 
@@ -3711,7 +3718,7 @@ class FiBuMateApp:
         if self.current_page in ("data_prep", "nike_tools", "afi_uploads", "debitoren_tools"):
             if module_id == "enbw_strom_tanken_upload":
                 return "xls"
-            if module_id == "supplier_invoice_afi_upload":
+            if module_id in ("supplier_invoice_afi_upload", "afi_copilot_stable", "afi_copilot_auto"):
                 return "xls"
             if module_id in ("nike_pdf_to_excel", "nike_op_liste_pdf_check"):
                 return "pdf_xls"
@@ -19940,3 +19947,32 @@ FiBuMateApp.render_closing_calendar_menu = _fm519_render_closing_calendar_menu
 
 if __name__ == "__main__":
     FiBuMateApp().run()
+
+# ------------------------------------------------------------------
+# FM_AFICOPILOT_20260720_FINAL
+# AFI: lokale KI in Entwicklung, zwei Copilot-Zwischenlösungen produktiv
+# ------------------------------------------------------------------
+TOOL_REGISTRY.setdefault("afi_copilot_stable", {"title": "AFI-Upload über Copilot (stabil)", "module": "bin.tools.afi_copilot_stable", "favorite_label": "AFI Copilot"})
+TOOL_REGISTRY.setdefault("afi_copilot_auto", {"title": "AFI-Upload über Copilot (Auto)", "module": "bin.tools.afi_copilot_auto", "favorite_label": "AFI Auto"})
+MODULE_DESCRIPTIONS.setdefault("afi_copilot_stable", "Stabile Zwischenlösung: Prompt kopieren, Teams/Copilot öffnen und drei Dateien für die manuelle Übergabe vorbereiten.")
+MODULE_DESCRIPTIONS.setdefault("afi_copilot_auto", "Automationsvariante: öffnet Teams/Copilot und versucht zusätzlich Prompt-Einfügen/Fokus per UI-Automation. Modellwahl/Dateiupload sind prüfpflichtig.")
+
+def _fm_afi_copilot_render_afi_uploads_menu(self):
+    modules = [
+        ("AFI-Upload über Copilot (stabil)", "afi_copilot_stable"),
+        ("AFI-Upload über Copilot (Auto)", "afi_copilot_auto"),
+    ]
+    self.render_module_menu(modules, show_descriptions=True)
+    self.draw_bottom_logo()
+
+def _fm_afi_copilot_render_in_dev_menu(self):
+    modules = [
+        ("Compliance & Audit", "page:compliance_audit"),
+        ("X001 SAP - Test", "x001_sap_test"),
+        ("AFI-Upload (lokale KI)", "supplier_invoice_afi_upload"),
+    ]
+    self.render_module_menu(modules, show_descriptions=True)
+    self.draw_bottom_logo()
+
+FiBuMateApp.render_afi_uploads_menu = _fm_afi_copilot_render_afi_uploads_menu
+FiBuMateApp.render_in_dev_menu = _fm_afi_copilot_render_in_dev_menu
