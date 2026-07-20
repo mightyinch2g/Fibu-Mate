@@ -1,7 +1,7 @@
 
 from __future__ import annotations
 import os
-import json
+import re
 import sqlite3
 import subprocess
 import webbrowser
@@ -11,7 +11,8 @@ import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 
 MODULE_TITLE = "AFI-Upload über Copilot"
-MODULE_VERSION = "1.0.0"
+MODULE_VERSION = "1.1.0"
+AUTOMATION_MODE = False
 NETWORK_ROOT = r"G:\BUC\FM Anwendung"
 DB_DIR = os.path.join(NETWORK_ROOT, "Fibu_Mate_Doc", "Database", "AFI_Copilot")
 PROMPT_DB = os.path.join(DB_DIR, "afi_copilot_prompts.db")
@@ -21,12 +22,17 @@ DEFAULT_GENERAL_DB = os.path.join(NETWORK_ROOT, "Fibu_Mate_Doc", "Database", "Ko
 SUPPLIER_DEFAULTS = {
     "generic": {
         "label": "Weitere Lieferanten / generisch",
-        "prompt": "Analysiere die Rechnung lieferantenunabhängig. Verwende die Kontierungsdatenbanken. Erstelle AFI-CSV-Zeilen nach den Vorgaben."
+        "prompt": "Analysiere die Rechnung lieferantenunabhängig. Verwende die Kontierungsdatenbanken. Erstelle AFI-CSV-Zeilen nach den verbindlichen Vorgaben."
     },
-    "enbw": {"label": "EnBW Charging", "prompt": "EnBW: Stromtanken je Nutzer/Fahrzeug plausibel kontieren. Kennzeichen und Name im Text ausgeben."},
-    "dkv": {"label": "DKV", "prompt": "DKV: Positionen je Fahrzeug/Kennzeichen kontieren. Kraftstoff/Sonstiges über Sachkontenlogik zuordnen."},
-    "vodafone": {"label": "Vodafone Mobilfunk", "prompt": "Vodafone: Rufnummern über Telefonzuordnung kontieren und bei gleicher Kostenstelle sinnvoll zusammenfassen."},
-    "kazenmaier": {"label": "Kazenmaier Bike Leasing", "prompt": "Kazenmaier: Leasing je Person/Auftrag kontieren. Auftragsnummer kann im Text stehen, ORDERID bleibt leer."},
+    "enbw": {"label": "EnBW Charging", "prompt": "EnBW: Stromtanken je Nutzer/Fahrzeug plausibel kontieren. Kennzeichen und Name im TEXT ausgeben. Sachkonto bevorzugt Tanken Strom."},
+    "dkv": {"label": "DKV", "prompt": "DKV: Positionen je Fahrzeug/Kennzeichen kontieren. Kraftstoff, Gebühren und sonstige Positionen über die Sachkontenlogik der Generalübersicht zuordnen."},
+    "vodafone": {"label": "Vodafone Mobilfunk", "prompt": "Vodafone: Rufnummern über Telefonzuordnung kontieren. Bei gleicher Kostenstelle/Gesellschaft darf sinnvoll aggregiert werden. Rufnummernbezug im TEXT erhalten."},
+    "kazenmaier": {"label": "Kazenmaier Bike Leasing", "prompt": "Kazenmaier: Bike-Leasing je Person/Auftrag kontieren. Auftragsnummer darf im TEXT stehen, ORDERID bleibt immer leer."},
+    "telekom": {"label": "Telekom", "prompt": "Telekom: Rufnummern über Telefonzuordnung und Mitarbeiter/Kostenstellen-Datenbank kontieren. Sachkonto bevorzugt Telekom."},
+    "deas": {"label": "DEAS", "prompt": "DEAS: Versicherung oder sonstige Leistung erkennen und passendes Sachkonto aus der Generalübersicht verwenden. Kostenstelle nur bei echter Zuordnung."},
+    "vw_leasing": {"label": "VW-Leasing", "prompt": "VW-Leasing: Leasingpositionen je Fahrzeug/Kennzeichen bzw. Fahrer kontieren. Sachkonto bevorzugt VW-Leasing."},
+    "vw_versicherungen": {"label": "VW-Versicherungen", "prompt": "VW-Versicherungen: Versicherungspositionen je Fahrzeug/Kennzeichen bzw. Fahrer kontieren. Sachkonto bevorzugt VW-Versicherungen."},
+    "sonstige": {"label": "Sonstige", "prompt": "Sonstige Lieferanten: Kostenart aus Rechnung ableiten. Wenn keine Kostenart eindeutig ist, Sachkonto Sonstige verwenden. Kostenstelle nie erfinden."},
 }
 
 DEFAULT_GENERAL_PROMPT = """Du bist der AFI-Upload-Assistent für FiBu Mate.
@@ -57,6 +63,12 @@ Verbindliche Regeln:
 """
 
 
+def _norm_key(value):
+    key = str(value or "").strip().casefold()
+    key = re.sub(r"[^a-z0-9äöüß]+", "_", key).strip("_")
+    return key or "supplier"
+
+
 def _ensure_db():
     os.makedirs(DB_DIR, exist_ok=True)
     con = sqlite3.connect(PROMPT_DB)
@@ -65,6 +77,7 @@ def _ensure_db():
         con.execute("create table if not exists general_prompt (id integer primary key check (id=1), prompt_text text not null, updated_at text, updated_by text)")
         con.execute("create table if not exists supplier_prompts (supplier_key text primary key, supplier_label text not null, prompt_text text not null, active integer not null default 1, updated_at text, updated_by text)")
         con.execute("insert or ignore into general_prompt(id,prompt_text,updated_at,updated_by) values (1,?,?,?)", (DEFAULT_GENERAL_PROMPT, datetime.now().isoformat(timespec="seconds"), os.environ.get("USERNAME", "")))
+        # Wichtig: Alle Default-Lieferanten nachziehen, auch wenn die DB bereits aus Version 1.0.0 existiert.
         for key, data in SUPPLIER_DEFAULTS.items():
             con.execute("insert or ignore into supplier_prompts(supplier_key,supplier_label,prompt_text,active,updated_at,updated_by) values (?,?,?,?,?,?)", (key, data["label"], data["prompt"], 1, datetime.now().isoformat(timespec="seconds"), os.environ.get("USERNAME", "")))
         con.execute("insert or ignore into settings(key,value) values (?,?)", ("costcenter_db", DEFAULT_COSTCENTER_DB))
@@ -126,17 +139,13 @@ def _load_suppliers():
 
 def _save_supplier(key, label, prompt, active=True):
     _ensure_db()
-    key = (key or label or "supplier").strip().lower().replace(" ", "_")
+    key = _norm_key(key or label)
     con = sqlite3.connect(PROMPT_DB)
     try:
         con.execute("insert into supplier_prompts(supplier_key,supplier_label,prompt_text,active,updated_at,updated_by) values(?,?,?,?,?,?) on conflict(supplier_key) do update set supplier_label=excluded.supplier_label, prompt_text=excluded.prompt_text, active=excluded.active, updated_at=excluded.updated_at, updated_by=excluded.updated_by", (key, label or key, prompt or "", 1 if active else 0, datetime.now().isoformat(timespec="seconds"), os.environ.get("USERNAME", "")))
         con.commit()
     finally:
         con.close()
-
-
-def _quote_path(path):
-    return str(path or "").strip()
 
 
 def _build_prompt(invoice, costcenter_db, general_db, supplier_label, supplier_prompt, general_prompt):
@@ -157,38 +166,36 @@ Bitte analysiere die drei angehängten Dateien vollständig und gib als Antwort 
 """.strip()
 
 
-def _open_teams():
-    # Mehrere Wege, weil Teams je nach Installation unterschiedlich registriert ist.
-    targets = ["msteams:", "https://teams.microsoft.com/v2/", "https://teams.microsoft.com/"]
-    for target in targets:
-        try:
-            webbrowser.open(target)
-            return True
-        except Exception:
-            pass
-    return False
-
-
-def _focus_teams():
+def _run_detached(command):
     try:
-        script = "$wshell = New-Object -ComObject wscript.shell; Start-Sleep -Milliseconds 700; $wshell.AppActivate('Microsoft Teams') | Out-Null; $wshell.AppActivate('Teams') | Out-Null"
-        subprocess.Popen(["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", script], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        subprocess.Popen(command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
         return True
     except Exception:
         return False
 
 
-def _open_folder_for_files(files):
-    existing = [f for f in files if f and os.path.exists(f)]
-    if not existing:
-        return
+def _open_teams_new_context():
+    """Best effort: neue Teams-/Copilot-Sitzung öffnen, ohne Explorer-Dateipfad zu starten."""
+    launched = False
+    # Variante 1: Windows-Protokoll explizit über cmd/start. Das vermeidet, dass Dateipfade geöffnet werden.
+    launched = _run_detached(["cmd", "/c", "start", "", "msteams:"]) or launched
+    # Variante 2: Teams App-Paket, wenn New Teams als Store/Appx registriert ist.
+    launched = _run_detached(["explorer.exe", "shell:AppsFolder\\MSTeams_8wekyb3d8bbwe!MSTeams"]) or launched
+    # Variante 3: Fallback Web Teams in neuer Browser-Sitzung.
     try:
-        subprocess.Popen(["explorer", "/select,", existing[0]])
+        webbrowser.open_new("https://teams.microsoft.com/v2/")
+        launched = True
     except Exception:
-        try:
-            os.startfile(os.path.dirname(existing[0]))
-        except Exception:
-            pass
+        pass
+    return launched
+
+
+def _focus_teams():
+    try:
+        script = "$wshell = New-Object -ComObject wscript.shell; Start-Sleep -Milliseconds 1200; $wshell.AppActivate('Microsoft Teams') | Out-Null; $wshell.AppActivate('Teams') | Out-Null"
+        return _run_detached(["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", script])
+    except Exception:
+        return False
 
 
 class AFICopilotUI:
@@ -212,12 +219,16 @@ class AFICopilotUI:
         self.supplier_text = None
         self.supplier_key_var = tk.StringVar()
         self.supplier_name_var = tk.StringVar()
+        self.db_open = False
+        self.db_frame = None
+        self.db_toggle_button = None
 
     def _supplier_by_label(self, label):
-        for item in _load_suppliers():
+        suppliers = _load_suppliers()
+        for item in suppliers:
             if item["label"] == label:
                 return item
-        return _load_suppliers()[0]
+        return suppliers[0] if suppliers else {"key": "generic", "label": "Weitere Lieferanten / generisch", "prompt": ""}
 
     def render(self):
         try:
@@ -242,27 +253,46 @@ class AFICopilotUI:
         self._render_main(main)
         self._render_prompts(prompts)
 
+    def _toggle_db_paths(self):
+        self.db_open = not bool(self.db_open)
+        if self.db_frame:
+            if self.db_open:
+                self.db_frame.grid()
+            else:
+                self.db_frame.grid_remove()
+        if self.db_toggle_button:
+            self.db_toggle_button.configure(text="Datenbankpfade ausblenden ▲" if self.db_open else "Datenbankpfade anzeigen ▼")
+
     def _render_main(self, parent):
         parent.columnconfigure(1, weight=1)
-        parent.rowconfigure(5, weight=1)
+        parent.rowconfigure(6, weight=1)
         tk.Label(parent, text="Rechnung", bg=self.bg).grid(row=0, column=0, sticky="w", padx=10, pady=8)
         tk.Entry(parent, textvariable=self.invoice_var).grid(row=0, column=1, sticky="ew", padx=8, pady=8)
         tk.Button(parent, text="Auswählen", command=self.pick_invoice).grid(row=0, column=2, padx=8, pady=8)
-        tk.Label(parent, text="Datenbank 1: Mitarbeiter/Kostenstelle", bg=self.bg).grid(row=1, column=0, sticky="w", padx=10, pady=4)
-        tk.Entry(parent, textvariable=self.costcenter_var).grid(row=1, column=1, sticky="ew", padx=8, pady=4)
-        tk.Button(parent, text="Ändern", command=lambda: self.pick_db(self.costcenter_var, "costcenter_db")).grid(row=1, column=2, padx=8, pady=4)
-        tk.Label(parent, text="Datenbank 2: Generalübersicht", bg=self.bg).grid(row=2, column=0, sticky="w", padx=10, pady=4)
-        tk.Entry(parent, textvariable=self.general_db_var).grid(row=2, column=1, sticky="ew", padx=8, pady=4)
-        tk.Button(parent, text="Ändern", command=lambda: self.pick_db(self.general_db_var, "general_db")).grid(row=2, column=2, padx=8, pady=4)
+
+        self.db_toggle_button = tk.Button(parent, text="Datenbankpfade anzeigen ▼", command=self._toggle_db_paths, bg="#D9E2F3")
+        self.db_toggle_button.grid(row=1, column=0, columnspan=3, sticky="w", padx=10, pady=(0, 4))
+        self.db_frame = tk.Frame(parent, bg=self.bg)
+        self.db_frame.grid(row=2, column=0, columnspan=3, sticky="ew", padx=10, pady=(0, 6))
+        self.db_frame.columnconfigure(1, weight=1)
+        tk.Label(self.db_frame, text="Datenbank 1: Mitarbeiter/Kostenstelle", bg=self.bg).grid(row=0, column=0, sticky="w", pady=3)
+        tk.Entry(self.db_frame, textvariable=self.costcenter_var).grid(row=0, column=1, sticky="ew", padx=8, pady=3)
+        tk.Button(self.db_frame, text="Ändern", command=lambda: self.pick_db(self.costcenter_var, "costcenter_db")).grid(row=0, column=2, padx=8, pady=3)
+        tk.Label(self.db_frame, text="Datenbank 2: Generalübersicht", bg=self.bg).grid(row=1, column=0, sticky="w", pady=3)
+        tk.Entry(self.db_frame, textvariable=self.general_db_var).grid(row=1, column=1, sticky="ew", padx=8, pady=3)
+        tk.Button(self.db_frame, text="Ändern", command=lambda: self.pick_db(self.general_db_var, "general_db")).grid(row=1, column=2, padx=8, pady=3)
+        self.db_frame.grid_remove()  # Standard: eingeklappt
+
         tk.Label(parent, text="Lieferant", bg=self.bg).grid(row=3, column=0, sticky="w", padx=10, pady=4)
         labels = [x["label"] for x in _load_suppliers() if x.get("active")]
         ttk.Combobox(parent, textvariable=self.supplier_label_var, values=labels, state="readonly").grid(row=3, column=1, sticky="ew", padx=8, pady=4)
-        btn_text = "Teams/Copilot automatisch starten" if self.automation else "Copilot-Prompt vorbereiten und Teams öffnen"
+        btn_text = "Neue Teams/Copilot-Instanz starten" if self.automation else "Teams/Copilot starten und Prompt vorbereiten"
         tk.Button(parent, text=btn_text, command=self.prepare, bg="#0F6CBD", fg="white", padx=12, pady=6).grid(row=4, column=0, columnspan=3, sticky="w", padx=10, pady=10)
         tk.Label(parent, textvariable=self.status_var, bg=self.bg, fg="#44536A").grid(row=4, column=1, columnspan=2, sticky="e", padx=10)
+        tk.Label(parent, text="Ablauf: Teams/Copilot wird geöffnet, Prompt wird kopiert. Dateien bitte in Copilot anhängen und Modell 'tiefere Analyse' wählen.", bg=self.bg, fg="#44536A", anchor="w", justify="left", wraplength=950).grid(row=5, column=0, columnspan=3, sticky="ew", padx=10)
         self.prompt_preview = tk.Text(parent, wrap="word", height=16, font=("Consolas", 10))
-        self.prompt_preview.grid(row=5, column=0, columnspan=3, sticky="nsew", padx=10, pady=8)
-        tk.Label(parent, text=f"Prompt-Datenbank: {PROMPT_DB}", bg=self.bg, fg="#44536A", anchor="w").grid(row=6, column=0, columnspan=3, sticky="ew", padx=10, pady=(0,8))
+        self.prompt_preview.grid(row=6, column=0, columnspan=3, sticky="nsew", padx=10, pady=8)
+        tk.Label(parent, text=f"Prompt-Datenbank: {PROMPT_DB}", bg=self.bg, fg="#44536A", anchor="w").grid(row=7, column=0, columnspan=3, sticky="ew", padx=10, pady=(0,8))
 
     def _render_prompts(self, parent):
         parent.rowconfigure(1, weight=1)
@@ -286,7 +316,7 @@ class AFICopilotUI:
         right.columnconfigure(1, weight=1)
         right.rowconfigure(4, weight=1)
         tk.Label(right, text="Lieferantenprompts", bg=self.bg, font=("Segoe UI", 10, "bold")).grid(row=0, column=0, columnspan=2, sticky="w")
-        self.supplier_list = tk.Listbox(right, height=8)
+        self.supplier_list = tk.Listbox(right, height=10)
         self.supplier_list.grid(row=1, column=0, rowspan=4, sticky="nsew", padx=(0,8))
         for item in _load_suppliers():
             self.supplier_list.insert("end", item["label"])
@@ -352,28 +382,26 @@ class AFICopilotUI:
         self.root.update()
         self.prompt_preview.delete("1.0", "end")
         self.prompt_preview.insert("1.0", prompt)
-        _open_teams()
+        _open_teams_new_context()
         _focus_teams()
-        _open_folder_for_files([invoice, costcenter, general])
         if self.automation:
-            self._attempt_automation(prompt)
+            self._attempt_automation()
         else:
-            self.status_var.set("Prompt kopiert. Teams/Copilot geöffnet. Dateien anhängen und STRG+V einfügen.")
-            messagebox.showinfo(MODULE_TITLE, "Prompt wurde in die Zwischenablage kopiert.\n\nBitte in Teams/Copilot:\n1. Modell 'tiefere Analyse' wählen\n2. Rechnung und beide Datenbanken anhängen\n3. STRG+V einfügen\n4. Absenden")
+            self.status_var.set("Teams/Copilot geöffnet. Prompt kopiert. Keine Datei-/Explorerpfade geöffnet.")
+            messagebox.showinfo(MODULE_TITLE, "Teams/Copilot wurde geöffnet und der Prompt wurde kopiert.\n\nWeitere Schritte:\n1. Copilot in Teams öffnen\n2. Modell 'tiefere Analyse' wählen\n3. Rechnung und beide Datenbanken anhängen\n4. STRG+V einfügen\n5. Absenden")
 
-    def _attempt_automation(self, prompt):
-        # Bewusst Best-Effort: Teams/Copilot bietet keine stabile Desktop-API für Modellwechsel/Dateiupload.
+    def _attempt_automation(self):
         try:
-            script = "$wshell = New-Object -ComObject wscript.shell; Start-Sleep -Seconds 2; $wshell.AppActivate('Microsoft Teams') | Out-Null; Start-Sleep -Milliseconds 500; $wshell.SendKeys('^v')"
-            subprocess.Popen(["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", script], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            self.status_var.set("Automationsversuch gestartet. Bitte Modell 'tiefere Analyse' und Datei-Anhänge prüfen.")
-            messagebox.showinfo(MODULE_TITLE, "Automationsversuch gestartet.\n\nBitte kontrollieren:\n- Copilot geöffnet?\n- Modell 'tiefere Analyse' gewählt?\n- Alle drei Dateien angehängt?\n- Prompt korrekt eingefügt?")
+            script = "$wshell = New-Object -ComObject wscript.shell; Start-Sleep -Seconds 2; $wshell.AppActivate('Microsoft Teams') | Out-Null; Start-Sleep -Milliseconds 700; $wshell.SendKeys('^v')"
+            _run_detached(["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", script])
+            self.status_var.set("Teams/Copilot geöffnet; Prompt-Einfügen wurde versucht. Datei-Anhänge und Modellwahl prüfen.")
+            messagebox.showinfo(MODULE_TITLE, "Automationsversuch gestartet.\n\nBitte kontrollieren und abschließen:\n1. Copilot geöffnet?\n2. Modell 'tiefere Analyse' gewählt?\n3. Alle drei Dateien angehängt?\n4. Prompt korrekt eingefügt/absenden.")
         except Exception as exc:
             self.status_var.set("Automation nicht möglich; Prompt ist kopiert.")
             messagebox.showwarning(MODULE_TITLE, "Automation nicht möglich. Prompt wurde kopiert.\n\n" + str(exc))
 
 
 def render(app):
-    ui = AFICopilotUI(app, automation=False)
+    ui = AFICopilotUI(app, automation=AUTOMATION_MODE)
     app._afi_copilot_ui = ui
     ui.render()
