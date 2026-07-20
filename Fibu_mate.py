@@ -369,8 +369,8 @@ TOOL_REGISTRY = {
     "invoice_pdf_collector": {"title": "Nike - Rechnungs-PDFs in Sammelordner", "module": "bin.tools.invoice_pdf_collector", "favorite_label": "Nike RE sammeln"},
     "enbw_strom_tanken_upload": {"title": "EnBW - Strom-Tanken Upload-Erstellung", "module": "bin.tools.enbw_strom_tanken_upload", "favorite_label": "EnBW Strom"},
     "supplier_invoice_afi_upload": {"title": "AFI-Upload (lokale KI)", "module": "bin.tools.supplier_invoice_afi_upload", "favorite_label": "AFI KI"},
-    "afi_copilot_stable": {"title": "AFI-Upload über Copilot (stabil)", "module": "bin.tools.afi_copilot_stable", "favorite_label": "AFI Copilot"},
-    "afi_copilot_auto": {"title": "AFI-Upload über Copilot (Auto)", "module": "bin.tools.afi_copilot_auto", "favorite_label": "AFI Auto"},
+    "afi_copilot_stable": {"title": "AFI-Kontierungs-Assistent (stabil)", "module": "bin.tools.afi_copilot_stable", "favorite_label": "AFI stabil"},
+    "afi_copilot_auto": {"title": "AFI-Kontierungs-Assistent", "module": "bin.tools.afi_copilot_auto", "favorite_label": "AFI Assistent"},
     "aramark_monatsabrechnungen_pdf_to_excel": {"title": "Aramark Monatsabrechnungen - PDF zu Excel", "module": "bin.tools.aramark_monatsabrechnungen_pdf_to_excel", "favorite_label": "Aramark Monat"},
     "debitoren_serienbrief": {"title": "Debitoren-Serienbrief", "module": "bin.tools.debitoren_serienbrief", "favorite_label": "Debitoren SB"},
     "monthly_close": {"title": "Monatsabschluss", "module": "bin.tools.abschlusskalender", "favorite_label": "Monatsabschluss"},
@@ -398,8 +398,8 @@ MODULE_DESCRIPTIONS = {
     "enbw_strom_tanken_upload": "Erstellt aus EnBW E-Tankkosten-Abrechnungen eine SAP-AFI-uploadfähige CSV anhand der bestehenden Upload-Vorlage; Zuordnung nach Kennzeichen, Steuerlogik, Grundgebühren und Hinweis-Popup bei Abweichungen.",
     "page:compliance_audit": "Entwicklungsbereich für Compliance- und Audit-Funktionen: Steuermeldungen, Audit-Cockpit und Dokumentationszentrale bleiben gebündelt, werden aber nicht im produktiven Hauptmenü angezeigt.",
     "supplier_invoice_afi_upload": "Lokaler KI-Pilot: verarbeitet Rechnung und gewählte Kontierungs-/Stammdaten vollständig auf dem Client und exportiert die AFI-CSV.",
-    "afi_copilot_stable": "Stabile Zwischenlösung: erstellt den vollständigen Copilot-Prompt, kopiert ihn in die Zwischenablage, öffnet Teams/Copilot und bereitet Rechnung plus Kontierungsdatenbanken für den Upload vor.",
-    "afi_copilot_auto": "Automationsvariante: versucht zusätzlich, Teams/Copilot in den Vordergrund zu bringen und den Prompt automatisch einzufügen. Dateiupload und Modellwahl bleiben wegen Teams/Copilot-Oberfläche prüfpflichtig.",
+    "afi_copilot_stable": "Stabile Entwicklungsvariante des AFI-Kontierungs-Assistenten.",
+    "afi_copilot_auto": "AFI-Kontierungs-Assistent: erzeugt prompt.txt, eine zusammengeführte Kontierungsdatei und legt die drei Copilot-Anhänge in der richtigen Reihenfolge in die Zwischenablage.",
     "aramark_monatsabrechnungen_pdf_to_excel": "Erstellt aus einer oder mehreren Aramark-Monatsabrechnungs-PDFs eine gemeinsame Excel-Datei nach der festen Aramark-Vorlage; pro PDF entsteht eine frei benennbare eigene Umsatz-Spalte inklusive Plausibilitätsprüfung und Exportvorschau.",
 }
 DESCRIPTION_FONT = ("Segoe UI", 11)
@@ -3386,8 +3386,7 @@ class FiBuMateApp:
 
     def render_afi_uploads_menu(self):
         modules = [
-            ("AFI-Upload über Copilot (stabil)", "afi_copilot_stable"),
-            ("AFI-Upload über Copilot (Auto)", "afi_copilot_auto"),
+            ("AFI-Kontierungs-Assistent", "afi_copilot_auto"),
         ]
         self.render_module_menu(modules, show_descriptions=True)
         self.draw_bottom_logo()
@@ -19944,6 +19943,219 @@ def _fm519_render_closing_calendar_menu(self):
     self.render_module_menu(modules, show_descriptions=True)
     self.draw_bottom_logo()
 FiBuMateApp.render_closing_calendar_menu = _fm519_render_closing_calendar_menu
+
+
+
+# ------------------------------------------------------------------
+# FiBu Mate v0.520 - E4-Modulverschiebung per Rechtsklick
+# ------------------------------------------------------------------
+# E4-Benutzer koennen Modulkacheln per Rechtsklick in andere Untermenues verschieben.
+# Die Zuordnung wird zentral auf G: gespeichert und beim Rendern der Menues angewendet.
+FM_MODULE_MOVE_VERSION = "0.520"
+FM_MODULE_MOVE_FILE = os.path.join(CENTRAL_CONFIG_DIR, "module_menu_moves.json")
+FM_MODULE_MOVE_TARGETS = {
+    "data_prep": "Tools - Hauptbuch",
+    "nike_tools": "Nike-Tools",
+    "afi_uploads": "AFI-Uploads",
+    "debitoren_tools": "Tools - Debitoren",
+    "closing_calendar": "Abschlusskalender",
+    "compliance_audit": "Compliance & Audit",
+    "in_dev": "In Entwicklung",
+}
+FM_DEFAULT_MENU_MODULES = {
+    "data_prep": [("Nike-Tools", "page:nike_tools"), ("AFI-Uploads", "page:afi_uploads"), ("Aramark Monatsabrechnungen - PDF zu Excel", "aramark_monatsabrechnungen_pdf_to_excel")],
+    "nike_tools": [("Nike - PDF zu Excel", "nike_pdf_to_excel"), ("Nike - OP-Liste: Vollständigkeit PDF-Rechnungen prüfen", "nike_op_liste_pdf_check"), ("Nike - Rechnungs-PDFs in Sammelordner", "invoice_pdf_collector")],
+    "afi_uploads": [("AFI-Kontierungs-Assistent", "afi_copilot_auto")],
+    "debitoren_tools": [("Debitoren-Serienbrief", "debitoren_serienbrief")],
+    "closing_calendar": [("Monatsabschluss", "monthly_close"), ("Quartalsabschluss", "quarterly_close"), ("Jahresabschluss", "yearly_close"), ("Stichtagspflege", "deadline_maintenance")],
+    "compliance_audit": [("Steuermeldungs-Cockpit", "tax_reporting"), ("Audit-Cockpit", "audit_cockpit"), ("Dokumentationszentrale", "documentation_center")],
+    "in_dev": [("Compliance & Audit", "page:compliance_audit"), ("X001 SAP - Test", "x001_sap_test"), ("AFI-Upload (lokale KI)", "supplier_invoice_afi_upload"), ("AFI-Kontierungs-Assistent (stabil)", "afi_copilot_stable")],
+}
+
+def _fm520_can_move_modules(self):
+    try:
+        return self.role_rank() >= 4
+    except Exception:
+        try:
+            return self.my_role() == ROLE_E4
+        except Exception:
+            return False
+
+def _fm520_load_moves():
+    try:
+        if os.path.exists(FM_MODULE_MOVE_FILE):
+            with open(FM_MODULE_MOVE_FILE, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            moves = data.get("moves", {}) if isinstance(data, dict) else {}
+            return {str(k): str(v) for k, v in moves.items() if str(k) in TOOL_REGISTRY and str(v) in FM_MODULE_MOVE_TARGETS}
+    except Exception:
+        pass
+    return {}
+
+def _fm520_save_moves(moves):
+    try:
+        os.makedirs(os.path.dirname(FM_MODULE_MOVE_FILE), exist_ok=True)
+        with open(FM_MODULE_MOVE_FILE, "w", encoding="utf-8") as f:
+            json.dump({"version": FM_MODULE_MOVE_VERSION, "updated_at": datetime.now().isoformat(timespec="seconds"), "moves": moves}, f, ensure_ascii=False, indent=2)
+        return True
+    except Exception as exc:
+        try:
+            messagebox.showerror("FiBu Mate", "Modulverschiebung konnte nicht gespeichert werden:\n\n" + str(exc))
+        except Exception:
+            pass
+        return False
+
+def _fm520_title_for(mid):
+    try:
+        return TOOL_REGISTRY.get(mid, {}).get("title", mid)
+    except Exception:
+        return mid
+
+def _fm520_default_page_for(mid):
+    for page, modules in FM_DEFAULT_MENU_MODULES.items():
+        if any(m == mid for _title, m in modules):
+            return page
+    return ""
+
+def _fm520_modules_for_page(page):
+    moves = _fm520_load_moves()
+    modules = []
+    present = set()
+    for title, mid in FM_DEFAULT_MENU_MODULES.get(page, []):
+        if mid in HIDDEN_TOOL_IDS:
+            continue
+        if mid in TOOL_REGISTRY and moves.get(mid) and moves.get(mid) != page:
+            continue
+        modules.append((title, mid)); present.add(mid)
+    for mid, target_page in sorted(moves.items(), key=lambda item: _fm520_title_for(item[0]).lower()):
+        if target_page == page and mid not in present and mid in TOOL_REGISTRY and mid not in HIDDEN_TOOL_IDS:
+            modules.append((_fm520_title_for(mid), mid)); present.add(mid)
+    return modules
+
+def _fm520_set_module_page(self, mid, page):
+    if not _fm520_can_move_modules(self):
+        return
+    moves = _fm520_load_moves()
+    default_page = _fm520_default_page_for(mid)
+    if page == "__default__" or page == default_page:
+        moves.pop(mid, None)
+    else:
+        moves[mid] = page
+    if _fm520_save_moves(moves):
+        try:
+            self.render_page()
+        except Exception:
+            try:
+                self.show_page(getattr(self, "current_page", "main"), getattr(self, "current_tool_title", ""), False)
+            except Exception:
+                pass
+
+def _fm520_show_tile_context_menu(self, event, tile):
+    try:
+        mid = getattr(tile, "tile_id", "")
+        if mid not in TOOL_REGISTRY or not _fm520_can_move_modules(self):
+            return None
+        menu = tk.Menu(self.root, tearoff=0)
+        menu.add_command(label="Modul verschieben nach…", state="disabled")
+        menu.add_separator()
+        current_moves = _fm520_load_moves()
+        current_page = current_moves.get(mid) or _fm520_default_page_for(mid)
+        for page, label in FM_MODULE_MOVE_TARGETS.items():
+            prefix = "✓ " if page == current_page else ""
+            menu.add_command(label=prefix + label, command=lambda p=page, m=mid: _fm520_set_module_page(self, m, p))
+        menu.add_separator()
+        menu.add_command(label="Zurück ins Standard-Untermenü", command=lambda m=mid: _fm520_set_module_page(self, m, "__default__"))
+        menu.tk_popup(event.x_root, event.y_root)
+        try:
+            menu.grab_release()
+        except Exception:
+            pass
+        return "break"
+    except Exception as exc:
+        try:
+            messagebox.showerror("FiBu Mate", "Kontextmenü konnte nicht geöffnet werden:\n\n" + str(exc))
+        except Exception:
+            pass
+        return "break"
+
+try:
+    _fm520_tile_init_base = Tile.__init__
+    def _fm520_tile_init(self, parent, app, tile_id, title, command=None, favorite_enabled=False, fixed_color=None, lock_tile=False, center_text=False, icon_type=None, corner_fold=False):
+        _fm520_tile_init_base(self, parent, app, tile_id, title, command, favorite_enabled, fixed_color, lock_tile, center_text, icon_type, corner_fold)
+        try:
+            if tile_id in TOOL_REGISTRY:
+                self.bind("<Button-3>", lambda e, t=self: _fm520_show_tile_context_menu(app, e, t))
+                self.bind("<Button-2>", lambda e, t=self: _fm520_show_tile_context_menu(app, e, t))
+        except Exception:
+            pass
+    Tile.__init__ = _fm520_tile_init
+except Exception:
+    pass
+
+def _fm520_render_data_prep_menu(self):
+    self.render_module_menu(_fm520_modules_for_page("data_prep"), show_descriptions=False); self.draw_bottom_logo()
+def _fm520_render_nike_tools_menu(self):
+    self.render_module_menu(_fm520_modules_for_page("nike_tools"), show_descriptions=True); self.draw_bottom_logo()
+def _fm520_render_afi_uploads_menu(self):
+    self.render_module_menu(_fm520_modules_for_page("afi_uploads"), show_descriptions=True); self.draw_bottom_logo()
+def _fm520_render_debitoren_tools_menu(self):
+    self.render_module_menu(_fm520_modules_for_page("debitoren_tools"), show_descriptions=True); self.draw_bottom_logo()
+def _fm520_render_closing_calendar_menu(self):
+    self.render_module_menu(_fm520_modules_for_page("closing_calendar"), show_descriptions=True); self.draw_bottom_logo()
+def _fm520_render_compliance_audit_menu(self):
+    self.render_module_menu(_fm520_modules_for_page("compliance_audit"), show_descriptions=True); self.draw_bottom_logo()
+def _fm520_render_in_dev_menu(self):
+    self.render_module_menu(_fm520_modules_for_page("in_dev"), show_descriptions=True); self.draw_bottom_logo()
+
+FiBuMateApp.render_data_prep_menu = _fm520_render_data_prep_menu
+FiBuMateApp.render_nike_tools_menu = _fm520_render_nike_tools_menu
+FiBuMateApp.render_afi_uploads_menu = _fm520_render_afi_uploads_menu
+FiBuMateApp.render_debitoren_tools_menu = _fm520_render_debitoren_tools_menu
+FiBuMateApp.render_closing_calendar_menu = _fm520_render_closing_calendar_menu
+FiBuMateApp.render_compliance_audit_menu = _fm520_render_compliance_audit_menu
+FiBuMateApp.render_in_dev_menu = _fm520_render_in_dev_menu
+
+
+
+# ------------------------------------------------------------------
+# FiBu Mate v0.521 - AFI-Kontierungs-Assistent Benennung und Entwicklungsverschiebung
+# ------------------------------------------------------------------
+FM_AFI_ASSISTANT_VERSION = "0.521"
+try:
+    TOOL_REGISTRY["afi_copilot_auto"] = {"title": "AFI-Kontierungs-Assistent", "module": "bin.tools.afi_copilot_auto", "favorite_label": "AFI Assistent"}
+    TOOL_REGISTRY["afi_copilot_stable"] = {"title": "AFI-Kontierungs-Assistent (stabil)", "module": "bin.tools.afi_copilot_stable", "favorite_label": "AFI stabil"}
+    MODULE_DESCRIPTIONS["afi_copilot_auto"] = "AFI-Kontierungs-Assistent: erzeugt prompt.txt, eine zusammengeführte Kontierungsdatei und legt die drei Copilot-Anhänge in der richtigen Reihenfolge in die Zwischenablage."
+    MODULE_DESCRIPTIONS["afi_copilot_stable"] = "Stabile Entwicklungsvariante des AFI-Kontierungs-Assistenten."
+except Exception:
+    pass
+try:
+    if "FM_DEFAULT_MENU_MODULES" in globals():
+        FM_DEFAULT_MENU_MODULES["afi_uploads"] = [("AFI-Kontierungs-Assistent", "afi_copilot_auto")]
+        items = list(FM_DEFAULT_MENU_MODULES.get("in_dev", []))
+        if not any(mid == "afi_copilot_stable" for _title, mid in items):
+            items.append(("AFI-Kontierungs-Assistent (stabil)", "afi_copilot_stable"))
+        FM_DEFAULT_MENU_MODULES["in_dev"] = items
+except Exception:
+    pass
+
+def _fm521_render_afi_uploads_menu(self):
+    self.render_module_menu([("AFI-Kontierungs-Assistent", "afi_copilot_auto")], show_descriptions=True)
+    self.draw_bottom_logo()
+
+def _fm521_render_in_dev_menu(self):
+    modules = [("Compliance & Audit", "page:compliance_audit"), ("X001 SAP - Test", "x001_sap_test"), ("AFI-Upload (lokale KI)", "supplier_invoice_afi_upload"), ("AFI-Kontierungs-Assistent (stabil)", "afi_copilot_stable")]
+    try:
+        if "_fm520_modules_for_page" in globals():
+            modules = _fm520_modules_for_page("in_dev")
+            if not any(mid == "afi_copilot_stable" for _title, mid in modules):
+                modules.append(("AFI-Kontierungs-Assistent (stabil)", "afi_copilot_stable"))
+    except Exception:
+        pass
+    self.render_module_menu(modules, show_descriptions=True)
+    self.draw_bottom_logo()
+
+FiBuMateApp.render_afi_uploads_menu = _fm521_render_afi_uploads_menu
+FiBuMateApp.render_in_dev_menu = _fm521_render_in_dev_menu
 
 if __name__ == "__main__":
     FiBuMateApp().run()

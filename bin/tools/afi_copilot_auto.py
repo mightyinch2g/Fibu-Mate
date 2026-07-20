@@ -3,26 +3,30 @@ from __future__ import annotations
 
 import os
 import re
-import shutil
+import json
 import sqlite3
 import subprocess
 import webbrowser
+import shutil
+import copy
 from pathlib import Path
 from datetime import datetime
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 
-MODULE_TITLE = "AFI-Upload über Copilot Auto"
-MODULE_VERSION = "1.4.0"
+MODULE_TITLE = "AFI-Kontierungs-Assistent"
+MODULE_VERSION = "1.6.0"
 AUTOMATION_MODE = True
 
 NETWORK_ROOT = r"G:\BUC\FM Anwendung"
 DB_DIR = os.path.join(NETWORK_ROOT, "Fibu_Mate_Doc", "Database", "AFI_Copilot")
 PROMPT_DB = os.path.join(DB_DIR, "afi_copilot_prompts.db")
+OUTPUT_DIR = os.path.join(NETWORK_ROOT, "Dateiausgabe", "Promptings-AFI-Upload")
+SANDBOX_DIR = os.path.join(OUTPUT_DIR, "Sandbox-Bilder")
+COMBINED_CONTROLLING_FILE = "AFI_Kontierungsdaten.xlsx"
 
 DEFAULT_COSTCENTER_DB = os.path.join(NETWORK_ROOT, "Fibu_Mate_Doc", "Database", "MA_Kontierung_GJ2526_260623.xlsx")
 DEFAULT_GENERAL_DB = os.path.join(NETWORK_ROOT, "Fibu_Mate_Doc", "Database", "Kontierungszuordnung_Generalübersicht.xlsx")
-ONEDRIVE_RELATIVE_UPLOAD_ROOT = os.path.join("FiBu Mate", "AFI Copilot Uploads")
 
 SUPPLIER_DEFAULTS = {
     "generic": ("Weitere Lieferanten / generisch", "Analysiere die Rechnung lieferantenunabhängig. Verwende die Kontierungsdatenbanken. Erstelle AFI-CSV-Zeilen nach den verbindlichen Vorgaben."),
@@ -39,9 +43,17 @@ SUPPLIER_DEFAULTS = {
 
 DEFAULT_GENERAL_PROMPT = """Du bist der AFI-Upload-Assistent für FiBu Mate.
 
-Verarbeite die bereitgestellten OneDrive-Dateien zusammen mit diesen Kontierungsdatenbanken:
-1. Mitarbeiter-/Kostenstellen-Datenbank
-2. Generalübersicht mit Sachkonten, Kennzeichen, Rufnummern und Gesellschaften
+Du erhältst genau drei Anhänge in dieser Reihenfolge:
+1. prompt.txt = diese Aufgabenbeschreibung
+2. AFI_Kontierungsdaten.xlsx = zusammengeführte Kontierungsdatei mit eigenständigen Datenblättern
+3. Rechnung = die zu kontierende Rechnung
+
+Verwende die angehängte Datei AFI_Kontierungsdaten.xlsx als verbindliche Quelle für:
+- Mitarbeiter-/Kostenstellen-Datenbank
+- Generalübersicht mit Sachkonten
+- Kennzeichen-/KFZ-Zuordnung
+- Telefon-/Rufnummernzuordnung
+- Gesellschaften und Weiterberechnungslogiken
 
 Erzeuge die Antwort als CSV für den SAP-AFI-Upload.
 Die CSV muss exakt diese Spalten in dieser Reihenfolge haben:
@@ -56,8 +68,8 @@ Verbindliche Regeln:
 - UNIT ist immer ST.
 - ORDERID bleibt immer leer.
 - TEXT maximal 120 Zeichen.
-- GL_ACCOUNT muss aus der Sachkontenlogik der Generalübersicht kommen.
-- Wenn keine konkrete Kostenart eindeutig ist, verwende das Sachkonto Sonstige aus der Generalübersicht.
+- GL_ACCOUNT muss aus der Sachkontenlogik der angehängten Kontierungsdatei kommen.
+- Wenn keine konkrete Kostenart eindeutig ist, verwende das Sachkonto Sonstige aus der angehängten Kontierungsdatei.
 - COSTCENTER darf nur aus echter Zuordnung stammen: Name, Kennzeichen, Rufnummer, Mitarbeiter/Kostenstellen-Datenbank oder Weiterberechnungslogik.
 - Es gibt keinen COSTCENTER-Fallback. Wenn keine Kostenstelle ermittelbar ist, muss COSTCENTER leer bleiben.
 - Wenn Warnungen bestehen, schreibe nach der CSV einen separaten Abschnitt "WARNUNGEN:". Warnungen gehören nicht in die CSV-Zeilen.
@@ -74,6 +86,12 @@ def _norm_key(value):
     return re.sub(r"[^a-z0-9äöüß]+", "_", str(value or "").strip().casefold()).strip("_") or "supplier"
 
 
+def _safe_name(value):
+    value = str(value or "").strip() or "unbekannt"
+    value = re.sub(r"[^A-Za-z0-9_.äöüÄÖÜß-]+", "_", value).strip("._-")
+    return value[:80] or "unbekannt"
+
+
 def _ensure_db():
     con = _connect()
     try:
@@ -85,12 +103,13 @@ def _ensure_db():
             con.execute("insert or ignore into supplier_prompts(supplier_key,supplier_label,prompt_text,active,updated_at,updated_by) values (?,?,?,?,?,?)", (key, label, prompt, 1, datetime.now().isoformat(timespec="seconds"), os.environ.get("USERNAME", "")))
         con.execute("insert or ignore into settings(key,value) values (?,?)", ("costcenter_db", DEFAULT_COSTCENTER_DB))
         con.execute("insert or ignore into settings(key,value) values (?,?)", ("general_db", DEFAULT_GENERAL_DB))
+        con.execute("insert or ignore into settings(key,value) values (?,?)", ("sandbox_images", "[]"))
         con.commit()
     finally:
         con.close()
 
 
-def _get_setting(key: str, default: str = "") -> str:
+def _get_setting(key, default=""):
     _ensure_db()
     con = _connect()
     try:
@@ -100,7 +119,7 @@ def _get_setting(key: str, default: str = "") -> str:
         con.close()
 
 
-def _set_setting(key: str, value: str) -> None:
+def _set_setting(key, value):
     _ensure_db()
     con = _connect()
     try:
@@ -110,7 +129,7 @@ def _set_setting(key: str, value: str) -> None:
         con.close()
 
 
-def _load_general_prompt() -> str:
+def _load_general_prompt():
     _ensure_db()
     con = _connect()
     try:
@@ -120,7 +139,7 @@ def _load_general_prompt() -> str:
         con.close()
 
 
-def _save_general_prompt(text: str) -> None:
+def _save_general_prompt(text):
     _ensure_db()
     con = _connect()
     try:
@@ -140,7 +159,7 @@ def _load_suppliers():
         con.close()
 
 
-def _save_supplier(key: str, label: str, prompt: str, active: bool = True) -> None:
+def _save_supplier(key, label, prompt, active=True):
     _ensure_db()
     con = _connect()
     try:
@@ -148,100 +167,6 @@ def _save_supplier(key: str, label: str, prompt: str, active: bool = True) -> No
         con.commit()
     finally:
         con.close()
-
-
-def _sanitize_name(value: str) -> str:
-    value = Path(str(value or "rechnung")).stem
-    value = re.sub(r"[^A-Za-z0-9._-]+", "_", value).strip("._-")
-    return value[:80] or "rechnung"
-
-
-def _candidate_onedrive_roots():
-    result = []
-    for key in ("OneDriveCommercial", "OneDrive", "OneDriveConsumer"):
-        value = os.environ.get(key)
-        if value and Path(value).exists():
-            result.append(Path(value))
-    # Remove duplicates while preserving order.
-    unique = []
-    seen = set()
-    for path in result:
-        real = str(path.resolve()).casefold()
-        if real not in seen:
-            unique.append(path)
-            seen.add(real)
-    return unique
-
-
-def _default_onedrive_upload_root() -> Path | None:
-    stored = _get_setting("onedrive_upload_root", "")
-    if stored:
-        return Path(os.path.expandvars(stored))
-    roots = _candidate_onedrive_roots()
-    if roots:
-        preferred = roots[0] / ONEDRIVE_RELATIVE_UPLOAD_ROOT
-        _set_setting("onedrive_upload_root", str(preferred))
-        return preferred
-    return None
-
-
-def _ensure_onedrive_upload_root(parent_widget=None) -> Path:
-    root = _default_onedrive_upload_root()
-    if root is None:
-        chosen = filedialog.askdirectory(title="OneDrive-Zielordner für AFI Copilot Uploads auswählen", parent=parent_widget)
-        if not chosen:
-            raise RuntimeError("Kein OneDrive-Zielordner ausgewählt.")
-        root = Path(chosen) / ONEDRIVE_RELATIVE_UPLOAD_ROOT if Path(chosen).name != "AFI Copilot Uploads" else Path(chosen)
-        _set_setting("onedrive_upload_root", str(root))
-    root.mkdir(parents=True, exist_ok=True)
-    return root
-
-
-def _copy_to_onedrive_session(invoice: str, costcenter_db: str, general_db: str, parent_widget=None):
-    upload_root = _ensure_onedrive_upload_root(parent_widget)
-    session_name = f"{datetime.now():%Y_%m_%d_%H%M%S}_{_sanitize_name(invoice)}"
-    session_dir = upload_root / session_name
-    session_dir.mkdir(parents=True, exist_ok=True)
-    copied = []
-    for source in (invoice, costcenter_db, general_db):
-        source_path = Path(source)
-        if not source_path.is_file():
-            raise FileNotFoundError(str(source_path))
-        target = session_dir / source_path.name
-        if source_path.resolve() != target.resolve():
-            shutil.copy2(source_path, target)
-        copied.append(target)
-    return session_dir, copied
-
-
-def _build_prompt(invoice, costcenter_db, general_db, supplier_label, supplier_prompt, general_prompt, onedrive_session_dir, onedrive_files):
-    file_lines = "\n".join(f"{idx}. {path.name}: {path}" for idx, path in enumerate(onedrive_files, 1))
-    return f"""{general_prompt.strip()}
-
-LIEFERANT / AUSGEWÄHLTER PROMPT:
-{supplier_label}
-
-LIEFERANTENSPEZIFISCHE REGELN:
-{supplier_prompt.strip()}
-
-ONEDRIVE-DATEIEN / VERBINDLICHE QUELLEN:
-Die folgenden Dateien wurden in meinen persönlichen OneDrive-Ordner kopiert.
-Verwende ausdrücklich diese OneDrive-Dateien als Quellen für die Erstellung der AFI-Upload-CSV.
-
-OneDrive-Session-Ordner:
-{onedrive_session_dir}
-
-Dateien:
-{file_lines}
-
-WICHTIG:
-- Analysiere die Rechnung aus dem OneDrive-Session-Ordner.
-- Verwende die Mitarbeiter-/Kostenstellen-Datenbank aus demselben OneDrive-Session-Ordner.
-- Verwende die Generalübersicht mit Sachkonten, Kennzeichen, Rufnummern und Gesellschaften aus demselben OneDrive-Session-Ordner.
-- Wenn Copilot die Dateien nicht automatisch als Quelle erkennt, fordere mich auf, genau diese drei Dateien aus diesem OneDrive-Ordner als Cloud-Dateien hinzuzufügen.
-
-Bitte gib als Antwort die AFI-CSV nach den Regeln aus.
-""".strip()
 
 
 def _run_detached(command):
@@ -253,23 +178,168 @@ def _run_detached(command):
 
 
 def _open_copilot():
-    opened = False
     for url in ("https://m365.cloud.microsoft/chat", "https://teams.microsoft.com/v2/", "msteams:"):
         try:
             webbrowser.open_new(url)
-            opened = True
-            break
+            return True
         except Exception:
             pass
-    if not opened:
-        opened = _run_detached(["cmd", "/c", "start", "", "msteams:"])
-    return opened
+    return _run_detached(["cmd", "/c", "start", "", "msteams:"])
 
 
-def _copy_text_to_clipboard(root, text: str):
-    root.clipboard_clear()
-    root.clipboard_append(text)
-    root.update()
+def _output_dir():
+    path = Path(OUTPUT_DIR)
+    path.mkdir(parents=True, exist_ok=True)
+    return path
+
+
+def _sandbox_dir():
+    path = Path(SANDBOX_DIR)
+    path.mkdir(parents=True, exist_ok=True)
+    return path
+
+
+def _load_sandbox_images():
+    try:
+        data = json.loads(_get_setting("sandbox_images", "[]"))
+        return [str(Path(item)) for item in data if item]
+    except Exception:
+        return []
+
+
+def _save_sandbox_images(paths):
+    _set_setting("sandbox_images", json.dumps([str(p) for p in paths], ensure_ascii=False))
+
+
+def _copy_sandbox_image(source):
+    source_path = Path(source)
+    if not source_path.is_file():
+        raise FileNotFoundError(str(source_path))
+    target = _sandbox_dir() / source_path.name
+    if target.exists():
+        target = _sandbox_dir() / f"{source_path.stem}_{datetime.now():%Y%m%d_%H%M%S}{source_path.suffix}"
+    shutil.copy2(source_path, target)
+    return target
+
+
+def _copy_sheet(src_ws, dst_ws):
+    for row in src_ws.iter_rows():
+        for src_cell in row:
+            dst_cell = dst_ws.cell(row=src_cell.row, column=src_cell.column, value=src_cell.value)
+            if src_cell.has_style:
+                dst_cell.font = copy.copy(src_cell.font)
+                dst_cell.fill = copy.copy(src_cell.fill)
+                dst_cell.border = copy.copy(src_cell.border)
+                dst_cell.alignment = copy.copy(src_cell.alignment)
+                dst_cell.number_format = src_cell.number_format
+                dst_cell.protection = copy.copy(src_cell.protection)
+            if src_cell.hyperlink:
+                dst_cell._hyperlink = copy.copy(src_cell.hyperlink)
+            if src_cell.comment:
+                dst_cell.comment = copy.copy(src_cell.comment)
+    for merged in src_ws.merged_cells.ranges:
+        dst_ws.merge_cells(str(merged))
+    for key, dim in src_ws.column_dimensions.items():
+        dst_ws.column_dimensions[key].width = dim.width
+        dst_ws.column_dimensions[key].hidden = dim.hidden
+    for key, dim in src_ws.row_dimensions.items():
+        dst_ws.row_dimensions[key].height = dim.height
+        dst_ws.row_dimensions[key].hidden = dim.hidden
+    dst_ws.freeze_panes = src_ws.freeze_panes
+    try:
+        dst_ws.sheet_view.showGridLines = src_ws.sheet_view.showGridLines
+    except Exception:
+        pass
+
+
+def _unique_sheet_name(wb, name):
+    base = str(name or "Sheet")[:31]
+    if base not in wb.sheetnames:
+        return base
+    for idx in range(2, 100):
+        suffix = f"_{idx}"
+        candidate = (base[:31-len(suffix)] + suffix)
+        if candidate not in wb.sheetnames:
+            return candidate
+    return base[:25] + "_copy"
+
+
+def _merge_controlling_workbooks(costcenter_db, general_db):
+    try:
+        from openpyxl import Workbook, load_workbook
+    except Exception as exc:
+        raise RuntimeError("openpyxl ist für das Zusammenführen der Kontierungsdateien erforderlich.") from exc
+    out_path = _output_dir() / COMBINED_CONTROLLING_FILE
+    target_wb = Workbook()
+    target_wb.remove(target_wb.active)
+    for source in (costcenter_db, general_db):
+        source_path = Path(source)
+        if not source_path.is_file():
+            raise FileNotFoundError(str(source_path))
+        src_wb = load_workbook(source_path, data_only=False)
+        for src_ws in src_wb.worksheets:
+            dst_name = _unique_sheet_name(target_wb, src_ws.title)
+            dst_ws = target_wb.create_sheet(dst_name)
+            _copy_sheet(src_ws, dst_ws)
+    target_wb.save(out_path)
+    return out_path
+
+
+def _build_prompt(supplier_label, supplier_prompt, general_prompt, prompt_file, combined_file, invoice_file):
+    return f"""{general_prompt.strip()}
+
+LIEFERANT / AUSGEWÄHLTER PROMPT:
+{supplier_label}
+
+LIEFERANTENSPEZIFISCHE REGELN:
+{supplier_prompt.strip()}
+
+ANHANGSREIHENFOLGE / VERBINDLICHE QUELLEN:
+1. {Path(prompt_file).name} = diese Promptdatei
+2. {Path(combined_file).name} = zusammengeführte Kontierungsdatei mit den eigenständigen Original-Datenblättern
+3. {Path(invoice_file).name} = zu analysierende Rechnung
+
+WICHTIG:
+- Verwende ausdrücklich die angehängte Datei {Path(combined_file).name} als alleinige Kontierungsquelle.
+- Die ursprünglichen Kontierungsdatenblätter bleiben in dieser Datei als eigene Tabellenblätter erhalten und behalten ihre Namen.
+- Verwende ausdrücklich die angehängte Rechnung {Path(invoice_file).name} als Rechnungsquelle.
+- Erzeuge als Antwort die AFI-Upload-CSV nach den oben genannten Regeln.
+""".strip()
+
+
+def _write_prompt_file(prompt, supplier_label):
+    user = _safe_name(os.environ.get("USERNAME", "user"))
+    supplier = _safe_name(supplier_label)
+    date = datetime.now().strftime("%y%m%d")
+    path = _output_dir() / f"{user}_{supplier}_{date}.txt"
+    path.write_text(prompt, encoding="utf-8-sig")
+    return path
+
+
+def _ps_literal(value):
+    return "'" + str(value or "").replace("'", "''") + "'"
+
+
+def _set_clipboard_files(files):
+    ordered = [str(Path(f)) for f in files if f and Path(f).is_file()]
+    if not ordered:
+        return False, "Keine gültigen Dateien für die Zwischenablage gefunden."
+    file_literals = ",".join(_ps_literal(f) for f in ordered)
+    script = f"""
+Add-Type -AssemblyName System.Windows.Forms
+$files = New-Object System.Collections.Specialized.StringCollection
+[void]$files.AddRange([string[]]@({file_literals}))
+$data = New-Object System.Windows.Forms.DataObject
+$data.SetFileDropList($files)
+[System.Windows.Forms.Clipboard]::SetDataObject($data, $true)
+"""
+    try:
+        completed = subprocess.run(["powershell", "-NoProfile", "-STA", "-ExecutionPolicy", "Bypass", "-Command", script], capture_output=True, text=True, timeout=25, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+        if completed.returncode == 0:
+            return True, "Zwischenablage enthält: prompt.txt, Kontierungsdatei, Rechnung."
+        return False, (completed.stderr or completed.stdout or "Datei-Zwischenablage fehlgeschlagen.")[-800:]
+    except Exception as exc:
+        return False, str(exc)
 
 
 class AFICopilotUI:
@@ -284,7 +354,6 @@ class AFICopilotUI:
         self.invoice_var = tk.StringVar()
         self.costcenter_var = tk.StringVar(value=_get_setting("costcenter_db", DEFAULT_COSTCENTER_DB))
         self.general_db_var = tk.StringVar(value=_get_setting("general_db", DEFAULT_GENERAL_DB))
-        self.onedrive_root_var = tk.StringVar(value=str(_default_onedrive_upload_root() or "%OneDriveCommercial%\\FiBu Mate\\AFI Copilot Uploads"))
         self.supplier_label_var = tk.StringVar(value=(suppliers[0]["label"] if suppliers else "Weitere Lieferanten / generisch"))
         self.status_var = tk.StringVar(value="Bereit")
         self.prompt_preview = None
@@ -296,6 +365,9 @@ class AFICopilotUI:
         self.db_frame = None
         self.db_toggle_button = None
         self.db_open = False
+        self.sandbox_canvas = None
+        self.sandbox_inner = None
+        self.sandbox_image_refs = []
 
     def _supplier_by_label(self, label):
         suppliers = _load_suppliers()
@@ -308,7 +380,7 @@ class AFICopilotUI:
         try:
             self.canvas.delete("all")
             self.app.draw_background()
-            self.app.draw_header("AFI-Upload über Copilot" + (" - Auto" if self.automation else " - stabil"))
+            self.app.draw_header("AFI-Kontierungs-Assistent")
             self.app.draw_path_bar()
         except Exception:
             pass
@@ -332,7 +404,7 @@ class AFICopilotUI:
         if self.db_frame:
             self.db_frame.grid() if self.db_open else self.db_frame.grid_remove()
         if self.db_toggle_button:
-            self.db_toggle_button.configure(text="Datenbank-/OneDrive-Pfade ausblenden ▲" if self.db_open else "Datenbank-/OneDrive-Pfade anzeigen ▼")
+            self.db_toggle_button.configure(text="Datenbankpfade ausblenden ▲" if self.db_open else "Datenbankpfade anzeigen ▼")
 
     def _render_main(self, parent):
         parent.columnconfigure(1, weight=1)
@@ -340,7 +412,7 @@ class AFICopilotUI:
         tk.Label(parent, text="Rechnung", bg=self.bg).grid(row=0, column=0, sticky="w", padx=10, pady=8)
         tk.Entry(parent, textvariable=self.invoice_var).grid(row=0, column=1, sticky="ew", padx=8, pady=8)
         tk.Button(parent, text="Auswählen", command=self.pick_invoice).grid(row=0, column=2, padx=8, pady=8)
-        self.db_toggle_button = tk.Button(parent, text="Datenbank-/OneDrive-Pfade anzeigen ▼", command=self._toggle_db_paths, bg="#D9E2F3")
+        self.db_toggle_button = tk.Button(parent, text="Datenbankpfade anzeigen ▼", command=self._toggle_db_paths, bg="#D9E2F3")
         self.db_toggle_button.grid(row=1, column=0, columnspan=3, sticky="w", padx=10, pady=(0, 4))
         self.db_frame = tk.Frame(parent, bg=self.bg)
         self.db_frame.grid(row=2, column=0, columnspan=3, sticky="ew", padx=10, pady=(0, 6))
@@ -348,7 +420,6 @@ class AFICopilotUI:
         rows = [
             ("Datenbank 1: Mitarbeiter/Kostenstelle", self.costcenter_var, lambda: self.pick_db(self.costcenter_var, "costcenter_db")),
             ("Datenbank 2: Generalübersicht", self.general_db_var, lambda: self.pick_db(self.general_db_var, "general_db")),
-            ("OneDrive Upload-Ziel", self.onedrive_root_var, self.pick_onedrive_root),
         ]
         for idx, (label, var, command) in enumerate(rows):
             tk.Label(self.db_frame, text=label, bg=self.bg).grid(row=idx, column=0, sticky="w", pady=3)
@@ -360,10 +431,111 @@ class AFICopilotUI:
         ttk.Combobox(parent, textvariable=self.supplier_label_var, values=labels, state="readonly").grid(row=3, column=1, sticky="ew", padx=8, pady=4)
         tk.Button(parent, text="Copilot öffnen", command=self.prepare, bg="#0F6CBD", fg="white", padx=12, pady=6).grid(row=4, column=0, columnspan=3, sticky="w", padx=10, pady=10)
         tk.Label(parent, textvariable=self.status_var, bg=self.bg, fg="#44536A").grid(row=4, column=1, columnspan=2, sticky="e", padx=10)
-        tk.Label(parent, text="Ablauf: Dateien werden in OneDrive kopiert, der Prompt mit OneDrive-Pfaden wird in die Zwischenablage gelegt, danach wird Copilot geöffnet.", bg=self.bg, fg="#44536A", anchor="w", justify="left", wraplength=950).grid(row=5, column=0, columnspan=3, sticky="ew", padx=10)
-        self.prompt_preview = tk.Text(parent, wrap="word", height=16, font=("Consolas", 10))
-        self.prompt_preview.grid(row=6, column=0, columnspan=3, sticky="nsew", padx=10, pady=8)
-        tk.Label(parent, text=f"Prompt-Datenbank: {PROMPT_DB}", bg=self.bg, fg="#44536A", anchor="w").grid(row=7, column=0, columnspan=3, sticky="ew", padx=10, pady=(0, 8))
+        tk.Label(parent, text="Ablauf: prompt.txt, zusammengeführte Kontierungsdatei und Rechnung werden in dieser Reihenfolge in die Zwischenablage gelegt. Danach wird Copilot geöffnet.", bg=self.bg, fg="#44536A", anchor="w", justify="left", wraplength=950).grid(row=5, column=0, columnspan=3, sticky="ew", padx=10)
+
+        body = tk.Frame(parent, bg=self.bg)
+        body.grid(row=6, column=0, columnspan=3, sticky="nsew", padx=10, pady=8)
+        body.columnconfigure(0, weight=1, uniform="main_body")
+        body.columnconfigure(1, weight=1, uniform="main_body")
+        body.rowconfigure(0, weight=1)
+
+        prompt_frame = tk.LabelFrame(body, text="Prompt-Vorschau", bg=self.bg, fg="#203A59", padx=4, pady=4)
+        prompt_frame.grid(row=0, column=0, sticky="nsew", padx=(0, 8))
+        prompt_frame.rowconfigure(0, weight=1)
+        prompt_frame.columnconfigure(0, weight=1)
+        self.prompt_preview = tk.Text(prompt_frame, wrap="word", height=16, font=("Consolas", 10))
+        self.prompt_preview.grid(row=0, column=0, sticky="nsew")
+        prompt_scroll = tk.Scrollbar(prompt_frame, orient="vertical", command=self.prompt_preview.yview)
+        prompt_scroll.grid(row=0, column=1, sticky="ns")
+        self.prompt_preview.configure(yscrollcommand=prompt_scroll.set)
+
+        sandbox_frame = tk.LabelFrame(body, text="Bedienungs-Sandbox", bg=self.bg, fg="#203A59", padx=4, pady=4)
+        sandbox_frame.grid(row=0, column=1, sticky="nsew", padx=(8, 0))
+        self._render_sandbox(sandbox_frame)
+
+        tk.Label(parent, text=f"Ausgabeordner: {OUTPUT_DIR}", bg=self.bg, fg="#44536A", anchor="w").grid(row=7, column=0, columnspan=3, sticky="ew", padx=10, pady=(0, 8))
+
+    def _render_sandbox(self, parent):
+        parent.rowconfigure(1, weight=1)
+        parent.columnconfigure(0, weight=1)
+        toolbar = tk.Frame(parent, bg=self.bg)
+        toolbar.grid(row=0, column=0, sticky="ew", pady=(0, 6))
+        tk.Button(toolbar, text="Bild hinzufügen", command=self.add_sandbox_image, bg="#D9E2F3").pack(side="left", padx=(0, 6))
+        tk.Button(toolbar, text="Sandbox leeren", command=self.clear_sandbox_images, bg="#F2D7D5").pack(side="left", padx=(0, 6))
+        tk.Label(toolbar, text="Hier können Bedienbilder dauerhaft abgelegt werden.", bg=self.bg, fg="#44536A").pack(side="left")
+
+        canvas = tk.Canvas(parent, bg="white", highlightthickness=1, highlightbackground="#8A2BE2")
+        canvas.grid(row=1, column=0, sticky="nsew")
+        scroll = tk.Scrollbar(parent, orient="vertical", command=canvas.yview)
+        scroll.grid(row=1, column=1, sticky="ns")
+        canvas.configure(yscrollcommand=scroll.set)
+        inner = tk.Frame(canvas, bg="white")
+        window_id = canvas.create_window((0, 0), window=inner, anchor="nw")
+        inner.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
+        canvas.bind("<Configure>", lambda e: canvas.itemconfigure(window_id, width=e.width))
+        self.sandbox_canvas = canvas
+        self.sandbox_inner = inner
+        self.refresh_sandbox_images()
+
+    def _make_thumbnail(self, path, max_width=760, max_height=420):
+        try:
+            from PIL import Image, ImageTk
+            img = Image.open(path)
+            img.thumbnail((max_width, max_height))
+            return ImageTk.PhotoImage(img)
+        except Exception:
+            try:
+                return tk.PhotoImage(file=str(path))
+            except Exception:
+                return None
+
+    def refresh_sandbox_images(self):
+        if not self.sandbox_inner:
+            return
+        for child in self.sandbox_inner.winfo_children():
+            child.destroy()
+        self.sandbox_image_refs = []
+        paths = [p for p in _load_sandbox_images() if Path(p).exists()]
+        if not paths:
+            tk.Label(self.sandbox_inner, text="Noch keine Bilder hinterlegt.\nÜber 'Bild hinzufügen' können Bedienhilfen eingefügt werden.", bg="white", fg="#44536A", justify="center", pady=40).pack(fill="both", expand=True)
+            return
+        for idx, path in enumerate(paths, 1):
+            row = tk.Frame(self.sandbox_inner, bg="white", bd=0, highlightthickness=0)
+            row.pack(fill="x", padx=8, pady=8)
+            header = tk.Frame(row, bg="white")
+            header.pack(fill="x")
+            tk.Label(header, text=f"{idx}. {Path(path).name}", bg="white", fg="#203A59", font=("Segoe UI", 9, "bold")).pack(side="left")
+            tk.Button(header, text="Entfernen", command=lambda p=path: self.remove_sandbox_image(p), bg="#F8E7E6").pack(side="right")
+            photo = self._make_thumbnail(path)
+            if photo:
+                self.sandbox_image_refs.append(photo)
+                tk.Label(row, image=photo, bg="white").pack(anchor="w", pady=(4, 0))
+            else:
+                tk.Label(row, text=path, bg="white", fg="#44536A", wraplength=740, justify="left").pack(anchor="w", pady=(4, 0))
+
+    def add_sandbox_image(self):
+        paths = filedialog.askopenfilenames(title="Bilder für Bedienungs-Sandbox auswählen", filetypes=[("Bilder", "*.png *.jpg *.jpeg *.gif *.bmp"), ("Alle Dateien", "*.*")])
+        if not paths:
+            return
+        current = _load_sandbox_images()
+        for path in paths:
+            try:
+                copied = _copy_sandbox_image(path)
+                current.append(str(copied))
+            except Exception as exc:
+                messagebox.showwarning(MODULE_TITLE, f"Bild konnte nicht hinzugefügt werden:\n{path}\n\n{exc}")
+        _save_sandbox_images(current)
+        self.refresh_sandbox_images()
+
+    def remove_sandbox_image(self, path):
+        current = [p for p in _load_sandbox_images() if str(p) != str(path)]
+        _save_sandbox_images(current)
+        self.refresh_sandbox_images()
+
+    def clear_sandbox_images(self):
+        if messagebox.askyesno(MODULE_TITLE, "Alle Bilder aus der Sandbox entfernen?\nDie Bilddateien im Ausgabeordner bleiben erhalten."):
+            _save_sandbox_images([])
+            self.refresh_sandbox_images()
 
     def _render_prompts(self, parent):
         parent.rowconfigure(1, weight=1)
@@ -414,13 +586,6 @@ class AFICopilotUI:
             var.set(path)
             _set_setting(key, path)
 
-    def pick_onedrive_root(self):
-        path = filedialog.askdirectory(title="OneDrive Upload-Ziel auswählen")
-        if path:
-            self.onedrive_root_var.set(path)
-            _set_setting("onedrive_upload_root", path)
-            Path(path).mkdir(parents=True, exist_ok=True)
-
     def load_selected_supplier(self, event=None):
         sel = self.supplier_list.curselection() if self.supplier_list else []
         if not sel:
@@ -452,21 +617,26 @@ class AFICopilotUI:
             messagebox.showwarning(MODULE_TITLE, "Bitte Rechnung und beide Datenbanken prüfen. Nicht gefunden:\n" + "\n".join(missing))
             return
         try:
-            # Persist UI value before session creation. Allows manual override.
-            if self.onedrive_root_var.get().strip():
-                _set_setting("onedrive_upload_root", self.onedrive_root_var.get().strip())
-            session_dir, copied_files = _copy_to_onedrive_session(invoice, costcenter, general, self.root)
+            item = self._supplier_by_label(self.supplier_label_var.get())
+            combined = _merge_controlling_workbooks(costcenter, general)
+            prompt_text = _build_prompt(item["label"], item["prompt"], _load_general_prompt(), "prompt.txt", combined, invoice)
+            prompt_file = _write_prompt_file(prompt_text, item["label"])
+            final_prompt_text = _build_prompt(item["label"], item["prompt"], _load_general_prompt(), prompt_file, combined, invoice)
+            prompt_file.write_text(final_prompt_text, encoding="utf-8-sig")
+            self.prompt_preview.delete("1.0", "end")
+            self.prompt_preview.insert("1.0", final_prompt_text)
+            ok, msg = _set_clipboard_files([prompt_file, combined, invoice])
+            if not ok:
+                messagebox.showwarning(MODULE_TITLE, "Die Dateien konnten nicht in die Zwischenablage gelegt werden:\n\n" + msg)
+                return
         except Exception as exc:
-            messagebox.showerror(MODULE_TITLE, "OneDrive-Ablage konnte nicht erstellt werden:\n\n" + str(exc))
+            messagebox.showerror(MODULE_TITLE, "Vorbereitung für Copilot fehlgeschlagen:\n\n" + str(exc))
             return
-        item = self._supplier_by_label(self.supplier_label_var.get())
-        prompt = _build_prompt(invoice, costcenter, general, item["label"], item["prompt"], _load_general_prompt(), session_dir, copied_files)
-        self.prompt_preview.delete("1.0", "end")
-        self.prompt_preview.insert("1.0", prompt)
-        _copy_text_to_clipboard(self.root, prompt)
         _open_copilot()
-        self.status_var.set("Dateien nach OneDrive kopiert. Prompt wurde in die Zwischenablage gelegt.")
-        messagebox.showinfo(MODULE_TITLE, "Copilot wurde geöffnet.\n\nDie drei Dateien wurden nach OneDrive kopiert:\n" + str(session_dir) + "\n\nDer Prompt mit den OneDrive-Pfaden wurde in die Zwischenablage gelegt.")
+        if self.automation:
+            self.root.after(2500, lambda: _run_detached(["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", "$wshell = New-Object -ComObject wscript.shell; $wshell.AppActivate('Microsoft Teams') | Out-Null; $wshell.AppActivate('Copilot') | Out-Null; Start-Sleep -Milliseconds 300; $wshell.SendKeys('^v')"]))
+        self.status_var.set(msg)
+        messagebox.showinfo(MODULE_TITLE, "Copilot wurde geöffnet.\n\nDie Zwischenablage enthält genau drei Dateien in dieser Reihenfolge:\n1. " + str(prompt_file) + "\n2. " + str(combined) + "\n3. " + str(invoice) + "\n\nAblageordner:\n" + OUTPUT_DIR)
 
 
 def render(app):
