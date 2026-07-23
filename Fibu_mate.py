@@ -20157,6 +20157,336 @@ def _fm521_render_in_dev_menu(self):
 FiBuMateApp.render_afi_uploads_menu = _fm521_render_afi_uploads_menu
 FiBuMateApp.render_in_dev_menu = _fm521_render_in_dev_menu
 
+
+
+# ------------------------------------------------------------------
+# FiBu Mate v0.522 - Wissenszentrale: Anhang-Links und Flächenlayout
+# ------------------------------------------------------------------
+FM_WZ_LINK_LAYOUT_VERSION = "0.522"
+
+def _fm522_open_attachment(path):
+    path = str(path or '').strip()
+    if not path:
+        try:
+            messagebox.showwarning('Wissenszentrale', 'Für diesen Anhang ist kein Dateipfad hinterlegt.')
+        except Exception:
+            pass
+        return
+    try:
+        if os.path.exists(path):
+            os.startfile(path)
+            return
+    except Exception:
+        pass
+    try:
+        folder = os.path.dirname(path)
+        if folder and os.path.exists(folder):
+            os.startfile(folder)
+            return
+    except Exception:
+        pass
+    try:
+        messagebox.showwarning('Wissenszentrale', 'Anhang konnte nicht geöffnet werden:\n\n' + path)
+    except Exception:
+        pass
+
+
+def _fm522_attachment_link(parent, attachment):
+    name = str((attachment or {}).get('name') or os.path.basename(str((attachment or {}).get('path') or 'Anhang')) or 'Anhang')
+    path = str((attachment or {}).get('path') or '')
+    lbl = tk.Label(
+        parent,
+        text='• ' + name,
+        bg=WHITE,
+        fg=BLUE,
+        cursor='hand2',
+        font=body_font(9, underline=True),
+        anchor='w',
+        justify='left'
+    )
+    lbl.pack(anchor='w', fill='x', pady=1)
+    lbl.bind('<Button-1>', lambda e, p=path: _fm522_open_attachment(p))
+    return lbl
+
+
+def _fm522_render_kb_detail_area(self, x, y, w, h):
+    entry = self.kb_get_entry(getattr(self, 'kb_selected_entry_id', None))
+    if not entry:
+        self.render_kb_list_area(x, y, w, h, title='Übersicht')
+        return
+    frame = tk.Frame(self.root, bg=WHITE, highlightbackground=LINE, highlightthickness=2)
+    self.widget_items.append(frame)
+    tk.Label(frame, text=entry.get('title', ''), bg=WHITE, fg=BLUE, font=body_font(16, weight='bold')).pack(anchor='w', padx=18, pady=(14, 5))
+    try:
+        user_display = _fm470_user_fullname(self, entry.get('user',''))
+    except Exception:
+        user_display = entry.get('user','')
+    tk.Label(frame, text=f"Aktualisiert: {self.kb_display_date(entry.get('updated_at'))}    Benutzer: {user_display}    Status: {entry.get('status','')}", bg=WHITE, fg=TEXT2, font=body_font(10)).pack(anchor='w', padx=18)
+    try:
+        _wz439_badges(frame, self, entry.get('categories', []) or [])
+    except Exception:
+        tk.Label(frame, text='Kategorien: ' + (', '.join(entry.get('categories', []) or []) or 'Keine Kategorien'), bg=WHITE, fg=TEXT, font=body_font(10, weight='bold')).pack(anchor='w', padx=18, pady=(8,4))
+    try:
+        _wz439_render_image_view(frame, self, entry.get('inline_images', []) or [])
+    except Exception:
+        pass
+
+    text_frame = tk.Frame(frame, bg=WHITE)
+    text_frame.pack(fill='both', expand=True, padx=18, pady=(6, 8))
+    txt = tk.Text(text_frame, bg='#F8FAFC', fg=TEXT, font=body_font(10), relief='solid', bd=1, wrap='word', height=8)
+    yscroll = tk.Scrollbar(text_frame, orient='vertical', command=txt.yview)
+    txt.configure(yscrollcommand=yscroll.set)
+    txt.pack(side='left', fill='both', expand=True)
+    yscroll.pack(side='right', fill='y')
+    txt.insert('1.0', entry.get('text', ''))
+    try:
+        _wz439_apply_formatting(txt, entry.get('text_formatting', []) or [])
+    except Exception:
+        pass
+    txt.configure(state='disabled')
+    try:
+        txt.bind('<MouseWheel>', lambda ev: _wz439_text_mousewheel(txt, ev))
+    except Exception:
+        pass
+
+    lower = tk.Frame(frame, bg=WHITE)
+    lower.pack(fill='x', padx=18, pady=(0, 8))
+    left = tk.Frame(lower, bg=WHITE)
+    left.pack(side='left', fill='both', expand=True)
+    right = tk.Frame(lower, bg=WHITE)
+    right.pack(side='right', fill='both', expand=True, padx=(12,0))
+    tk.Label(left, text='Anhänge', bg=WHITE, fg=BLUE, font=body_font(10, weight='bold')).pack(anchor='w')
+    attachments = entry.get('attachments', []) or []
+    if attachments:
+        for a in attachments:
+            _fm522_attachment_link(left, a)
+    else:
+        tk.Label(left, text='Keine Anhänge', bg=WHITE, fg=TEXT2, font=body_font(9)).pack(anchor='w')
+    tk.Label(right, text='Kommentare', bg=WHITE, fg=BLUE, font=body_font(10, weight='bold')).pack(anchor='w')
+    for c in (entry.get('comments', []) or [])[-3:]:
+        tk.Label(right, text=f"{self.kb_display_date(c.get('created_at'))}: {c.get('text','')[:100]}", bg=WHITE, fg=TEXT, font=body_font(9), wraplength=max(380, int(w * 0.28)), justify='left').pack(anchor='w')
+    comment = tk.Text(right, height=2, bg='#F8FAFC', fg=TEXT, font=body_font(9), relief='solid', bd=1, wrap='word')
+    comment.pack(fill='x', pady=(4,0))
+    buttons = tk.Frame(frame, bg=WHITE)
+    buttons.pack(fill='x', padx=18, pady=(0,14))
+    if self.kb_can_create_or_edit():
+        tk.Button(buttons, text='Bearbeiten', command=self.kb_edit_selected_entry, bg=WHITE, fg=TEXT, font=body_font(10, weight='bold'), relief='solid', bd=1).pack(side='left', padx=(0,8), ipadx=16, ipady=4)
+    tk.Button(buttons, text='Kommentar speichern', command=lambda: self.kb_add_comment_to_selected(comment), bg=WHITE, fg=TEXT, font=body_font(10), relief='solid', bd=1).pack(side='left', padx=(0,8), ipadx=16, ipady=4)
+    tk.Button(buttons, text='Word-Export', command=self.kb_export_selected_to_word, bg=WHITE, fg=TEXT, font=body_font(10), relief='solid', bd=1).pack(side='left', padx=(0,8), ipadx=16, ipady=4)
+    tk.Button(buttons, text='Zur Übersicht', command=lambda: self.kb_switch_view_from_start('all'), bg=WHITE, fg=TEXT, font=body_font(10), relief='solid', bd=1).pack(side='left', padx=(0,8), ipadx=16, ipady=4)
+    try:
+        _fm471_delete_button(buttons, self, entry.get('id')).pack(side='right', padx=(8,0), ipadx=12, ipady=4)
+    except Exception:
+        pass
+    try:
+        tk.Button(buttons, text='Eintrag als aktuell kennzeichnen', command=lambda eid=entry.get('id'): _fm467_set_entry_current(self, eid), bg='#CFEAD6', fg=TEXT, font=body_font(10, weight='bold'), relief='solid', bd=1).pack(side='right', ipadx=12, ipady=4)
+    except Exception:
+        pass
+    self.canvas.create_window(ui_s(x), ui_s(y), window=frame, anchor='nw', width=ui_s(w), height=ui_s(h))
+
+
+def _fm522_render_knowledge_work_area(self):
+    self.kb_ensure_state_vars()
+    try:
+        self.root.bind('<Escape>', self.kb_handle_escape, add='+')
+        self.root.option_add('*TCombobox*Listbox.font', body_font(11))
+    except Exception:
+        pass
+    w, h = self.canvas.winfo_width(), self.canvas.winfo_height()
+    nav_y = 132
+    bx = 28
+    bx = self.draw_kb_button(bx, nav_y, 'Start', self.kb_show_start_overlay, False, width=92)
+    bx = self.draw_kb_button(bx, nav_y, 'Übersicht', lambda: self.kb_switch_view_from_start('all'), False, width=112)
+    if self.kb_can_create_or_edit():
+        bx = self.draw_kb_button(bx, nav_y, 'Neuer Eintrag', lambda: self.kb_switch_view_from_start('new'), False, width=128)
+    bx = self.draw_kb_button(bx, nav_y, 'To-Dos', lambda: self.kb_switch_view_from_start('todos'), False, width=92)
+    bx = self.draw_kb_button(bx, nav_y, 'Veraltete Einträge', lambda: self.kb_switch_view_from_start('outdated'), False, width=148)
+    if self.kb_can_manage_categories():
+        bx = self.draw_kb_button(bx, nav_y, 'Kategorien verwalten', lambda: self.kb_switch_view_from_start('categories'), False, width=168)
+
+    bar = tk.Frame(self.root, bg=BG)
+    self.widget_items.append(bar)
+    bar.grid_columnconfigure(0, weight=1)
+    tk.Label(bar, text='Suche', bg=BG, fg=TEXT2, font=body_font(9)).grid(row=0, column=0, sticky='w')
+    for i in range(4):
+        tk.Label(bar, text=f'Kategorie {i+1}', bg=BG, fg=TEXT2, font=body_font(9)).grid(row=0, column=i+2, sticky='w', padx=(12,0))
+    search_row = tk.Frame(bar, bg=BG)
+    search_row.grid(row=1, column=0, sticky='ew')
+    search_row.grid_columnconfigure(0, weight=1)
+    try:
+        ent = tk.Entry(search_row, textvariable=self.kb_search_var, font=body_font(10), bg=WHITE, fg=TEXT, relief='flat', bd=0, highlightthickness=1, highlightbackground=_FM451_BTN_BORDER, highlightcolor=BLUE)
+    except Exception:
+        ent = tk.Entry(search_row, textvariable=self.kb_search_var, font=body_font(10), bg=WHITE, fg=TEXT, relief='solid', bd=1)
+    ent.grid(row=0, column=0, sticky='ew', ipady=6)
+    ent.bind('<Return>', self.kb_on_search_return)
+    try:
+        _fm451_button(search_row, 'Suchen', command=self.kb_apply_filters, font_size=9).grid(row=0, column=1, padx=(8,0), sticky='ns')
+    except Exception:
+        tk.Button(search_row, text='Suchen', command=self.kb_apply_filters, bg=WHITE, fg=TEXT, font=body_font(9)).grid(row=0, column=1, padx=(8,0), sticky='ns')
+    vals = [''] + self.kb_get_categories()
+    for i, var in enumerate(self.kb_filter_vars):
+        try:
+            dd = _fm451_filter_dropdown(bar, self, var, vals, command=self.kb_apply_filters)
+        except Exception:
+            dd = ttk.Combobox(bar, textvariable=var, values=vals, state='readonly', font=body_font(10), width=15)
+            dd.bind('<<ComboboxSelected>>', self.kb_apply_filters)
+        dd.grid(row=1, column=i+2, sticky='ew', padx=(12,0))
+    selected = [(v.get() or '').strip().lower() for v in self.kb_filter_vars]
+    if self.knowledge_view == 'todos' or 'to-do' in selected:
+        tk.Label(bar, text='Rhythmus', bg=BG, fg=TEXT2, font=body_font(9)).grid(row=0, column=6, sticky='w', padx=(12,0))
+        rhythm = ttk.Combobox(bar, textvariable=self.kb_todo_rhythm_var, values=['','täglich','wöchentlich','monatlich','quartalsweise','jährlich','bei Bedarf'], state='readonly', font=body_font(10), width=15)
+        rhythm.grid(row=1, column=6, sticky='ew', padx=(12,0), ipady=4)
+        rhythm.bind('<<ComboboxSelected>>', self.kb_apply_filters)
+    else:
+        try:
+            self.kb_todo_rhythm_var.set('')
+        except Exception:
+            pass
+    self.canvas.create_window(ui_s(28), ui_s(178), window=bar, anchor='nw', width=ui_s(max(1080, w-48)), height=ui_s(66))
+
+    collapsed = _fm510_kb_hits_collapsed(self) if '_fm510_kb_hits_collapsed' in globals() else False
+    left_x = 14
+    left_y = 244
+    pane_h = max(540, h - left_y - 8)
+    if collapsed:
+        left_w = 86
+        gap = 12
+    else:
+        # Treffer kompakter, damit die Übersicht nach rechts mehr Raum erhält.
+        left_w = max(320, min(455, int(w * 0.235)))
+        gap = 16
+    right_x = left_x + left_w + gap
+    right_w = max(860, w - right_x - 10)
+    self.render_kb_hits_pane(left_x, left_y, left_w, pane_h)
+    if self.knowledge_view == 'new':
+        self.render_kb_new_entry_area(right_x, left_y, right_w, pane_h)
+    elif self.knowledge_view == 'todos':
+        self.render_kb_list_area(right_x, left_y, right_w, pane_h, title='To-Dos')
+    elif self.knowledge_view == 'outdated':
+        self.render_kb_list_area(right_x, left_y, right_w, pane_h, title='Veraltete Einträge', status_filter='Veraltet')
+    elif self.knowledge_view == 'categories':
+        self.render_kb_categories_area(right_x, left_y, right_w, pane_h)
+    elif self.knowledge_view == 'detail':
+        self.render_kb_detail_area(right_x, left_y, right_w, pane_h)
+    else:
+        self.render_kb_list_area(right_x, left_y, right_w, pane_h, title='Übersicht')
+
+FiBuMateApp.render_kb_detail_area = _fm522_render_kb_detail_area
+FiBuMateApp.render_knowledge_work_area = _fm522_render_knowledge_work_area
+
+
+
+# ------------------------------------------------------------------
+# FiBu Mate v0.523 - Wissenszentrale: Treffer/Arbeitsbereich Vollflaeche
+# ------------------------------------------------------------------
+# Ziel: Arbeitsfenster wie im roten Wunschrahmen bis nahe an rechten und unteren Rand strecken.
+# Wir ueberschreiben bewusst nur die Arbeitsbereichspositionierung; Treffer-/Detail-/Listenrenderer bleiben erhalten.
+FM_WZ_FULL_AREA_VERSION = "0.523"
+
+def _fm523_render_knowledge_work_area(self):
+    self.kb_ensure_state_vars()
+    try:
+        self.root.bind('<Escape>', self.kb_handle_escape, add='+')
+        self.root.option_add('*TCombobox*Listbox.font', body_font(11))
+    except Exception:
+        pass
+
+    w, h = self.canvas.winfo_width(), self.canvas.winfo_height()
+
+    # Obere Navigations- und Filterzone unverändert kompakt halten.
+    nav_y = 132
+    bx = 28
+    bx = self.draw_kb_button(bx, nav_y, 'Start', self.kb_show_start_overlay, False, width=92)
+    bx = self.draw_kb_button(bx, nav_y, 'Übersicht', lambda: self.kb_switch_view_from_start('all'), False, width=112)
+    if self.kb_can_create_or_edit():
+        bx = self.draw_kb_button(bx, nav_y, 'Neuer Eintrag', lambda: self.kb_switch_view_from_start('new'), False, width=128)
+    bx = self.draw_kb_button(bx, nav_y, 'To-Dos', lambda: self.kb_switch_view_from_start('todos'), False, width=92)
+    bx = self.draw_kb_button(bx, nav_y, 'Veraltete Einträge', lambda: self.kb_switch_view_from_start('outdated'), False, width=148)
+    if self.kb_can_manage_categories():
+        self.draw_kb_button(bx, nav_y, 'Kategorien verwalten', lambda: self.kb_switch_view_from_start('categories'), False, width=168)
+
+    bar = tk.Frame(self.root, bg=BG)
+    self.widget_items.append(bar)
+    bar.grid_columnconfigure(0, weight=1)
+    tk.Label(bar, text='Suche', bg=BG, fg=TEXT2, font=body_font(9)).grid(row=0, column=0, sticky='w')
+    for i in range(4):
+        tk.Label(bar, text=f'Kategorie {i+1}', bg=BG, fg=TEXT2, font=body_font(9)).grid(row=0, column=i+2, sticky='w', padx=(12, 0))
+
+    search_row = tk.Frame(bar, bg=BG)
+    search_row.grid(row=1, column=0, sticky='ew')
+    search_row.grid_columnconfigure(0, weight=1)
+    try:
+        ent = tk.Entry(search_row, textvariable=self.kb_search_var, font=body_font(10), bg=WHITE, fg=TEXT, relief='flat', bd=0, highlightthickness=1, highlightbackground=_FM451_BTN_BORDER, highlightcolor=BLUE)
+    except Exception:
+        ent = tk.Entry(search_row, textvariable=self.kb_search_var, font=body_font(10), bg=WHITE, fg=TEXT, relief='solid', bd=1)
+    ent.grid(row=0, column=0, sticky='ew', ipady=6)
+    ent.bind('<Return>', self.kb_on_search_return)
+    try:
+        _fm451_button(search_row, 'Suchen', command=self.kb_apply_filters, font_size=9).grid(row=0, column=1, padx=(8, 0), sticky='ns')
+    except Exception:
+        tk.Button(search_row, text='Suchen', command=self.kb_apply_filters, bg=WHITE, fg=TEXT, font=body_font(9)).grid(row=0, column=1, padx=(8, 0), sticky='ns')
+
+    vals = [''] + self.kb_get_categories()
+    for i, var in enumerate(self.kb_filter_vars):
+        try:
+            dd = _fm451_filter_dropdown(bar, self, var, vals, command=self.kb_apply_filters)
+        except Exception:
+            dd = ttk.Combobox(bar, textvariable=var, values=vals, state='readonly', font=body_font(10), width=15)
+            dd.bind('<<ComboboxSelected>>', self.kb_apply_filters)
+        dd.grid(row=1, column=i + 2, sticky='ew', padx=(12, 0))
+
+    selected = [(v.get() or '').strip().lower() for v in self.kb_filter_vars]
+    if self.knowledge_view == 'todos' or 'to-do' in selected:
+        tk.Label(bar, text='Rhythmus', bg=BG, fg=TEXT2, font=body_font(9)).grid(row=0, column=6, sticky='w', padx=(12, 0))
+        rhythm = ttk.Combobox(bar, textvariable=self.kb_todo_rhythm_var, values=['', 'täglich', 'wöchentlich', 'monatlich', 'quartalsweise', 'jährlich', 'bei Bedarf'], state='readonly', font=body_font(10), width=15)
+        rhythm.grid(row=1, column=6, sticky='ew', padx=(12, 0), ipady=4)
+        rhythm.bind('<<ComboboxSelected>>', self.kb_apply_filters)
+    else:
+        try:
+            self.kb_todo_rhythm_var.set('')
+        except Exception:
+            pass
+
+    # Filterleiste bis fast zum rechten Rand ziehen.
+    self.canvas.create_window(ui_s(26), ui_s(178), window=bar, anchor='nw', width=ui_s(max(1080, w - 38)), height=ui_s(66))
+
+    collapsed = _fm510_kb_hits_collapsed(self) if '_fm510_kb_hits_collapsed' in globals() else False
+
+    # Wunschrahmen: Beginn knapp unter Suche, Ende knapp oberhalb Footer/Canvasende.
+    left_x = 12
+    left_y = 250
+    bottom_margin = 8
+    pane_h = max(620, h - left_y - bottom_margin)
+
+    if collapsed:
+        # Entspricht dem schmalen roten Trefferrahmen links im Screenshot.
+        left_w = 84
+        gap = 10
+    else:
+        # Treffer ausgeklappt: ebenfalls volle Hoehe, aber rechts bleibt maximaler Arbeitsraum.
+        left_w = max(360, min(500, int(w * 0.255)))
+        gap = 14
+
+    right_x = left_x + left_w + gap
+    right_w = max(860, w - right_x - 8)
+
+    self.render_kb_hits_pane(left_x, left_y, left_w, pane_h)
+
+    if self.knowledge_view == 'new':
+        self.render_kb_new_entry_area(right_x, left_y, right_w, pane_h)
+    elif self.knowledge_view == 'todos':
+        self.render_kb_list_area(right_x, left_y, right_w, pane_h, title='To-Dos')
+    elif self.knowledge_view == 'outdated':
+        self.render_kb_list_area(right_x, left_y, right_w, pane_h, title='Veraltete Einträge', status_filter='Veraltet')
+    elif self.knowledge_view == 'categories':
+        self.render_kb_categories_area(right_x, left_y, right_w, pane_h)
+    elif self.knowledge_view == 'detail':
+        self.render_kb_detail_area(right_x, left_y, right_w, pane_h)
+    else:
+        self.render_kb_list_area(right_x, left_y, right_w, pane_h, title='Übersicht')
+
+FiBuMateApp.render_knowledge_work_area = _fm523_render_knowledge_work_area
+
 if __name__ == "__main__":
     FiBuMateApp().run()
 
