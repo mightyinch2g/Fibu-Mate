@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 
 import os
@@ -9,13 +8,14 @@ import subprocess
 import webbrowser
 import shutil
 import copy
+import uuid
 from pathlib import Path
 from datetime import datetime
 import tkinter as tk
-from tkinter import filedialog, messagebox, ttk
+from tkinter import filedialog, messagebox, ttk, simpledialog
 
 MODULE_TITLE = "AFI-Kontierungs-Assistent"
-MODULE_VERSION = "1.6.0"
+MODULE_VERSION = "1.8.0"
 AUTOMATION_MODE = True
 
 NETWORK_ROOT = r"G:\BUC\FM Anwendung"
@@ -24,9 +24,18 @@ PROMPT_DB = os.path.join(DB_DIR, "afi_copilot_prompts.db")
 OUTPUT_DIR = os.path.join(NETWORK_ROOT, "Dateiausgabe", "Promptings-AFI-Upload")
 SANDBOX_DIR = os.path.join(OUTPUT_DIR, "Sandbox-Bilder")
 COMBINED_CONTROLLING_FILE = "AFI_Kontierungsdaten.xlsx"
+SEND_ICON_PATH = r"C:\python\bin\Imgs\Icons\friends_link_send_share_icon_123609.ico"
 
 DEFAULT_COSTCENTER_DB = os.path.join(NETWORK_ROOT, "Fibu_Mate_Doc", "Database", "MA_Kontierung_GJ2526_260623.xlsx")
 DEFAULT_GENERAL_DB = os.path.join(NETWORK_ROOT, "Fibu_Mate_Doc", "Database", "Kontierungszuordnung_Generalübersicht.xlsx")
+
+FONT_NORMAL = ("Segoe UI", 12)
+FONT_BUTTON = ("Segoe UI", 12, "bold")
+FONT_BUTTON_SMALL = ("Segoe UI", 10, "bold")
+FONT_LABEL = ("Segoe UI", 12)
+FONT_STATUS = ("Segoe UI", 11)
+FONT_PROMPT = ("Consolas", 11)
+FONT_COPILOT = ("Segoe UI", 14, "bold")
 
 SUPPLIER_DEFAULTS = {
     "generic": ("Weitere Lieferanten / generisch", "Analysiere die Rechnung lieferantenunabhängig. Verwende die Kontierungsdatenbanken. Erstelle AFI-CSV-Zeilen nach den verbindlichen Vorgaben."),
@@ -103,6 +112,7 @@ def _ensure_db():
             con.execute("insert or ignore into supplier_prompts(supplier_key,supplier_label,prompt_text,active,updated_at,updated_by) values (?,?,?,?,?,?)", (key, label, prompt, 1, datetime.now().isoformat(timespec="seconds"), os.environ.get("USERNAME", "")))
         con.execute("insert or ignore into settings(key,value) values (?,?)", ("costcenter_db", DEFAULT_COSTCENTER_DB))
         con.execute("insert or ignore into settings(key,value) values (?,?)", ("general_db", DEFAULT_GENERAL_DB))
+        con.execute("insert or ignore into settings(key,value) values (?,?)", ("sandbox_items", "[]"))
         con.execute("insert or ignore into settings(key,value) values (?,?)", ("sandbox_images", "[]"))
         con.commit()
     finally:
@@ -199,16 +209,30 @@ def _sandbox_dir():
     return path
 
 
-def _load_sandbox_images():
+def _load_sandbox_items():
     try:
-        data = json.loads(_get_setting("sandbox_images", "[]"))
-        return [str(Path(item)) for item in data if item]
+        raw = _get_setting("sandbox_items", "[]")
+        items = json.loads(raw) if raw else []
+        if items:
+            return items
+        # Migration from older image-only sandbox.
+        old_images = json.loads(_get_setting("sandbox_images", "[]") or "[]")
+        migrated = []
+        x, y = 24, 24
+        for path in old_images:
+            if path and Path(path).exists():
+                migrated.append({"id": str(uuid.uuid4()), "type": "image", "path": str(path), "x": x, "y": y, "w": 360, "h": 220})
+                x += 30
+                y += 30
+        if migrated:
+            _save_sandbox_items(migrated)
+        return migrated
     except Exception:
         return []
 
 
-def _save_sandbox_images(paths):
-    _set_setting("sandbox_images", json.dumps([str(p) for p in paths], ensure_ascii=False))
+def _save_sandbox_items(items):
+    _set_setting("sandbox_items", json.dumps(items, ensure_ascii=False))
 
 
 def _copy_sandbox_image(source):
@@ -217,7 +241,7 @@ def _copy_sandbox_image(source):
         raise FileNotFoundError(str(source_path))
     target = _sandbox_dir() / source_path.name
     if target.exists():
-        target = _sandbox_dir() / f"{source_path.stem}_{datetime.now():%Y%m%d_%H%M%S}{source_path.suffix}"
+        target = _sandbox_dir() / f"{source_path.stem}_{datetime.now():%Y%m%d_%H%M%S_%f}{source_path.suffix}"
     shutil.copy2(source_path, target)
     return target
 
@@ -366,8 +390,10 @@ class AFICopilotUI:
         self.db_toggle_button = None
         self.db_open = False
         self.sandbox_canvas = None
-        self.sandbox_inner = None
-        self.sandbox_image_refs = []
+        self.sandbox_photo_refs = {}
+        self.selected_item_id = None
+        self.drag_state = None
+        self.send_icon = None
 
     def _supplier_by_label(self, label):
         suppliers = _load_suppliers()
@@ -382,6 +408,11 @@ class AFICopilotUI:
             self.app.draw_background()
             self.app.draw_header("AFI-Kontierungs-Assistent")
             self.app.draw_path_bar()
+        except Exception:
+            pass
+        try:
+            self.root.option_add("*Font", FONT_NORMAL)
+            self.root.option_add("*TCombobox*Listbox.font", ("Segoe UI", 12))
         except Exception:
             pass
         width = max(1100, self.canvas.winfo_width() - 60)
@@ -399,6 +430,56 @@ class AFICopilotUI:
         self._render_main(main)
         self._render_prompts(prompts)
 
+    def _load_icon(self):
+        if self.send_icon is not None:
+            return self.send_icon
+        icon_path = Path(SEND_ICON_PATH)
+        if not icon_path.exists():
+            return None
+        try:
+            from PIL import Image, ImageTk
+            img = Image.open(icon_path)
+            img.thumbnail((28, 28))
+            self.send_icon = ImageTk.PhotoImage(img)
+        except Exception:
+            try:
+                self.send_icon = tk.PhotoImage(file=str(icon_path))
+            except Exception:
+                self.send_icon = None
+        return self.send_icon
+
+    def _can_edit_sandbox(self):
+        """Sandbox-Bearbeitung nur fuer Berechtigung E4.
+
+        Bewusst robust gegen verschiedene FiBu-Mate-Staende:
+        - bevorzugt app.role_rank() / my_role()
+        - fallback auf user_data[current_user_key]['permission']
+        - technischer Superuser wagnerm bleibt E4-kompatibel
+        """
+        try:
+            if callable(getattr(self.app, "role_rank", None)) and int(self.app.role_rank()) >= 4:
+                return True
+        except Exception:
+            pass
+        try:
+            role = ""
+            if callable(getattr(self.app, "my_role", None)):
+                role = str(self.app.my_role() or "")
+            if "E4" in role or "System-Administrator" in role or role.strip().casefold() == "wagnerm":
+                return True
+        except Exception:
+            pass
+        try:
+            key = str(getattr(self.app, "current_user_key", "") or "").casefold()
+            if key == "wagnerm":
+                return True
+            users = (getattr(self.app, "user_data", {}) or {}).get("users", {}) or {}
+            user = users.get(key, {}) or {}
+            role = str(user.get("permission", "") or user.get("role", ""))
+            return "E4" in role or "System-Administrator" in role
+        except Exception:
+            return False
+
     def _toggle_db_paths(self):
         self.db_open = not self.db_open
         if self.db_frame:
@@ -407,13 +488,18 @@ class AFICopilotUI:
             self.db_toggle_button.configure(text="Datenbankpfade ausblenden ▲" if self.db_open else "Datenbankpfade anzeigen ▼")
 
     def _render_main(self, parent):
+        try:
+            style = ttk.Style(parent)
+            style.configure("AFI.TCombobox", font=("Segoe UI", 12))
+        except Exception:
+            pass
         parent.columnconfigure(1, weight=1)
         parent.rowconfigure(6, weight=1)
-        tk.Label(parent, text="Rechnung", bg=self.bg).grid(row=0, column=0, sticky="w", padx=10, pady=8)
-        tk.Entry(parent, textvariable=self.invoice_var).grid(row=0, column=1, sticky="ew", padx=8, pady=8)
-        tk.Button(parent, text="Auswählen", command=self.pick_invoice).grid(row=0, column=2, padx=8, pady=8)
-        self.db_toggle_button = tk.Button(parent, text="Datenbankpfade anzeigen ▼", command=self._toggle_db_paths, bg="#D9E2F3")
-        self.db_toggle_button.grid(row=1, column=0, columnspan=3, sticky="w", padx=10, pady=(0, 4))
+        tk.Label(parent, text="Rechnung", bg=self.bg, font=FONT_LABEL).grid(row=0, column=0, sticky="w", padx=10, pady=8)
+        tk.Entry(parent, textvariable=self.invoice_var, font=FONT_NORMAL).grid(row=0, column=1, sticky="ew", padx=8, pady=8, ipady=3)
+        tk.Button(parent, text="Auswählen", command=self.pick_invoice, font=FONT_BUTTON_SMALL, padx=12, pady=4).grid(row=0, column=2, padx=8, pady=8)
+        self.db_toggle_button = tk.Button(parent, text="Datenbankpfade anzeigen ▼", command=self._toggle_db_paths, bg="#D9E2F3", font=FONT_BUTTON_SMALL, padx=10, pady=4)
+        self.db_toggle_button.grid(row=1, column=0, columnspan=3, sticky="w", padx=10, pady=(0, 6))
         self.db_frame = tk.Frame(parent, bg=self.bg)
         self.db_frame.grid(row=2, column=0, columnspan=3, sticky="ew", padx=10, pady=(0, 6))
         self.db_frame.columnconfigure(1, weight=1)
@@ -422,16 +508,19 @@ class AFICopilotUI:
             ("Datenbank 2: Generalübersicht", self.general_db_var, lambda: self.pick_db(self.general_db_var, "general_db")),
         ]
         for idx, (label, var, command) in enumerate(rows):
-            tk.Label(self.db_frame, text=label, bg=self.bg).grid(row=idx, column=0, sticky="w", pady=3)
-            tk.Entry(self.db_frame, textvariable=var).grid(row=idx, column=1, sticky="ew", padx=8, pady=3)
-            tk.Button(self.db_frame, text="Ändern", command=command).grid(row=idx, column=2, padx=8, pady=3)
+            tk.Label(self.db_frame, text=label, bg=self.bg, font=FONT_LABEL).grid(row=idx, column=0, sticky="w", pady=4)
+            tk.Entry(self.db_frame, textvariable=var, font=FONT_NORMAL).grid(row=idx, column=1, sticky="ew", padx=8, pady=4, ipady=3)
+            tk.Button(self.db_frame, text="Ändern", command=command, font=FONT_BUTTON_SMALL, padx=10, pady=3).grid(row=idx, column=2, padx=8, pady=4)
         self.db_frame.grid_remove()
-        tk.Label(parent, text="Lieferant", bg=self.bg).grid(row=3, column=0, sticky="w", padx=10, pady=4)
+        tk.Label(parent, text="Lieferant", bg=self.bg, font=FONT_LABEL).grid(row=3, column=0, sticky="w", padx=10, pady=6)
         labels = [x["label"] for x in _load_suppliers() if x.get("active")]
-        ttk.Combobox(parent, textvariable=self.supplier_label_var, values=labels, state="readonly").grid(row=3, column=1, sticky="ew", padx=8, pady=4)
-        tk.Button(parent, text="Copilot öffnen", command=self.prepare, bg="#0F6CBD", fg="white", padx=12, pady=6).grid(row=4, column=0, columnspan=3, sticky="w", padx=10, pady=10)
-        tk.Label(parent, textvariable=self.status_var, bg=self.bg, fg="#44536A").grid(row=4, column=1, columnspan=2, sticky="e", padx=10)
-        tk.Label(parent, text="Ablauf: prompt.txt, zusammengeführte Kontierungsdatei und Rechnung werden in dieser Reihenfolge in die Zwischenablage gelegt. Danach wird Copilot geöffnet.", bg=self.bg, fg="#44536A", anchor="w", justify="left", wraplength=950).grid(row=5, column=0, columnspan=3, sticky="ew", padx=10)
+        supplier_box = ttk.Combobox(parent, textvariable=self.supplier_label_var, values=labels, state="readonly", style="AFI.TCombobox", font=("Segoe UI", 12))
+        supplier_box.grid(row=3, column=1, sticky="ew", padx=8, pady=6, ipady=4)
+        icon = self._load_icon()
+        copilot_button = tk.Button(parent, text="  Copilot öffnen", image=icon, compound="left", command=self.prepare, bg="#0F6CBD", fg="white", activebackground="#0A4E8A", activeforeground="white", font=FONT_COPILOT, padx=20, pady=10, bd=0, cursor="hand2")
+        copilot_button.grid(row=4, column=0, columnspan=2, sticky="w", padx=10, pady=12)
+        tk.Label(parent, textvariable=self.status_var, bg=self.bg, fg="#203A59", font=FONT_STATUS).grid(row=4, column=1, columnspan=2, sticky="e", padx=10)
+        tk.Label(parent, text="Ablauf: prompt.txt, zusammengeführte Kontierungsdatei und Rechnung werden in dieser Reihenfolge in die Zwischenablage gelegt. Danach wird Copilot geöffnet.", bg=self.bg, fg="#44536A", anchor="w", justify="left", wraplength=1150, font=FONT_STATUS).grid(row=5, column=0, columnspan=3, sticky="ew", padx=10)
 
         body = tk.Frame(parent, bg=self.bg)
         body.grid(row=6, column=0, columnspan=3, sticky="nsew", padx=10, pady=8)
@@ -439,49 +528,53 @@ class AFICopilotUI:
         body.columnconfigure(1, weight=1, uniform="main_body")
         body.rowconfigure(0, weight=1)
 
-        prompt_frame = tk.LabelFrame(body, text="Prompt-Vorschau", bg=self.bg, fg="#203A59", padx=4, pady=4)
+        prompt_frame = tk.LabelFrame(body, text="Prompt-Vorschau", bg=self.bg, fg="#203A59", font=("Segoe UI", 10, "bold"), padx=4, pady=4)
         prompt_frame.grid(row=0, column=0, sticky="nsew", padx=(0, 8))
         prompt_frame.rowconfigure(0, weight=1)
         prompt_frame.columnconfigure(0, weight=1)
-        self.prompt_preview = tk.Text(prompt_frame, wrap="word", height=16, font=("Consolas", 10))
+        self.prompt_preview = tk.Text(prompt_frame, wrap="word", height=16, font=FONT_PROMPT)
         self.prompt_preview.grid(row=0, column=0, sticky="nsew")
         prompt_scroll = tk.Scrollbar(prompt_frame, orient="vertical", command=self.prompt_preview.yview)
         prompt_scroll.grid(row=0, column=1, sticky="ns")
         self.prompt_preview.configure(yscrollcommand=prompt_scroll.set)
 
-        sandbox_frame = tk.LabelFrame(body, text="Bedienungs-Sandbox", bg=self.bg, fg="#203A59", padx=4, pady=4)
+        sandbox_frame = tk.LabelFrame(body, text="Bedienungs-Sandbox", bg=self.bg, fg="#203A59", font=("Segoe UI", 10, "bold"), padx=4, pady=4)
         sandbox_frame.grid(row=0, column=1, sticky="nsew", padx=(8, 0))
         self._render_sandbox(sandbox_frame)
 
-        tk.Label(parent, text=f"Ausgabeordner: {OUTPUT_DIR}", bg=self.bg, fg="#44536A", anchor="w").grid(row=7, column=0, columnspan=3, sticky="ew", padx=10, pady=(0, 8))
+        tk.Label(parent, text=f"Ausgabeordner: {OUTPUT_DIR}", bg=self.bg, fg="#44536A", anchor="w", font=FONT_STATUS).grid(row=7, column=0, columnspan=3, sticky="ew", padx=10, pady=(0, 8))
 
     def _render_sandbox(self, parent):
         parent.rowconfigure(1, weight=1)
         parent.columnconfigure(0, weight=1)
         toolbar = tk.Frame(parent, bg=self.bg)
         toolbar.grid(row=0, column=0, sticky="ew", pady=(0, 6))
-        tk.Button(toolbar, text="Bild hinzufügen", command=self.add_sandbox_image, bg="#D9E2F3").pack(side="left", padx=(0, 6))
-        tk.Button(toolbar, text="Sandbox leeren", command=self.clear_sandbox_images, bg="#F2D7D5").pack(side="left", padx=(0, 6))
-        tk.Label(toolbar, text="Hier können Bedienbilder dauerhaft abgelegt werden.", bg=self.bg, fg="#44536A").pack(side="left")
+        if self._can_edit_sandbox():
+            tk.Button(toolbar, text="Bild hinzufügen", command=self.add_sandbox_image, bg="#D9E2F3", font=FONT_BUTTON_SMALL, padx=10, pady=4).pack(side="left", padx=(0, 6))
+            tk.Button(toolbar, text="Text hinzufügen", command=self.add_sandbox_text, bg="#D9EAD3", font=FONT_BUTTON_SMALL, padx=10, pady=4).pack(side="left", padx=(0, 6))
+            tk.Button(toolbar, text="Größer", command=lambda: self.resize_selected_sandbox_item(1.15), bg="#EADCF8", font=FONT_BUTTON_SMALL, padx=10, pady=4).pack(side="left", padx=(0, 6))
+            tk.Button(toolbar, text="Kleiner", command=lambda: self.resize_selected_sandbox_item(0.87), bg="#EADCF8", font=FONT_BUTTON_SMALL, padx=10, pady=4).pack(side="left", padx=(0, 6))
+            tk.Button(toolbar, text="Auswahl löschen", command=self.delete_selected_sandbox_item, bg="#F8E7E6", font=FONT_BUTTON_SMALL, padx=10, pady=4).pack(side="left", padx=(0, 6))
+            tk.Button(toolbar, text="Sandbox leeren", command=self.clear_sandbox_items, bg="#F2D7D5", font=FONT_BUTTON_SMALL, padx=10, pady=4).pack(side="left", padx=(0, 6))
+            tk.Label(toolbar, text="Bearbeitung nur fuer E4: Elemente verschieben, skalieren und pflegen.", bg=self.bg, fg="#44536A", font=("Segoe UI", 10)).pack(side="left")
+        else:
+            tk.Label(toolbar, text="Sandbox-Ansicht: Bearbeitung nur mit Berechtigung E4 möglich.", bg=self.bg, fg="#44536A", font=("Segoe UI", 10, "bold")).pack(side="left")
 
-        canvas = tk.Canvas(parent, bg="white", highlightthickness=1, highlightbackground="#8A2BE2")
+        canvas = tk.Canvas(parent, bg="white", highlightthickness=2, highlightbackground="#8A2BE2", scrollregion=(0, 0, 1800, 1200))
         canvas.grid(row=1, column=0, sticky="nsew")
-        scroll = tk.Scrollbar(parent, orient="vertical", command=canvas.yview)
-        scroll.grid(row=1, column=1, sticky="ns")
-        canvas.configure(yscrollcommand=scroll.set)
-        inner = tk.Frame(canvas, bg="white")
-        window_id = canvas.create_window((0, 0), window=inner, anchor="nw")
-        inner.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
-        canvas.bind("<Configure>", lambda e: canvas.itemconfigure(window_id, width=e.width))
+        scroll_y = tk.Scrollbar(parent, orient="vertical", command=canvas.yview)
+        scroll_y.grid(row=1, column=1, sticky="ns")
+        scroll_x = tk.Scrollbar(parent, orient="horizontal", command=canvas.xview)
+        scroll_x.grid(row=2, column=0, sticky="ew")
+        canvas.configure(yscrollcommand=scroll_y.set, xscrollcommand=scroll_x.set)
         self.sandbox_canvas = canvas
-        self.sandbox_inner = inner
-        self.refresh_sandbox_images()
+        self.refresh_sandbox_items()
 
-    def _make_thumbnail(self, path, max_width=760, max_height=420):
+    def _make_resized_photo(self, path, w, h):
         try:
             from PIL import Image, ImageTk
             img = Image.open(path)
-            img.thumbnail((max_width, max_height))
+            img = img.resize((max(32, int(w)), max(32, int(h))))
             return ImageTk.PhotoImage(img)
         except Exception:
             try:
@@ -489,61 +582,226 @@ class AFICopilotUI:
             except Exception:
                 return None
 
-    def refresh_sandbox_images(self):
-        if not self.sandbox_inner:
+    def refresh_sandbox_items(self):
+        canvas = self.sandbox_canvas
+        if not canvas:
             return
-        for child in self.sandbox_inner.winfo_children():
-            child.destroy()
-        self.sandbox_image_refs = []
-        paths = [p for p in _load_sandbox_images() if Path(p).exists()]
-        if not paths:
-            tk.Label(self.sandbox_inner, text="Noch keine Bilder hinterlegt.\nÜber 'Bild hinzufügen' können Bedienhilfen eingefügt werden.", bg="white", fg="#44536A", justify="center", pady=40).pack(fill="both", expand=True)
+        canvas.delete("all")
+        self.sandbox_photo_refs = {}
+        items = _load_sandbox_items()
+        if not items:
+            canvas.create_text(40, 40, text=("Noch keine Elemente. Über 'Bild hinzufügen' oder 'Text hinzufügen' können Bedienhilfen angelegt werden." if self._can_edit_sandbox() else "Noch keine Sandbox-Inhalte hinterlegt."), anchor="nw", fill="#44536A", font=("Segoe UI", 12))
             return
-        for idx, path in enumerate(paths, 1):
-            row = tk.Frame(self.sandbox_inner, bg="white", bd=0, highlightthickness=0)
-            row.pack(fill="x", padx=8, pady=8)
-            header = tk.Frame(row, bg="white")
-            header.pack(fill="x")
-            tk.Label(header, text=f"{idx}. {Path(path).name}", bg="white", fg="#203A59", font=("Segoe UI", 9, "bold")).pack(side="left")
-            tk.Button(header, text="Entfernen", command=lambda p=path: self.remove_sandbox_image(p), bg="#F8E7E6").pack(side="right")
-            photo = self._make_thumbnail(path)
+        for item in items:
+            self._draw_sandbox_item(item)
+        self._update_sandbox_scrollregion()
+
+    def _draw_sandbox_item(self, item):
+        canvas = self.sandbox_canvas
+        if not canvas:
+            return
+        item_id = item.get("id") or str(uuid.uuid4())
+        item["id"] = item_id
+        tags = (f"sandbox_{item_id}", "sandbox_item")
+        x, y = int(item.get("x", 20)), int(item.get("y", 20))
+        w, h = int(item.get("w", 320)), int(item.get("h", 180))
+        if item.get("type") == "image":
+            photo = self._make_resized_photo(item.get("path"), w, h)
             if photo:
-                self.sandbox_image_refs.append(photo)
-                tk.Label(row, image=photo, bg="white").pack(anchor="w", pady=(4, 0))
+                self.sandbox_photo_refs[item_id] = photo
+                canvas.create_image(x, y, image=photo, anchor="nw", tags=tags)
             else:
-                tk.Label(row, text=path, bg="white", fg="#44536A", wraplength=740, justify="left").pack(anchor="w", pady=(4, 0))
+                canvas.create_text(x, y, text=Path(item.get("path", "Bild")).name, anchor="nw", fill="red", tags=tags)
+        else:
+            size = int(item.get("font_size", 14))
+            weight = "bold" if item.get("bold") else "normal"
+            slant = "italic" if item.get("italic") else "roman"
+            font = ("Segoe UI", size, weight, slant)
+            canvas.create_text(x, y, text=item.get("text", "Text"), anchor="nw", fill="#203A59", font=font, width=max(80, w), tags=tags)
+        if self._can_edit_sandbox():
+            canvas.create_rectangle(x, y, x + w, y + h, outline="#8A2BE2" if item_id == self.selected_item_id else "#90A4B8", width=2, tags=tags)
+            canvas.create_rectangle(x + w - 18, y + h - 18, x + w, y + h, fill="#8A2BE2", outline="#5F168C", width=2, tags=(f"resize_{item_id}", "resize_handle"))
+            canvas.tag_bind(f"sandbox_{item_id}", "<Button-1>", lambda e, iid=item_id: self._sandbox_press(e, iid, "move"))
+            canvas.tag_bind(f"resize_{item_id}", "<Button-1>", lambda e, iid=item_id: self._sandbox_press(e, iid, "resize"))
+            canvas.tag_bind(f"sandbox_{item_id}", "<B1-Motion>", self._sandbox_drag)
+            canvas.tag_bind(f"resize_{item_id}", "<B1-Motion>", self._sandbox_drag)
+            canvas.tag_bind(f"sandbox_{item_id}", "<ButtonRelease-1>", self._sandbox_release)
+            canvas.tag_bind(f"resize_{item_id}", "<ButtonRelease-1>", self._sandbox_release)
+            canvas.tag_bind(f"sandbox_{item_id}", "<Double-Button-1>", lambda e, iid=item_id: self.edit_sandbox_text(iid))
+        else:
+            canvas.create_rectangle(x, y, x + w, y + h, outline="#D6DEE8", width=1, tags=tags)
+
+    def _sandbox_press(self, event, item_id, mode):
+        if not self._can_edit_sandbox():
+            return "break"
+        self.selected_item_id = item_id
+        self.drag_state = {"item_id": item_id, "mode": mode, "x": self.sandbox_canvas.canvasx(event.x), "y": self.sandbox_canvas.canvasy(event.y)}
+        # Nicht sofort neu zeichnen: sonst verliert Tkinter während gedrückter Maustaste
+        # das angeklickte Canvas-Element und die Größenänderung bricht ab.
+        return "break"
+
+    def _sandbox_drag(self, event):
+        if not self._can_edit_sandbox():
+            return "break"
+        if not self.drag_state:
+            return "break"
+        cx = self.sandbox_canvas.canvasx(event.x)
+        cy = self.sandbox_canvas.canvasy(event.y)
+        dx = cx - self.drag_state["x"]
+        dy = cy - self.drag_state["y"]
+        self.drag_state["x"] = cx
+        self.drag_state["y"] = cy
+        items = _load_sandbox_items()
+        mode = self.drag_state["mode"]
+        active_id = self.drag_state["item_id"]
+        for item in items:
+            if item.get("id") == active_id:
+                if mode == "resize":
+                    item["w"] = max(60, int(item.get("w", 240) + dx))
+                    item["h"] = max(40, int(item.get("h", 120) + dy))
+                else:
+                    item["x"] = int(item.get("x", 0) + dx)
+                    item["y"] = int(item.get("y", 0) + dy)
+                    # Verschieben direkt auf dem Canvas anzeigen, ohne Neuaufbau.
+                    self.sandbox_canvas.move(f"sandbox_{active_id}", dx, dy)
+                    self.sandbox_canvas.move(f"resize_{active_id}", dx, dy)
+                break
+        _save_sandbox_items(items)
+        return "break"
+
+    def _sandbox_release(self, event):
+        if not self._can_edit_sandbox():
+            return "break"
+        self.drag_state = None
+        # Erst beim Loslassen neu zeichnen. Dadurch werden Bilder zuverlässig
+        # mit der neuen Breite/Höhe gerendert.
+        self.refresh_sandbox_items()
+        return "break"
+
+    def _update_sandbox_scrollregion(self):
+        if not self.sandbox_canvas:
+            return
+        box = self.sandbox_canvas.bbox("all")
+        if box:
+            self.sandbox_canvas.configure(scrollregion=(0, 0, max(1800, box[2] + 80), max(1200, box[3] + 80)))
+
+    def resize_selected_sandbox_item(self, factor):
+        if not self._can_edit_sandbox():
+            messagebox.showinfo(MODULE_TITLE, "Die Sandbox kann nur mit Berechtigung E4 bearbeitet werden.")
+            return
+        if not self.selected_item_id:
+            messagebox.showinfo(MODULE_TITLE, "Bitte zuerst ein Sandbox-Element anklicken.")
+            return
+        items = _load_sandbox_items()
+        changed = False
+        for item in items:
+            if item.get("id") == self.selected_item_id:
+                item["w"] = max(60, int(item.get("w", 240) * factor))
+                item["h"] = max(40, int(item.get("h", 120) * factor))
+                changed = True
+                break
+        if changed:
+            _save_sandbox_items(items)
+            self.refresh_sandbox_items()
 
     def add_sandbox_image(self):
+        if not self._can_edit_sandbox():
+            messagebox.showinfo(MODULE_TITLE, "Die Sandbox kann nur mit Berechtigung E4 bearbeitet werden.")
+            return
         paths = filedialog.askopenfilenames(title="Bilder für Bedienungs-Sandbox auswählen", filetypes=[("Bilder", "*.png *.jpg *.jpeg *.gif *.bmp"), ("Alle Dateien", "*.*")])
         if not paths:
             return
-        current = _load_sandbox_images()
-        for path in paths:
+        items = _load_sandbox_items()
+        base_x = 30 + len(items) * 20
+        base_y = 30 + len(items) * 20
+        for idx, path in enumerate(paths):
             try:
                 copied = _copy_sandbox_image(path)
-                current.append(str(copied))
+                items.append({"id": str(uuid.uuid4()), "type": "image", "path": str(copied), "x": base_x + idx * 30, "y": base_y + idx * 30, "w": 360, "h": 220})
             except Exception as exc:
                 messagebox.showwarning(MODULE_TITLE, f"Bild konnte nicht hinzugefügt werden:\n{path}\n\n{exc}")
-        _save_sandbox_images(current)
-        self.refresh_sandbox_images()
+        _save_sandbox_items(items)
+        self.refresh_sandbox_items()
 
-    def remove_sandbox_image(self, path):
-        current = [p for p in _load_sandbox_images() if str(p) != str(path)]
-        _save_sandbox_images(current)
-        self.refresh_sandbox_images()
+    def add_sandbox_text(self):
+        if not self._can_edit_sandbox():
+            messagebox.showinfo(MODULE_TITLE, "Die Sandbox kann nur mit Berechtigung E4 bearbeitet werden.")
+            return
+        dialog = tk.Toplevel(self.root)
+        dialog.title("Sandbox-Text hinzufügen")
+        dialog.geometry("520x360")
+        dialog.transient(self.root)
+        dialog.grab_set()
+        tk.Label(dialog, text="Text", font=FONT_LABEL).pack(anchor="w", padx=12, pady=(12, 4))
+        text_widget = tk.Text(dialog, height=7, font=("Segoe UI", 12))
+        text_widget.pack(fill="both", expand=True, padx=12, pady=4)
+        options = tk.Frame(dialog)
+        options.pack(fill="x", padx=12, pady=8)
+        tk.Label(options, text="Schriftgröße", font=FONT_LABEL).pack(side="left")
+        size_var = tk.IntVar(value=16)
+        tk.Spinbox(options, from_=8, to=72, textvariable=size_var, width=5, font=FONT_NORMAL).pack(side="left", padx=8)
+        bold_var = tk.BooleanVar(value=False)
+        italic_var = tk.BooleanVar(value=False)
+        tk.Checkbutton(options, text="Fett", variable=bold_var, font=FONT_LABEL).pack(side="left", padx=8)
+        tk.Checkbutton(options, text="Kursiv", variable=italic_var, font=FONT_LABEL).pack(side="left", padx=8)
+        buttons = tk.Frame(dialog)
+        buttons.pack(fill="x", padx=12, pady=10)
+        def apply():
+            text = text_widget.get("1.0", "end-1c").strip()
+            if not text:
+                messagebox.showwarning(MODULE_TITLE, "Bitte einen Text eingeben.")
+                return
+            items = _load_sandbox_items()
+            items.append({"id": str(uuid.uuid4()), "type": "text", "text": text, "font_size": int(size_var.get()), "bold": bool(bold_var.get()), "italic": bool(italic_var.get()), "x": 40 + len(items) * 15, "y": 40 + len(items) * 15, "w": 360, "h": 120})
+            _save_sandbox_items(items)
+            dialog.destroy()
+            self.refresh_sandbox_items()
+        tk.Button(buttons, text="Einfügen", command=apply, bg="#0F6CBD", fg="white", font=FONT_BUTTON).pack(side="right", padx=6)
+        tk.Button(buttons, text="Abbrechen", command=dialog.destroy, font=FONT_BUTTON_SMALL).pack(side="right", padx=6)
 
-    def clear_sandbox_images(self):
-        if messagebox.askyesno(MODULE_TITLE, "Alle Bilder aus der Sandbox entfernen?\nDie Bilddateien im Ausgabeordner bleiben erhalten."):
-            _save_sandbox_images([])
-            self.refresh_sandbox_images()
+    def edit_sandbox_text(self, item_id):
+        if not self._can_edit_sandbox():
+            messagebox.showinfo(MODULE_TITLE, "Die Sandbox kann nur mit Berechtigung E4 bearbeitet werden.")
+            return
+        items = _load_sandbox_items()
+        item = next((i for i in items if i.get("id") == item_id), None)
+        if not item or item.get("type") != "text":
+            return
+        new_text = simpledialog.askstring("Text bearbeiten", "Text:", initialvalue=item.get("text", ""), parent=self.root)
+        if new_text is None:
+            return
+        item["text"] = new_text
+        _save_sandbox_items(items)
+        self.refresh_sandbox_items()
+
+    def delete_selected_sandbox_item(self):
+        if not self._can_edit_sandbox():
+            messagebox.showinfo(MODULE_TITLE, "Die Sandbox kann nur mit Berechtigung E4 bearbeitet werden.")
+            return
+        if not self.selected_item_id:
+            messagebox.showinfo(MODULE_TITLE, "Bitte zuerst ein Sandbox-Element anklicken.")
+            return
+        items = [i for i in _load_sandbox_items() if i.get("id") != self.selected_item_id]
+        _save_sandbox_items(items)
+        self.selected_item_id = None
+        self.refresh_sandbox_items()
+
+    def clear_sandbox_items(self):
+        if not self._can_edit_sandbox():
+            messagebox.showinfo(MODULE_TITLE, "Die Sandbox kann nur mit Berechtigung E4 bearbeitet werden.")
+            return
+        if messagebox.askyesno(MODULE_TITLE, "Alle Elemente aus der Sandbox entfernen?\nDie Bilddateien im Ausgabeordner bleiben erhalten."):
+            _save_sandbox_items([])
+            self.selected_item_id = None
+            self.refresh_sandbox_items()
 
     def _render_prompts(self, parent):
         parent.rowconfigure(1, weight=1)
         parent.columnconfigure(0, weight=1)
         top = tk.Frame(parent, bg=self.bg)
         top.grid(row=0, column=0, sticky="ew", padx=10, pady=8)
-        tk.Button(top, text="Speichern", command=self.save_prompts, bg="#0F6CBD", fg="white", padx=12).pack(side="right")
-        tk.Button(top, text="Lieferant neu/anlegen", command=self.new_supplier, padx=10).pack(side="right", padx=8)
+        tk.Button(top, text="Speichern", command=self.save_prompts, bg="#0F6CBD", fg="white", padx=16, pady=8, font=FONT_BUTTON).pack(side="right")
+        tk.Button(top, text="Lieferant neu/anlegen", command=self.new_supplier, padx=14, pady=7, font=FONT_BUTTON_SMALL).pack(side="right", padx=8)
         pane = ttk.Panedwindow(parent, orient="horizontal")
         pane.grid(row=1, column=0, sticky="nsew", padx=10, pady=8)
         left = tk.Frame(pane, bg=self.bg)
@@ -552,24 +810,24 @@ class AFICopilotUI:
         pane.add(right, weight=2)
         left.rowconfigure(1, weight=1)
         left.columnconfigure(0, weight=1)
-        tk.Label(left, text="Generalprompt", bg=self.bg, font=("Segoe UI", 10, "bold")).grid(row=0, column=0, sticky="w")
-        self.general_text = tk.Text(left, wrap="word", font=("Consolas", 10))
+        tk.Label(left, text="Generalprompt", bg=self.bg, font=("Segoe UI", 12, "bold")).grid(row=0, column=0, sticky="w")
+        self.general_text = tk.Text(left, wrap="word", font=FONT_PROMPT)
         self.general_text.grid(row=1, column=0, sticky="nsew")
         self.general_text.insert("1.0", _load_general_prompt())
         right.columnconfigure(1, weight=1)
         right.rowconfigure(4, weight=1)
-        tk.Label(right, text="Lieferantenprompts", bg=self.bg, font=("Segoe UI", 10, "bold")).grid(row=0, column=0, columnspan=2, sticky="w")
-        self.supplier_list = tk.Listbox(right, height=10)
+        tk.Label(right, text="Lieferantenprompts", bg=self.bg, font=("Segoe UI", 12, "bold")).grid(row=0, column=0, columnspan=2, sticky="w")
+        self.supplier_list = tk.Listbox(right, height=10, font=FONT_NORMAL)
         self.supplier_list.grid(row=1, column=0, rowspan=4, sticky="nsew", padx=(0, 8))
         for item in _load_suppliers():
             self.supplier_list.insert("end", item["label"])
         self.supplier_list.bind("<<ListboxSelect>>", self.load_selected_supplier)
-        tk.Label(right, text="Schlüssel", bg=self.bg).grid(row=1, column=1, sticky="w")
-        tk.Entry(right, textvariable=self.supplier_key_var).grid(row=1, column=2, sticky="ew")
-        tk.Label(right, text="Name", bg=self.bg).grid(row=2, column=1, sticky="w")
-        tk.Entry(right, textvariable=self.supplier_name_var).grid(row=2, column=2, sticky="ew")
-        tk.Label(right, text="Prompt", bg=self.bg).grid(row=3, column=1, columnspan=2, sticky="w")
-        self.supplier_text = tk.Text(right, wrap="word", font=("Consolas", 10))
+        tk.Label(right, text="Schlüssel", bg=self.bg, font=FONT_LABEL).grid(row=1, column=1, sticky="w")
+        tk.Entry(right, textvariable=self.supplier_key_var, font=FONT_NORMAL).grid(row=1, column=2, sticky="ew", ipady=3)
+        tk.Label(right, text="Name", bg=self.bg, font=FONT_LABEL).grid(row=2, column=1, sticky="w")
+        tk.Entry(right, textvariable=self.supplier_name_var, font=FONT_NORMAL).grid(row=2, column=2, sticky="ew", ipady=3)
+        tk.Label(right, text="Prompt", bg=self.bg, font=FONT_LABEL).grid(row=3, column=1, columnspan=2, sticky="w")
+        self.supplier_text = tk.Text(right, wrap="word", font=FONT_PROMPT)
         self.supplier_text.grid(row=4, column=1, columnspan=2, sticky="nsew")
         if self.supplier_list.size():
             self.supplier_list.selection_set(0)
