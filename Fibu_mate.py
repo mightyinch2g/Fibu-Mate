@@ -20487,6 +20487,521 @@ def _fm523_render_knowledge_work_area(self):
 
 FiBuMateApp.render_knowledge_work_area = _fm523_render_knowledge_work_area
 
+
+
+# ------------------------------------------------------------------
+# FiBu Mate v0.524 - Berechtigung E0 fuer Azubis
+# ------------------------------------------------------------------
+# E0 darf nur Wissenszentrale, Informationen, Einstellungen, Dateiausgabe
+# sowie den Pfad Tools - Hauptbuch -> AFI-Uploads -> AFI-Kontierungs-Assistent oeffnen.
+FM_E0_AZUBI_VERSION = "0.524"
+ROLE_E0 = "E0 - Azubi"
+try:
+    if ROLE_E0 not in ROLE_ORDER:
+        ROLE_ORDER.insert(0, ROLE_E0)
+    ROLE_RANK.update({
+        ROLE_E0: 0,
+        "E0": 0,
+        "Azubi": 0,
+        "Azubis": 0,
+        "Auszubildende": 0,
+        "Auszubildender": 0,
+        "E0 - Azubis": 0,
+        "E0 - Auszubildende": 0,
+    })
+    ROLE_MIGRATION.update({
+        "E0": ROLE_E0,
+        "Azubi": ROLE_E0,
+        "Azubis": ROLE_E0,
+        "Auszubildende": ROLE_E0,
+        "Auszubildender": ROLE_E0,
+        "E0 - Azubis": ROLE_E0,
+        "E0 - Auszubildende": ROLE_E0,
+        ROLE_E0: ROLE_E0,
+    })
+except Exception:
+    pass
+
+
+def _fm524_role_of(app):
+    try:
+        if not getattr(app, 'current_user_key', ''):
+            return ROLE_E1
+        if getattr(app, 'current_user_key', '') == SUPERUSER_KEY:
+            return ROLE_E4
+        raw = (getattr(app, 'user_data', {}) or {}).get('users', {}).get(getattr(app, 'current_user_key', ''), {}).get('permission', ROLE_E1)
+        return ROLE_MIGRATION.get(raw, raw)
+    except Exception:
+        return ROLE_E1
+
+
+def _fm524_is_e0(app):
+    try:
+        return _fm524_role_of(app) == ROLE_E0 or int(ROLE_RANK.get(_fm524_role_of(app), 1)) == 0
+    except Exception:
+        return False
+
+
+_FM524_ALLOWED_PAGES_E0 = {
+    'launch', 'main',
+    'knowledge_base',
+    'data_prep', 'afi_uploads',
+    'information', 'versions',
+    'settings', 'tile_colors',
+    'file_output',
+    'tool:afi_copilot_auto',
+}
+_FM524_ALLOWED_TOOL_IDS_E0 = {'afi_copilot_auto'}
+_FM524_ALLOWED_PAGE_LINKS_E0 = {'page:afi_uploads'}
+
+
+def _fm524_can_open_page(app, page_name):
+    if not _fm524_is_e0(app):
+        return True
+    page = str(page_name or '')
+    if page in _FM524_ALLOWED_PAGES_E0:
+        return True
+    if page.startswith('tool:'):
+        return page == 'tool:afi_copilot_auto'
+    return False
+
+
+def _fm524_can_open_tool(app, tool_id):
+    if not _fm524_is_e0(app):
+        return True
+    tool_id = str(tool_id or '')
+    if tool_id in _FM524_ALLOWED_TOOL_IDS_E0:
+        return True
+    if tool_id in _FM524_ALLOWED_PAGE_LINKS_E0:
+        return True
+    return False
+
+
+def _fm524_access_denied(app, target=''):
+    try:
+        messagebox.showinfo(
+            'Keine Berechtigung',
+            'Diese Kachel ist fuer Berechtigung E0 sichtbar, aber nicht oeffenbar.\n\n'
+            'E0 darf die Wissenszentrale, Informationen, Einstellungen, Dateiausgabe sowie den AFI-Kontierungs-Assistenten verwenden.'
+        )
+    except Exception:
+        pass
+
+
+try:
+    _FM524_PREV_ENSURE_PERMISSIONS_DEFAULTS = FiBuMateApp.ensure_permissions_defaults
+except Exception:
+    _FM524_PREV_ENSURE_PERMISSIONS_DEFAULTS = None
+
+
+def _fm524_ensure_permissions_defaults(self):
+    # Eigene Normalisierung, damit E0 nicht durch alte Fallbacks auf E1 gehoben wird.
+    users = self.user_data.setdefault('users', {})
+    for key, u in users.items():
+        u.setdefault('display_name', key)
+        u.setdefault('favorites', [])
+        u.setdefault('email', '')
+        u.setdefault('auth', {'password_hash': None, 'enabled': False})
+        try:
+            u['favorites'] = [fav for fav in u.get('favorites', []) if fav in TOOL_REGISTRY and fav not in HIDDEN_TOOL_IDS]
+        except Exception:
+            u['favorites'] = []
+        u.setdefault('first_name', '')
+        u.setdefault('full_name', ' '.join(x for x in [u.get('first_name', '').strip(), u.get('display_name', key).strip()] if x).strip() or u.get('display_name', key))
+        current_permission = ROLE_MIGRATION.get(u.get('permission'), u.get('permission', ROLE_E1))
+        if key == SUPERUSER_KEY:
+            u['permission'] = ROLE_E4
+        else:
+            if current_permission == ROLE_E4:
+                u['permission'] = ROLE_E1
+            else:
+                u['permission'] = current_permission if current_permission in ROLE_ORDER else ROLE_E1
+
+
+def _fm524_my_role(self):
+    if not getattr(self, 'current_user_key', ''):
+        return ROLE_E1
+    if self.current_user_key == SUPERUSER_KEY:
+        return ROLE_E4
+    raw = self.user_data.get('users', {}).get(self.current_user_key, {}).get('permission', ROLE_E1)
+    return ROLE_MIGRATION.get(raw, raw)
+
+
+def _fm524_role_rank(self, role=None):
+    try:
+        if role is None:
+            role = _fm524_my_role(self)
+    except Exception:
+        role = ROLE_E1
+    return ROLE_RANK.get(ROLE_MIGRATION.get(role, role), ROLE_RANK.get(ROLE_E1, 1))
+
+
+try:
+    _FM524_PREV_SHOW_PAGE = FiBuMateApp.show_page
+except Exception:
+    _FM524_PREV_SHOW_PAGE = None
+
+
+def _fm524_show_page(self, page_name, title='', add_to_history=True):
+    if not _fm524_can_open_page(self, page_name):
+        _fm524_access_denied(self, page_name)
+        return
+    return _FM524_PREV_SHOW_PAGE(self, page_name, title, add_to_history)
+
+
+try:
+    _FM524_PREV_OPEN_TOOL = FiBuMateApp.open_tool
+except Exception:
+    _FM524_PREV_OPEN_TOOL = None
+
+
+def _fm524_open_tool(self, tool_id):
+    if not _fm524_can_open_tool(self, tool_id):
+        _fm524_access_denied(self, tool_id)
+        return
+    return _FM524_PREV_OPEN_TOOL(self, tool_id)
+
+
+try:
+    _FM524_PREV_RENDER_EXTERNAL_TOOL = FiBuMateApp.render_external_tool
+except Exception:
+    _FM524_PREV_RENDER_EXTERNAL_TOOL = None
+
+
+def _fm524_render_external_tool(self, tool_id):
+    if not _fm524_can_open_tool(self, tool_id):
+        _fm524_access_denied(self, tool_id)
+        try:
+            self.show_page('main', 'Hauptmenue', True)
+        except Exception:
+            pass
+        return
+    return _FM524_PREV_RENDER_EXTERNAL_TOOL(self, tool_id)
+
+
+try:
+    _FM524_PREV_RENDER_PAGE = FiBuMateApp.render_page
+except Exception:
+    _FM524_PREV_RENDER_PAGE = None
+
+
+def _fm524_render_page(self):
+    try:
+        if _fm524_is_e0(self) and not _fm524_can_open_page(self, getattr(self, 'current_page', '')):
+            self.current_page = 'main'
+            self.current_title = 'Hauptmenue'
+            self.breadcrumb = [('main', 'Hauptmenue')]
+    except Exception:
+        pass
+    return _FM524_PREV_RENDER_PAGE(self)
+
+
+try:
+    _FM524_PREV_FAVORITES_BAR = FiBuMateApp.draw_favorites_bar
+except Exception:
+    _FM524_PREV_FAVORITES_BAR = None
+
+
+def _fm524_draw_favorites_bar(self):
+    # E0: Favoritenleiste darf keine nicht zugelassenen Module als Seiteneinstieg nutzbar machen.
+    if _fm524_is_e0(self):
+        old_favs = None
+        try:
+            old_favs = set(getattr(self, 'favorites', set()) or set())
+            self.favorites = set(f for f in old_favs if f in _FM524_ALLOWED_TOOL_IDS_E0)
+            return _FM524_PREV_FAVORITES_BAR(self)
+        finally:
+            if old_favs is not None:
+                try:
+                    self.favorites = old_favs
+                except Exception:
+                    pass
+    return _FM524_PREV_FAVORITES_BAR(self)
+
+
+try:
+    _FM524_PREV_RENDER_MODULE_MENU = FiBuMateApp.render_module_menu
+except Exception:
+    _FM524_PREV_RENDER_MODULE_MENU = None
+
+
+def _fm524_render_module_menu(self, modules, show_descriptions=True):
+    # Alle Kacheln bleiben sichtbar. Der eigentliche Zugriff wird zentral in open_tool/show_page gesperrt.
+    return _FM524_PREV_RENDER_MODULE_MENU(self, modules, show_descriptions)
+
+
+# Zuweisungen vor Programmstart aktivieren.
+FiBuMateApp.ensure_permissions_defaults = _fm524_ensure_permissions_defaults
+FiBuMateApp.my_role = _fm524_my_role
+FiBuMateApp.role_rank = _fm524_role_rank
+FiBuMateApp.show_page = _fm524_show_page
+FiBuMateApp.open_tool = _fm524_open_tool
+FiBuMateApp.render_external_tool = _fm524_render_external_tool
+FiBuMateApp.render_page = _fm524_render_page
+FiBuMateApp.draw_favorites_bar = _fm524_draw_favorites_bar
+FiBuMateApp.render_module_menu = _fm524_render_module_menu
+
+
+
+# ------------------------------------------------------------------
+# FiBu Mate v0.527 - Zentrale Benutzerdatei: Windows/Netzlaufwerk ohne os.replace-Pflicht
+# ------------------------------------------------------------------
+# Zweck:
+# - Auf Windows-Netzlaufwerken kann os.replace trotz Schreibrecht mit WinError 5 scheitern,
+#   weil Replace/Rename/Delete anders berechtigt bzw. durch den SMB-Server blockiert sein kann.
+# - Es bleibt dabei: kein lokaler Passwort-Fallback. Gespeichert wird weiterhin ausschliesslich
+#   in der zentralen Benutzerdatei.
+# - Falls os.replace nicht moeglich ist, wird nach Backup der bestehenden JSON direkt in dieselbe
+#   zentrale Datei geschrieben.
+FM_USER_FILE_WINDOWS_REPLACE_FIX_VERSION = "0.527"
+
+
+def _fm527_json_payload(data):
+    try:
+        clean = _fm444_normalize_user_data(data)
+    except Exception:
+        clean = data if isinstance(data, dict) else {'last_username_prefill': '', 'users': {}, 'settings': {}}
+    return clean, json.dumps(clean, ensure_ascii=False, indent=2)
+
+
+def _fm527_write_json_central(path, data):
+    folder = os.path.dirname(path)
+    if folder:
+        os.makedirs(folder, exist_ok=True)
+    clean, payload = _fm527_json_payload(data)
+    tmp = path + '.tmp.' + str(os.getpid())
+    backup = path + '.bak'
+    with open(tmp, 'w', encoding='utf-8') as f:
+        f.write(payload)
+        f.flush()
+        try:
+            os.fsync(f.fileno())
+        except Exception:
+            pass
+    try:
+        try:
+            os.replace(tmp, path)
+            return clean
+        except PermissionError as replace_exc:
+            # Windows/SMB: Replace kann verweigert sein, obwohl normales Schreiben erlaubt ist.
+            # Deshalb direktes Schreiben in die zentrale Datei, aber vorher ein Backup halten.
+            try:
+                if os.path.exists(path):
+                    import shutil as _shutil
+                    _shutil.copy2(path, backup)
+            except Exception:
+                pass
+            try:
+                with open(path, 'w', encoding='utf-8') as f:
+                    f.write(payload)
+                    f.flush()
+                    try:
+                        os.fsync(f.fileno())
+                    except Exception:
+                        pass
+                return clean
+            except Exception as direct_exc:
+                raise PermissionError(
+                    'Zentrale Benutzerdatei konnte weder per Replace noch direkt beschrieben werden. '
+                    'Replace-Fehler: ' + str(replace_exc) + ' | Direkt-Schreibfehler: ' + str(direct_exc)
+                )
+    finally:
+        try:
+            if os.path.exists(tmp):
+                os.remove(tmp)
+        except Exception:
+            pass
+
+
+def _fm527_atomic_write(path, data):
+    folder = os.path.dirname(path)
+    if folder:
+        os.makedirs(folder, exist_ok=True)
+    lock_path = path + '.lock'
+    if not _fm516_acquire_file_lock(lock_path):
+        raise RuntimeError('Zentrale Benutzerdatei ist derzeit durch einen anderen Speichervorgang gesperrt.')
+    try:
+        current = _fm516_read_user_json(path) or _fm444_default_user_data()
+        merged = _fm516_merge_user_data(current, data)
+        return _fm527_write_json_central(path, merged)
+    finally:
+        try:
+            os.remove(lock_path)
+        except Exception:
+            pass
+
+
+def _fm527_write_user_data(path, data):
+    _fm527_write_json_central(path, data)
+
+# Globale Save-Implementierungen ersetzen. Bestehende Methoden loesen diese Namen zur Laufzeit auf.
+_fm516_atomic_write = _fm527_atomic_write
+try:
+    _fm525_write_user_data = _fm527_write_user_data
+except Exception:
+    pass
+
+
+
+# ------------------------------------------------------------------
+# FiBu Mate v0.528 - Benutzeranlage final: fehlende Auth-Default-Funktion eliminieren
+# ------------------------------------------------------------------
+# Ursache aus CMD: NameError auf _fm488_default_auth in _fm517_create_user.
+# Fix: Benutzeranlage verwendet nur noch eine lokale Auth-Default-Funktion und zeigt Fehler per Popup.
+FM_USER_CREATE_AUTH_DEFAULT_FIX_VERSION = "0.528"
+
+def _fm528_default_auth():
+    return {
+        'password_hash': None,
+        'enabled': False,
+        'password_must_set': True,
+        'password_set_at': '',
+        'password_reset_at': '',
+    }
+
+# Kompatibilitaetsalias fuer alte Funktionsbloecke, die diesen Namen noch direkt aufrufen.
+_fm488_default_auth = _fm528_default_auth
+
+
+def _fm528_allowed_roles(app, target_key=None):
+    try:
+        rank = int(app.role_rank(app.my_role()))
+        roles = [r for r in ROLE_ORDER if int(app.role_rank(r)) <= rank and (rank >= 4 or r != ROLE_E4)]
+        if 'ROLE_E0' in globals() and rank >= 3 and ROLE_E0 not in roles:
+            roles.insert(0, ROLE_E0)
+        return roles or [ROLE_E1]
+    except Exception:
+        roles = []
+        try:
+            if 'ROLE_E0' in globals(): roles.append(ROLE_E0)
+        except Exception:
+            pass
+        roles.append(ROLE_E1)
+        return roles
+
+
+def _fm528_create_user(app, display_name, first_name, email, role):
+    try:
+        raw = ' '.join(str(display_name or '').strip().split())
+        if not raw:
+            messagebox.showwarning('FiBu Mate', 'Bitte einen Anzeigenamen/Nachnamen eingeben.')
+            return False
+        key = normalize_username(raw)
+        if not key:
+            messagebox.showwarning('FiBu Mate', 'Der Benutzername ist nicht zulässig.')
+            return False
+        try:
+            rank = int(app.role_rank(app.my_role()))
+        except Exception:
+            rank = 1
+        if rank < 3 and getattr(app, 'current_user_key', '') != SUPERUSER_KEY:
+            messagebox.showwarning('FiBu Mate', 'Keine Berechtigung zum Anlegen neuer Benutzer.')
+            return False
+        allowed = _fm528_allowed_roles(app)
+        if role not in allowed:
+            messagebox.showwarning('FiBu Mate', 'Diese Rolle darf nicht vergeben werden.')
+            return False
+
+        # Zentrale Daten laden und neuen Benutzer einpflegen.
+        try:
+            path = _fm516_central_user_path()
+        except Exception:
+            path = os.path.join(NETWORK_ROOT, 'Fibu_Mate_Doc', 'Config', 'fibu_mate_users.json')
+        central = _fm516_read_user_json(path) or getattr(app, 'user_data', None) or _fm444_default_user_data()
+        central = _fm444_normalize_user_data(central)
+        users = central.setdefault('users', {})
+        if key in users:
+            messagebox.showwarning('FiBu Mate', 'Dieser Benutzer ist bereits vorhanden.')
+            return False
+        first = str(first_name or '').strip()
+        users[key] = {
+            'display_name': raw,
+            'first_name': first,
+            'full_name': ' '.join(x for x in (first, raw) if x).strip() or raw,
+            'email': str(email or '').strip(),
+            'favorites': [],
+            'auth': _fm528_default_auth(),
+            'permission': role,
+        }
+        # Speichern ueber zentrale Speicherlogik; v0.527 faengt Windows/SMB-os.replace-Probleme ab.
+        try:
+            saved = _fm516_atomic_write(path, central)
+        except Exception:
+            # Fallback nur zentral: direktes Schreiben in dieselbe zentrale Datei, kein lokaler Fallback.
+            if '_fm527_write_json_central' in globals():
+                saved = _fm527_write_json_central(path, central)
+            else:
+                folder = os.path.dirname(path)
+                if folder: os.makedirs(folder, exist_ok=True)
+                with open(path, 'w', encoding='utf-8') as f:
+                    json.dump(_fm444_normalize_user_data(central), f, ensure_ascii=False, indent=2)
+                saved = central
+        app.user_data = _fm444_normalize_user_data(saved)
+        try:
+            app.ensure_permissions_defaults()
+        except Exception:
+            pass
+        messagebox.showinfo('FiBu Mate', 'Benutzer wurde angelegt:\n\n' + raw)
+        try:
+            app.render_page()
+        except Exception:
+            pass
+        return True
+    except Exception as exc:
+        try:
+            messagebox.showerror('FiBu Mate', 'Benutzer konnte nicht angelegt werden.\n\nTechnische Ursache:\n' + str(exc))
+        except Exception:
+            pass
+        return False
+
+
+def _fm528_open_new_user_dialog(app):
+    try:
+        rank = int(app.role_rank(app.my_role()))
+    except Exception:
+        rank = 1
+    if rank < 3 and getattr(app, 'current_user_key', '') != SUPERUSER_KEY:
+        messagebox.showwarning('FiBu Mate', 'Keine Berechtigung zum Anlegen neuer Benutzer.')
+        return
+    roles = _fm528_allowed_roles(app)
+    win = tk.Toplevel(app.root)
+    win.title('Neuen Benutzer anlegen')
+    win.configure(bg=BG)
+    win.transient(app.root)
+    win.grab_set()
+    win.resizable(False, False)
+    display = tk.StringVar()
+    first = tk.StringVar()
+    email = tk.StringVar()
+    role = tk.StringVar(value=roles[0] if roles else ROLE_E1)
+    tk.Label(win, text='Neuen Benutzer anlegen', bg=BG, fg=TEXT, font=body_font(14, 'bold')).grid(row=0, column=0, columnspan=2, sticky='w', padx=18, pady=(16, 10))
+    for row, (label, var) in enumerate((('Anzeigename / Nachname', display), ('Vorname', first), ('E-Mail', email)), 1):
+        tk.Label(win, text=label, bg=BG, fg=TEXT2, font=body_font(10)).grid(row=row, column=0, sticky='w', padx=18, pady=5)
+        tk.Entry(win, textvariable=var, bg=WHITE, fg=TEXT, font=body_font(10), width=34, relief='solid', bd=1).grid(row=row, column=1, sticky='ew', padx=18, pady=5, ipady=4)
+    tk.Label(win, text='Rolle', bg=BG, fg=TEXT2, font=body_font(10)).grid(row=4, column=0, sticky='w', padx=18, pady=5)
+    ttk.Combobox(win, textvariable=role, values=roles, state='readonly', font=body_font(10), width=32).grid(row=4, column=1, sticky='ew', padx=18, pady=5)
+    footer = tk.Frame(win, bg=BG)
+    footer.grid(row=5, column=0, columnspan=2, sticky='e', padx=18, pady=(14, 16))
+    def create():
+        if _fm528_create_user(app, display.get(), first.get(), email.get(), role.get()):
+            win.destroy()
+    tk.Button(footer, text='Anlegen', command=create, bg='#CFEAD6', fg=TEXT, font=body_font(10, 'bold'), relief='solid', bd=1, padx=16, pady=6).pack(side='left', padx=(0, 8))
+    tk.Button(footer, text='Abbrechen', command=win.destroy, bg=WHITE, fg=TEXT, font=body_font(10), relief='solid', bd=1, padx=16, pady=6).pack(side='left')
+    try:
+        win.bind('<Return>', lambda e: create())
+    except Exception:
+        pass
+
+# Alte Namen ersetzen, damit bestehende Button-Commands die neue Logik nutzen.
+_fm517_allowed_roles = _fm528_allowed_roles
+_fm517_create_user = _fm528_create_user
+_fm517_open_new_user_dialog = _fm528_open_new_user_dialog
+try:
+    _fm508_allowed_new_user_roles = _fm528_allowed_roles
+    _fm508_open_new_user_dialog = _fm528_open_new_user_dialog
+except Exception:
+    pass
+
 if __name__ == "__main__":
     FiBuMateApp().run()
 
