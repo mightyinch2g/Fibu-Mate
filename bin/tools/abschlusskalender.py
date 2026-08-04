@@ -12428,3 +12428,317 @@ def _load_embedded_module(module_key:str):
 if __name__ == '__main__':
     import json
     print(json.dumps(selftest_static(), ensure_ascii=False, indent=2))
+
+
+# ------------------------------------------------------------------
+# FiBu Mate Abschlusskalender - Multi-Dokumentationen FINAL 2026-07-20
+# Version 0.520
+# Zweck:
+# - Mehrere Dokumentationen pro Aufgabe/Unteraufgabe.
+# - Dokumentationsdateien werden in einen FiBu-Mate-Dokumentationsordner kopiert.
+# - Neue Dokumentationen werden automatisch in alle Folgezeitraeume uebernommen.
+# - Entfernen wirkt analog im aktuellen und in allen Folgezeitraeumen.
+# ------------------------------------------------------------------
+
+APP_VERSION = "0.520-multi-documentation-following-periods"
+DOCUMENTATION_MULTI_VERSION = "0.520"
+
+
+def _fm520_patch_class(mod, cls):
+    if cls is None or getattr(cls, "_fm520_multi_documentation", False):
+        return
+
+    def _now(self):
+        try:
+            return mod.datetime.now().isoformat(timespec="seconds")
+        except Exception:
+            from datetime import datetime as _dt
+            return _dt.now().isoformat(timespec="seconds")
+
+    def _user(self):
+        try:
+            return self.current_user_full_name()
+        except Exception:
+            return str(getattr(getattr(self, "app", None), "current_user_display", "") or getattr(getattr(self, "app", None), "current_user_key", "") or "")
+
+    def _norm_doc(self, raw):
+        import os
+        if isinstance(raw, str):
+            path = raw.strip()
+            return {"name": os.path.basename(path), "path": path, "source_path": path, "created_at": "", "created_by": "", "note": "", "doc_id": ""} if path else None
+        if isinstance(raw, dict):
+            path = str(raw.get("path", "") or "").strip()
+            name = str(raw.get("name", "") or "").strip() or (os.path.basename(path) if path else "Dokumentation")
+            out = dict(raw)
+            out["name"] = name
+            out["path"] = path
+            out.setdefault("source_path", raw.get("source_path", path))
+            out.setdefault("created_at", raw.get("updated_at", ""))
+            out.setdefault("created_by", "")
+            out.setdefault("note", "")
+            out.setdefault("doc_id", "")
+            return out
+        return None
+
+    def normalize_documentation_fields(self, item):
+        import os
+        item.setdefault("attachments", [])
+        item.setdefault("comments", [])
+        docs = []
+        for raw in item.get("documentations", []) if isinstance(item.get("documentations", []), list) else []:
+            doc = _norm_doc(self, raw)
+            if doc and (doc.get("path") or doc.get("name")):
+                docs.append(doc)
+        legacy = _norm_doc(self, item.get("documentation"))
+        if legacy and not any((d.get("doc_id") and legacy.get("doc_id") and d.get("doc_id") == legacy.get("doc_id")) or (d.get("path") and d.get("path") == legacy.get("path")) for d in docs):
+            docs.insert(0, legacy)
+        seen = set()
+        clean_docs = []
+        for doc in docs:
+            key = doc.get("doc_id") or doc.get("path") or (doc.get("name"), doc.get("source_path"))
+            if key in seen:
+                continue
+            seen.add(key)
+            clean_docs.append(doc)
+        item["documentations"] = clean_docs
+        item["documentation"] = clean_docs[0] if clean_docs else {}
+        clean_attachments = []
+        for att in item.get("attachments", []):
+            if isinstance(att, str):
+                clean_attachments.append({"name": os.path.basename(att), "path": att, "comment": "", "added_at": ""})
+            elif isinstance(att, dict):
+                att.setdefault("name", os.path.basename(att.get("path", "")) or att.get("name", "Anlage"))
+                att.setdefault("path", "")
+                att.setdefault("comment", "")
+                clean_attachments.append(att)
+        item["attachments"] = clean_attachments
+        return item
+
+    def documentation_count(self, item):
+        self.normalize_documentation_fields(item)
+        return len([d for d in item.get("documentations", []) if d.get("path") or d.get("name")])
+
+    def _task_key(self, task):
+        try:
+            return self.task_match_key(task)
+        except Exception:
+            return ("task", str(task.get("id", "")), str(task.get("team", "")), str(task.get("title", "")).strip().casefold())
+
+    def _sub_key(self, subtask):
+        return str(subtask.get("catalog_id") or subtask.get("id") or subtask.get("title") or "").strip().casefold()
+
+    def _find_target(self, data, task_key, sub_key=None):
+        for task in data.get("tasks", []) or []:
+            if task.get("deleted"):
+                continue
+            if _task_key(self, task) != task_key:
+                continue
+            if sub_key:
+                for sub in task.get("subtasks", []) or []:
+                    if not sub.get("deleted") and _sub_key(self, sub) == sub_key:
+                        return sub
+                return None
+            return task
+        return None
+
+    def _doc_root(self):
+        try:
+            scope = self.close_type_label().replace(" ", "_")
+        except Exception:
+            scope = str(getattr(mod, "CLOSING_SCOPE", "Abschluss") or "Abschluss")
+        try:
+            root = mod.BASE_DIR.parent / "Dokumentationen" / scope
+        except Exception:
+            root = mod.Path("Dokumentationen") / scope
+        root.mkdir(parents=True, exist_ok=True)
+        return root
+
+    def _safe_name(self, value):
+        import re
+        safe = re.sub(r"[^A-Za-z0-9_.() äöüÄÖÜß-]+", "_", str(value or "Dokumentation")).strip(" ._")
+        return safe[:150] or "Dokumentation"
+
+    def _copy_doc(self, source_path, title):
+        import hashlib, os, shutil
+        src = mod.Path(str(source_path or "").strip())
+        if not src.exists() or not src.is_file():
+            raise FileNotFoundError(str(source_path))
+        folder = _doc_root(self) / str(getattr(self, "period", "")) / _safe_name(self, title)[:60]
+        folder.mkdir(parents=True, exist_ok=True)
+        target = folder / _safe_name(self, src.name)
+        if target.exists():
+            target = folder / f"{target.stem}_{hashlib.sha1((str(src)+_now(self)).encode('utf-8', errors='ignore')).hexdigest()[:8]}{target.suffix}"
+        copied = shutil.copy2(str(src), str(target))
+        return {"doc_id": hashlib.sha1(str(copied).casefold().encode("utf-8", errors="ignore")).hexdigest(), "name": os.path.basename(copied), "path": str(copied), "source_path": str(src), "created_at": _now(self), "created_by": _user(self), "note": "", "period_added": str(getattr(self, "period", ""))}
+
+    def _add_doc(self, item, doc):
+        self.normalize_documentation_fields(item)
+        docs = item.setdefault("documentations", [])
+        key = doc.get("doc_id") or doc.get("path")
+        for existing in docs:
+            if key and (existing.get("doc_id") == key or existing.get("path") == doc.get("path")):
+                return False
+        docs.append(dict(doc))
+        item["documentation"] = docs[0] if docs else {}
+        return True
+
+    def _remove_doc(self, item, doc):
+        self.normalize_documentation_fields(item)
+        doc_id = doc.get("doc_id") or ""
+        path = doc.get("path") or ""
+        before = len(item.get("documentations", []))
+        item["documentations"] = [d for d in item.get("documentations", []) if not ((doc_id and d.get("doc_id") == doc_id) or (path and d.get("path") == path))]
+        item["documentation"] = item["documentations"][0] if item.get("documentations") else {}
+        return before != len(item.get("documentations", []))
+
+    def _propagate(self, item, docs, parent_task=None, remove=False):
+        if not docs:
+            return 0
+        task_key = _task_key(self, parent_task or item)
+        sub_key = _sub_key(self, item) if parent_task is not None else None
+        changed_periods = 0
+        try:
+            periods = list(self.following_periods())
+        except Exception:
+            periods = []
+        for period in periods:
+            try:
+                data = mod.load_period(period)
+                target = _find_target(self, data, task_key, sub_key)
+                if not target:
+                    continue
+                changed = False
+                for doc in docs:
+                    changed = (_remove_doc(self, target, doc) if remove else _add_doc(self, target, doc)) or changed
+                if changed:
+                    mod.save_period(period, data)
+                    changed_periods += 1
+            except Exception:
+                pass
+        return changed_periods
+
+    def create_documentation_button(self, parent, item, title, parent_task=None):
+        bg = parent.cget("bg")
+        frame = mod.tk.Frame(parent, bg=bg)
+        inner = mod.tk.Frame(frame, bg=bg)
+        inner.place(relx=0.5, rely=0.5, anchor="center")
+        try:
+            photo = self.get_close_icon_photo("fileinterfacesymboloftextpapersheet_79740.ico", 18, 18)
+        except Exception:
+            photo = None
+        btn = mod.tk.Button(inner, text="" if photo else "Doku", image=photo, command=lambda: self.show_documentation_popup(item, title, parent_task), bg=bg, fg=mod.COLORS["blue"], bd=0, cursor="hand2", padx=0, pady=0)
+        if photo:
+            btn.image = photo
+        btn.pack(side="left", padx=(0, 3))
+        mod.tk.Label(inner, text=str(self.documentation_count(item)), bg=bg, fg=mod.COLORS["blue"], font=mod.zfont(self.app, 12, "bold")).pack(side="left")
+        return frame
+
+    def show_documentation_popup(self, item, title, parent_task=None):
+        self.normalize_documentation_fields(item)
+        win = mod.tk.Toplevel(self.root)
+        win.title(f"Dokumentationen - {title}")
+        win.configure(bg=mod.COLORS["bg"])
+        win.geometry("820x520")
+        win.transient(self.root)
+        win.grab_set()
+        mod.tk.Label(win, text="Dokumentationen", bg=mod.COLORS["bg"], fg=mod.COLORS["text"], font=mod.zfont(self.app, 16, "bold")).pack(anchor="w", padx=16, pady=(14, 8))
+        body = mod.tk.Frame(win, bg=mod.COLORS["white"], bd=1, relief="solid")
+        body.pack(fill="both", expand=True, padx=16, pady=(0, 12))
+        list_frame = mod.tk.Frame(body, bg=mod.COLORS["white"])
+        list_frame.pack(fill="both", expand=True, padx=12, pady=(12, 8))
+
+        def refresh():
+            if getattr(self, "selected_team", None):
+                self.render_team_detail(self.selected_team)
+
+        def redraw():
+            for child in list_frame.winfo_children():
+                child.destroy()
+            docs = [d for d in item.get("documentations", []) if d.get("path") or d.get("name")]
+            if not docs:
+                mod.tk.Label(list_frame, text="Noch keine Dokumentation hinterlegt.", bg=mod.COLORS["white"], fg=mod.COLORS["text2"], font=mod.zfont(self.app, 12)).pack(anchor="w", pady=8)
+                return
+            for idx, doc in enumerate(docs, start=1):
+                row = mod.tk.Frame(list_frame, bg=mod.COLORS["white"], bd=1, relief="solid")
+                row.pack(fill="x", pady=(0, 6))
+                label = f"{idx}. {doc.get('name','Dokumentation')}"
+                if doc.get("created_at"):
+                    label += f" | {mod.format_datetime_de(doc.get('created_at'))}"
+                if doc.get("created_by"):
+                    label += f" | {doc.get('created_by')}"
+                mod.tk.Label(row, text=label, bg=mod.COLORS["white"], fg=mod.COLORS["text"], font=mod.zfont(self.app, 11, "bold"), anchor="w").pack(side="left", padx=8, pady=7, fill="x", expand=True)
+                mod.tk.Button(row, text="Oeffnen", command=lambda p=doc.get("path", ""): self.open_attachment(p), bg=mod.COLORS["blue"], fg="white", bd=0, padx=8, pady=4, state="normal" if doc.get("path") else "disabled").pack(side="left", padx=(0, 6), pady=5)
+                def remove_current(d=doc):
+                    if not mod.messagebox.askyesno("Dokumentation entfernen", "Dokumentation aus aktuellem und allen Folgezeitraeumen entfernen?\n\nDie Datei im Dokumentationsordner wird nicht geloescht."):
+                        return
+                    _remove_doc(self, item, d)
+                    affected = _propagate(self, item, [d], parent_task=parent_task, remove=True)
+                    self.save()
+                    redraw()
+                    refresh()
+                    mod.messagebox.showinfo("Dokumentation", f"Dokumentation entfernt. Folgezeitraeume aktualisiert: {affected}")
+                mod.tk.Button(row, text="Entfernen", command=remove_current, bg="#FEE2E2", fg=mod.COLORS["red"], bd=0, padx=8, pady=4).pack(side="left", padx=(0, 8), pady=5)
+
+        def choose_docs():
+            selected = mod.filedialog.askopenfilenames(title="Dokumentationen auswaehlen")
+            if not selected:
+                return
+            added = []
+            for source in selected:
+                try:
+                    doc = _copy_doc(self, source, title)
+                    if _add_doc(self, item, doc):
+                        added.append(doc)
+                except Exception as exc:
+                    mod.messagebox.showerror("Dokumentation", f"Dokumentation konnte nicht kopiert werden:\n\n{source}\n\n{exc}")
+            if added:
+                self.save()
+                affected = _propagate(self, item, added, parent_task=parent_task, remove=False)
+                redraw()
+                refresh()
+                mod.messagebox.showinfo("Dokumentation", f"{len(added)} Dokumentation(en) hinzugefuegt und in {affected} Folgezeitraum/Folgezeitraeume uebernommen.")
+
+        button_row = mod.tk.Frame(body, bg=mod.COLORS["white"])
+        button_row.pack(fill="x", padx=12, pady=(0, 8))
+        mod.tk.Button(button_row, text="Dokumentation(en) hinzufuegen", command=choose_docs, bg=mod.COLORS["blue"], fg="white", bd=0, padx=12, pady=7).pack(side="left")
+        mod.tk.Label(body, text="Hinweis: Dokumentationen werden in den FiBu-Mate-Dokumentationsordner kopiert und automatisch fuer dieselbe Aufgabe in alle Folgezeitraeume uebernommen. Entfernen wirkt ebenfalls in den Folgezeitraeumen; die kopierte Datei bleibt erhalten.", bg=mod.COLORS["white"], fg=mod.COLORS["text2"], font=mod.zfont(self.app, 11), wraplength=760, justify="left").pack(anchor="w", padx=12, pady=(0, 10))
+        redraw()
+        mod.tk.Button(win, text="Schliessen", command=win.destroy, bg=mod.COLORS["blue"], fg="white", bd=0, padx=14, pady=7).pack(anchor="e", padx=16, pady=(0, 14))
+
+    old_sync = getattr(cls, "sync_current_as_template_to_following_periods", None)
+    def sync_current_as_template_to_following_periods(self):
+        result = old_sync(self) if old_sync else None
+        try:
+            for task in self.tasks():
+                self.normalize_documentation_fields(task)
+                if task.get("documentations"):
+                    _propagate(self, task, list(task.get("documentations", [])), None, False)
+                for sub in task.get("subtasks", []) or []:
+                    self.normalize_documentation_fields(sub)
+                    if sub.get("documentations"):
+                        _propagate(self, sub, list(sub.get("documentations", [])), task, False)
+        except Exception:
+            pass
+        return result
+
+    cls.normalize_documentation_fields = normalize_documentation_fields
+    cls.documentation_count = documentation_count
+    cls.create_documentation_button = create_documentation_button
+    cls.show_documentation_popup = show_documentation_popup
+    cls.sync_current_as_template_to_following_periods = sync_current_as_template_to_following_periods
+    cls._fm520_multi_documentation = True
+
+
+def _fm520_patch_module(module_key, mod):
+    for name in ("MonthlyCloseUI", "QuarterlyCloseUI", "YearlyCloseUI"):
+        _fm520_patch_class(mod, getattr(mod, name, None))
+    mod.DOCUMENTATION_MULTI_VERSION = DOCUMENTATION_MULTI_VERSION
+    return mod
+
+_FM520_PREV_LOAD_EMBEDDED_MODULE = _load_embedded_module
+
+def _load_embedded_module(module_key: str):
+    mod = _FM520_PREV_LOAD_EMBEDDED_MODULE(module_key)
+    mod = _fm520_patch_module(module_key, mod)
+    _MODULE_CACHE[module_key] = mod
+    return mod
