@@ -23162,5 +23162,97 @@ try:
 except Exception:
     pass
 
+
+
+# ------------------------------------------------------------------
+# FiBu Mate - Abschlusskalender-Kachel und Periodenhinweise FINAL 2026-07-20
+# Version 0.541
+# Zweck:
+# - Kachel im Abschlusskalender-Menü von "Monatsabschluss" auf "Abschlusskalender" umbenennen.
+# - Kachel zeigt weiterhin den aktuellen Monat und zusätzlich fällige Quartals-/Jahresabschlüsse.
+# - Geschäftsjahreslogik: 01.10. bis 30.09.; Q1 Okt-Dez, Q2 Jan-Mär, Q3 Apr-Jun, Q4 Jul-Sep.
+# ------------------------------------------------------------------
+FIBU_MATE_ABSCHLUSSKALENDER_TILE_VERSION = "0.541-abschlusskalender-tile-periods"
+
+try:
+    TOOL_REGISTRY.setdefault("monthly_close", {})["title"] = "Abschlusskalender"
+    TOOL_REGISTRY.setdefault("monthly_close", {})["favorite_label"] = "Abschluss"
+    MODULE_DESCRIPTIONS["monthly_close"] = (
+        "Abschlusskalender: Monatsabschluss-Cockpit mit Teamfortschritt, Aufgabenstatus, "
+        "Fristwarnungen, Anlagen und Hinweis auf fällige Quartals- bzw. Jahresabschlüsse."
+    )
+except Exception:
+    pass
+
+
+def _fm541_fiscal_year_start_for_month(year, month):
+    return int(year) if int(month) >= 10 else int(year) - 1
+
+
+def _fm541_fiscal_year_short(start_year):
+    return f"{int(start_year)}/{str(int(start_year) + 1)[-2:]}"
+
+
+def _fm541_fiscal_quarter_for_month(month):
+    month = int(month)
+    if month in (10, 11, 12):
+        return 1
+    if month in (1, 2, 3):
+        return 2
+    if month in (4, 5, 6):
+        return 3
+    return 4
+
+
+def _fm541_german_month_name(month):
+    names = ["Januar", "Februar", "März", "April", "Mai", "Juni", "Juli", "August", "September", "Oktober", "November", "Dezember"]
+    return names[int(month) - 1]
+
+
+def _fm541_current_close_period_label(self, module_id):
+    now = datetime.now()
+    fy_start = _fm541_fiscal_year_start_for_month(now.year, now.month)
+    fy_short = _fm541_fiscal_year_short(fy_start)
+    if module_id == "monthly_close":
+        lines = [f"Monat: {_fm541_german_month_name(now.month)} {now.year}"]
+        if now.month in (12, 3, 6, 9):
+            lines.append(f"Quartal: Q{_fm541_fiscal_quarter_for_month(now.month)} GJ {fy_short}")
+        if now.month == 9:
+            lines.append(f"Jahresabschluss: GJ {fy_short}")
+        return "\n".join(lines)
+    if module_id == "quarterly_close":
+        return f"Q{_fm541_fiscal_quarter_for_month(now.month)} GJ {fy_short}"
+    if module_id == "yearly_close":
+        return f"GJ {fy_short}"
+    return ""
+
+
+def _fm541_render_closing_calendar_menu(self):
+    modules = [("Abschlusskalender", "monthly_close"), ("Stichtagspflege", "deadline_maintenance")]
+    self.render_module_menu(modules, show_descriptions=True)
+    if self.my_role() == ROLE_E4:
+        text = "Auto-Mail: Ein" if self.auto_close_mail_enabled() else "Auto-Mail: Aus"
+        btn = tk.Button(
+            self.root,
+            text=text,
+            command=self.toggle_auto_close_mail,
+            bg=BLUE if self.auto_close_mail_enabled() else GREY_DISABLED,
+            fg="white",
+            bd=0,
+            padx=10,
+            pady=3,
+            cursor="hand2",
+            font=("Segoe UI", 9, "bold"),
+        )
+        self.widget_items.append(btn)
+        self.canvas.create_window(self.canvas.winfo_width() / 2, 136, window=btn, anchor="n")
+    self.draw_bottom_logo()
+
+try:
+    FiBuMateApp.current_close_period_label = _fm541_current_close_period_label
+    FiBuMateApp.render_closing_calendar_menu = _fm541_render_closing_calendar_menu
+except Exception:
+    pass
+
 if __name__ == "__main__":
     FiBuMateApp().run()
