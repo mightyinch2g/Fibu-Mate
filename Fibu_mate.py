@@ -23254,5 +23254,292 @@ try:
 except Exception:
     pass
 
+
+
+# ------------------------------------------------------------------
+# FiBu Mate v0.542 - Rechtsklick-Verschiebung final aktivieren
+# ------------------------------------------------------------------
+# Behebt: Kontextmenü öffnete, Zielauswahl wurde aber nicht wirksam angewendet.
+# Unterstützt echte Module sowie Menükacheln mit page:-Kennung.
+FM_MODULE_MOVE_FIX_VERSION = "0.542-module-move-final"
+
+try:
+    FM_MODULE_MOVE_TARGETS.update({"treasury_tools": "Tools - Treasury"})
+except Exception:
+    FM_MODULE_MOVE_TARGETS = {
+        "data_prep": "Tools - Hauptbuch",
+        "nike_tools": "Nike-Tools",
+        "afi_uploads": "AFI-Uploads",
+        "debitoren_tools": "Tools - Debitoren",
+        "closing_calendar": "Abschlusskalender",
+        "compliance_audit": "Compliance & Audit",
+        "treasury_tools": "Tools - Treasury",
+        "in_dev": "In Entwicklung",
+    }
+
+FM542_DEFAULT_MENU_MODULES = {
+    "data_prep": [("Nike-Tools", "page:nike_tools"), ("AFI-Uploads", "page:afi_uploads"), ("Aramark Monatsabrechnungen - PDF zu Excel", "aramark_monatsabrechnungen_pdf_to_excel")],
+    "nike_tools": [("Nike - PDF zu Excel", "nike_pdf_to_excel"), ("Nike - OP-Liste: Vollständigkeit PDF-Rechnungen prüfen", "nike_op_liste_pdf_check"), ("Nike - Rechnungs-PDFs in Sammelordner", "invoice_pdf_collector")],
+    "afi_uploads": [("AFI-Kontierungs-Assistent", "afi_copilot_auto")],
+    "debitoren_tools": [("Debitoren-Serienbrief", "debitoren_serienbrief")],
+    "closing_calendar": [("Abschlusskalender", "monthly_close"), ("Stichtagspflege", "deadline_maintenance")],
+    "compliance_audit": [("Steuermeldungs-Cockpit", "tax_reporting"), ("Audit-Cockpit", "audit_cockpit"), ("Dokumentationszentrale", "documentation_center")],
+    "treasury_tools": [("Kontenumsatz-Cockpit", "page:account_revenue_cockpit")],
+    "in_dev": [("Compliance & Audit", "page:compliance_audit"), ("Kontenauswertung (alt)", "page:account_analysis"), ("Banken- und Kontenstammdaten (alt)", "page:treasury_master_data"), ("X001 SAP - Test", "x001_sap_test"), ("AFI-Upload (lokale KI)", "supplier_invoice_afi_upload"), ("AFI-Kontierungs-Assistent (stabil)", "afi_copilot_stable")],
+}
+try:
+    FM_DEFAULT_MENU_MODULES.update(FM542_DEFAULT_MENU_MODULES)
+except Exception:
+    FM_DEFAULT_MENU_MODULES = dict(FM542_DEFAULT_MENU_MODULES)
+
+def _fm542_norm_mid(mid):
+    aliases = {
+        "account_revenue_cockpit": "page:account_revenue_cockpit",
+        "konto_umsatz_cockpit": "page:account_revenue_cockpit",
+        "account_analysis": "page:account_analysis",
+        "treasury_master_data": "page:treasury_master_data",
+    }
+    return aliases.get(str(mid or ""), str(mid or ""))
+
+def _fm542_known_ids():
+    ids = set()
+    try:
+        ids.update(str(k) for k in TOOL_REGISTRY.keys())
+    except Exception:
+        pass
+    for source in (FM542_DEFAULT_MENU_MODULES, FM_DEFAULT_MENU_MODULES):
+        try:
+            for modules in source.values():
+                for _title, mid in modules:
+                    ids.add(str(mid))
+        except Exception:
+            pass
+    return ids
+
+def _fm542_is_movable(mid):
+    mid = _fm542_norm_mid(mid)
+    if not mid or mid in HIDDEN_TOOL_IDS:
+        return False
+    if mid in _fm542_known_ids():
+        return True
+    if mid.startswith("page:"):
+        return True
+    return False
+
+def _fm542_title(mid):
+    mid = _fm542_norm_mid(mid)
+    explicit = {
+        "page:account_revenue_cockpit": "Kontenumsatz-Cockpit",
+        "page:account_analysis": "Kontenauswertung (alt)",
+        "page:treasury_master_data": "Banken- und Kontenstammdaten (alt)",
+    }
+    if mid in explicit:
+        return explicit[mid]
+    try:
+        if mid in TOOL_REGISTRY:
+            return TOOL_REGISTRY.get(mid, {}).get("title", mid)
+    except Exception:
+        pass
+    if mid.startswith("page:"):
+        return FM_MODULE_MOVE_TARGETS.get(mid[5:], mid[5:])
+    for source in (FM542_DEFAULT_MENU_MODULES, FM_DEFAULT_MENU_MODULES):
+        try:
+            for modules in source.values():
+                for title, module_id in modules:
+                    if str(module_id) == mid:
+                        return title
+        except Exception:
+            pass
+    return mid
+
+def _fm542_default_page(mid):
+    mid = _fm542_norm_mid(mid)
+    for source in (FM542_DEFAULT_MENU_MODULES, FM_DEFAULT_MENU_MODULES):
+        try:
+            for page, modules in source.items():
+                if any(str(module_id) == mid for _title, module_id in modules):
+                    return page
+        except Exception:
+            pass
+    return ""
+
+def _fm542_load_moves():
+    try:
+        if os.path.exists(FM_MODULE_MOVE_FILE):
+            with open(FM_MODULE_MOVE_FILE, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            raw = data.get("moves", {}) if isinstance(data, dict) else {}
+            out = {}
+            for key, value in raw.items():
+                mid = _fm542_norm_mid(key)
+                page = str(value)
+                if page in FM_MODULE_MOVE_TARGETS and _fm542_is_movable(mid):
+                    out[mid] = page
+            return out
+    except Exception:
+        pass
+    return {}
+
+def _fm542_save_moves(moves):
+    try:
+        clean = {}
+        for key, value in (moves or {}).items():
+            mid = _fm542_norm_mid(key)
+            page = str(value)
+            if page in FM_MODULE_MOVE_TARGETS and _fm542_is_movable(mid):
+                clean[mid] = page
+        os.makedirs(os.path.dirname(FM_MODULE_MOVE_FILE), exist_ok=True)
+        payload = {"version": FM_MODULE_MOVE_FIX_VERSION, "updated_at": datetime.now().isoformat(timespec="seconds"), "moves": clean}
+        tmp = FM_MODULE_MOVE_FILE + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump(payload, f, ensure_ascii=False, indent=2)
+        try:
+            os.replace(tmp, FM_MODULE_MOVE_FILE)
+        except Exception:
+            with open(FM_MODULE_MOVE_FILE, "w", encoding="utf-8") as f:
+                json.dump(payload, f, ensure_ascii=False, indent=2)
+            try:
+                os.remove(tmp)
+            except Exception:
+                pass
+        return True
+    except Exception as exc:
+        try:
+            messagebox.showerror("FiBu Mate", "Modulverschiebung konnte nicht gespeichert werden:\n\n" + str(exc))
+        except Exception:
+            pass
+        return False
+
+def _fm542_modules_for_page(page):
+    page = str(page or "")
+    moves = _fm542_load_moves()
+    result = []
+    present = set()
+    for title, mid_raw in FM542_DEFAULT_MENU_MODULES.get(page, []):
+        mid = _fm542_norm_mid(mid_raw)
+        if mid in HIDDEN_TOOL_IDS:
+            continue
+        if moves.get(mid) and moves.get(mid) != page:
+            continue
+        result.append((title, mid))
+        present.add(mid)
+    for mid, target_page in sorted(moves.items(), key=lambda item: _fm542_title(item[0]).casefold()):
+        if target_page == page and mid not in present and mid not in HIDDEN_TOOL_IDS:
+            result.append((_fm542_title(mid), mid))
+            present.add(mid)
+    return result
+
+def _fm542_set_module_page(self, mid, page):
+    if not _fm520_can_move_modules(self):
+        return
+    mid = _fm542_norm_mid(mid)
+    if not _fm542_is_movable(mid):
+        return
+    moves = _fm542_load_moves()
+    default_page = _fm542_default_page(mid)
+    if page == "__default__" or page == default_page:
+        moves.pop(mid, None)
+        target_label = FM_MODULE_MOVE_TARGETS.get(default_page, "Standard-Untermenü")
+    else:
+        if page not in FM_MODULE_MOVE_TARGETS:
+            return
+        moves[mid] = page
+        target_label = FM_MODULE_MOVE_TARGETS.get(page, page)
+    if _fm542_save_moves(moves):
+        try:
+            messagebox.showinfo("FiBu Mate", f"{_fm542_title(mid)} wurde nach '{target_label}' verschoben.")
+        except Exception:
+            pass
+        try:
+            self.render_page()
+        except Exception:
+            try:
+                self.show_page(getattr(self, "current_page", "main"), getattr(self, "current_title", ""), False)
+            except Exception:
+                pass
+
+def _fm542_show_tile_context_menu(self, event, tile):
+    try:
+        mid = _fm542_norm_mid(getattr(tile, "tile_id", ""))
+        if not _fm542_is_movable(mid) or not _fm520_can_move_modules(self):
+            return None
+        menu = tk.Menu(self.root, tearoff=0)
+        menu.add_command(label="Modul / Menükachel verschieben nach…", state="disabled")
+        menu.add_separator()
+        current_page = _fm542_load_moves().get(mid) or _fm542_default_page(mid)
+        for page, label in FM_MODULE_MOVE_TARGETS.items():
+            prefix = "✓ " if page == current_page else ""
+            menu.add_command(label=prefix + label, command=lambda p=page, m=mid: _fm542_set_module_page(self, m, p))
+        menu.add_separator()
+        menu.add_command(label="Zurück ins Standard-Untermenü", command=lambda m=mid: _fm542_set_module_page(self, m, "__default__"))
+        menu.tk_popup(event.x_root, event.y_root)
+        try:
+            menu.grab_release()
+        except Exception:
+            pass
+        return "break"
+    except Exception as exc:
+        try:
+            messagebox.showerror("FiBu Mate", "Kontextmenü konnte nicht geöffnet werden:\n\n" + str(exc))
+        except Exception:
+            pass
+        return "break"
+
+# v0.520-Funktionsnamen überschreiben, damit vorhandene Bindings automatisch die neue Logik nutzen.
+_fm520_load_moves = _fm542_load_moves
+_fm520_save_moves = _fm542_save_moves
+_fm520_title_for = _fm542_title
+_fm520_default_page_for = _fm542_default_page
+_fm520_modules_for_page = _fm542_modules_for_page
+_fm520_set_module_page = _fm542_set_module_page
+_fm520_show_tile_context_menu = _fm542_show_tile_context_menu
+
+try:
+    _fm542_prev_tile_init = Tile.__init__
+    def _fm542_tile_init(self, parent, app, tile_id, title, command=None, favorite_enabled=False, fixed_color=None, lock_tile=False, center_text=False, icon_type=None, corner_fold=False):
+        _fm542_prev_tile_init(self, parent, app, tile_id, title, command, favorite_enabled, fixed_color, lock_tile, center_text, icon_type, corner_fold)
+        try:
+            if _fm542_is_movable(tile_id):
+                self.bind("<Button-3>", lambda e, t=self: _fm542_show_tile_context_menu(app, e, t))
+                self.bind("<Button-2>", lambda e, t=self: _fm542_show_tile_context_menu(app, e, t))
+        except Exception:
+            pass
+    Tile.__init__ = _fm542_tile_init
+except Exception:
+    pass
+
+def _fm542_render_menu(self, page, show_descriptions=True):
+    self.render_module_menu(_fm542_modules_for_page(page), show_descriptions=show_descriptions)
+    self.draw_bottom_logo()
+
+def _fm542_render_data_prep_menu(self): return _fm542_render_menu(self, "data_prep", False)
+def _fm542_render_nike_tools_menu(self): return _fm542_render_menu(self, "nike_tools", True)
+def _fm542_render_afi_uploads_menu(self): return _fm542_render_menu(self, "afi_uploads", True)
+def _fm542_render_debitoren_tools_menu(self): return _fm542_render_menu(self, "debitoren_tools", True)
+def _fm542_render_compliance_audit_menu(self): return _fm542_render_menu(self, "compliance_audit", True)
+def _fm542_render_treasury_tools_menu(self): return _fm542_render_menu(self, "treasury_tools", True)
+def _fm542_render_in_dev_menu(self): return _fm542_render_menu(self, "in_dev", True)
+
+def _fm542_render_closing_calendar_menu(self):
+    self.render_module_menu(_fm542_modules_for_page("closing_calendar"), show_descriptions=True)
+    try:
+        if self.my_role() == ROLE_E4:
+            text = "Auto-Mail: Ein" if self.auto_close_mail_enabled() else "Auto-Mail: Aus"
+            btn = tk.Button(self.root, text=text, command=self.toggle_auto_close_mail, bg=BLUE if self.auto_close_mail_enabled() else GREY_DISABLED, fg="white", bd=0, padx=10, pady=3, cursor="hand2", font=("Segoe UI", 9, "bold"))
+            self.widget_items.append(btn)
+            self.canvas.create_window(self.canvas.winfo_width() / 2, 136, window=btn, anchor="n")
+    except Exception:
+        pass
+    self.draw_bottom_logo()
+
+FiBuMateApp.render_data_prep_menu = _fm542_render_data_prep_menu
+FiBuMateApp.render_nike_tools_menu = _fm542_render_nike_tools_menu
+FiBuMateApp.render_afi_uploads_menu = _fm542_render_afi_uploads_menu
+FiBuMateApp.render_debitoren_tools_menu = _fm542_render_debitoren_tools_menu
+FiBuMateApp.render_closing_calendar_menu = _fm542_render_closing_calendar_menu
+FiBuMateApp.render_compliance_audit_menu = _fm542_render_compliance_audit_menu
+FiBuMateApp.render_treasury_tools_menu = _fm542_render_treasury_tools_menu
+FiBuMateApp.render_in_dev_menu = _fm542_render_in_dev_menu
+
 if __name__ == "__main__":
     FiBuMateApp().run()
