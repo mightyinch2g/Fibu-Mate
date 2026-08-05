@@ -2662,6 +2662,9 @@ _EMBEDDED_SOURCES = {'monthly_close': '## FiBuMate_PATCH_MARKER: 20260609_PROTOC
                   '        if self.get_expand_key(task) in self.expanded_tasks:\n'
                   '            for sub in visible_subtasks:\n'
                   '                self.normalize_documentation_fields(sub)\n'
+                  '                sub.setdefault("subtasks", [])\n'
+                  '                visible_sub_subtasks = [c for c in sub.get("subtasks", []) or [] if not '
+                  'c.get("deleted") and str(c.get("title", "")).strip()]\n'
                   '                sub_bg = "#ECFDF5" if sub.get("status") == STATUS_DONE else COLORS["subtask_bg"]\n'
                   '                sub_row_idx = row_idx\n'
                   '                sub_btn = tk.Button(table, text="✓" if sub.get("status") == STATUS_DONE else "□", '
@@ -2670,9 +2673,22 @@ _EMBEDDED_SOURCES = {'monthly_close': '## FiBuMate_PATCH_MARKER: 20260609_PROTOC
                   'COLORS["text"], bd=0, font=zfont(self.app, 14, "bold"), state="normal" if can_complete else '
                   '"disabled")\n'
                   '                sub_btn.grid(row=row_idx, column=0, sticky="nsew", padx=1, pady=1)\n'
-                  '                tk.Label(table, text="↳ " + sub.get("title", ""), bg=sub_bg, fg=COLORS["text"], '
-                  'font=zfont(self.app, 12), padx=18, pady=5, anchor="w").grid(row=row_idx, column=1, sticky="nsew", '
-                  'padx=1, pady=1)\n'
+                  '                sub_task_cell = tk.Frame(table, bg=sub_bg)\n'
+                  '                sub_task_cell.grid(row=row_idx, column=1, sticky="nsew", padx=1, pady=1)\n'
+                  '                sub_action = tk.Frame(sub_task_cell, bg=sub_bg)\n'
+                  '                sub_action.pack(side="right", padx=(6, 8), pady=3)\n'
+                  '                if visible_sub_subtasks:\n'
+                  '                    sub_expand_key = '
+                  'f"subsub|{task.get(\'id\',\'\')}|{sub.get(\'id\',\'\')}|{sub.get(\'title\',\'\')}"\n'
+                  '                    sub_expanded = sub_expand_key in self.expanded_tasks\n'
+                  '                    sub_toggle_text = "Unter-Unteraufgaben einklappen v" if sub_expanded else '
+                  '"Unter-Unteraufgaben ausklappen >"\n'
+                  '                    tk.Button(sub_action, text=sub_toggle_text, command=lambda key=sub_expand_key: '
+                  'self.toggle_subtasks_visibility(key), bg=sub_bg, fg=COLORS["blue"], bd=0, padx=4, pady=4, '
+                  'cursor="hand2", font=zfont(self.app, 10, "bold")).pack(side="right", padx=(0, 4))\n'
+                  '                tk.Label(sub_task_cell, text="↳ " + sub.get("title", ""), bg=sub_bg, '
+                  'fg=COLORS["text"], font=zfont(self.app, 12), padx=18, pady=5, anchor="w", '
+                  'justify="left").pack(side="left", fill="both", expand=True)\n'
                   '                sub_doc = tk.Frame(table, bg=sub_bg); sub_doc.grid(row=row_idx, column=2, '
                   'sticky="nsew", padx=1, pady=1)\n'
                   '                self.create_documentation_button(sub_doc, sub, sub.get("title", "Unteraufgabe"), '
@@ -2698,6 +2714,31 @@ _EMBEDDED_SOURCES = {'monthly_close': '## FiBuMate_PATCH_MARKER: 20260609_PROTOC
                   'padx=1, pady=1)\n'
                   '                self._register_live_subtask_widgets(table, sub_row_idx, task, sub, sub_btn)\n'
                   '                row_idx += 1\n'
+                  '                if visible_sub_subtasks and sub_expand_key in self.expanded_tasks:\n'
+                  '                    for child in visible_sub_subtasks:\n'
+                  '                        child_bg = "#E0F2FE" if child.get("status") == STATUS_DONE else "#F0F9FF"\n'
+                  '                        child_btn = tk.Button(table, text="✓" if child.get("status") == STATUS_DONE '
+                  'else "□", command=lambda t=task, s=sub, c=child: self.toggle_sub_subtask(t, s, c), bg="#BAE6FD" if '
+                  'child.get("status") == STATUS_DONE else child_bg, fg=COLORS["dark_green"] if child.get("status") == '
+                  'STATUS_DONE else COLORS["text"], bd=0, font=zfont(self.app, 13, "bold"), state="normal" if '
+                  'can_complete else "disabled")\n'
+                  '                        child_btn.grid(row=row_idx, column=0, sticky="nsew", padx=1, pady=1)\n'
+                  '                        tk.Label(table, text="↳ ↳ " + child.get("title", ""), bg=child_bg, '
+                  'fg=COLORS["text"], font=zfont(self.app, 11), padx=34, pady=4, anchor="w", '
+                  'justify="left").grid(row=row_idx, column=1, sticky="nsew", padx=1, pady=1)\n'
+                  '                        for col in (2, 4, 5, 6, 7, 8, 9):\n'
+                  '                            tk.Label(table, text="", bg=child_bg, fg=COLORS["text"], '
+                  'font=zfont(self.app, 11), padx=6, pady=4).grid(row=row_idx, column=col, sticky="nsew", padx=1, '
+                  'pady=1)\n'
+                  '                        owner_text = child.get("owner") or sub.get("owner") or task.get("owner", '
+                  '"")\n'
+                  '                        tk.Label(table, text=owner_text, bg=child_bg, fg=COLORS["text2"], '
+                  'font=zfont(self.app, 11), padx=6, pady=4, anchor="center", justify="center").grid(row=row_idx, '
+                  'column=3, sticky="nsew", padx=1, pady=1)\n'
+                  '                        if self.edit_mode and self.can_edit():\n'
+                  '                            tk.Label(table, text="", bg=child_bg).grid(row=row_idx, column=10, '
+                  'sticky="nsew", padx=1, pady=1)\n'
+                  '                        row_idx += 1\n'
                   '        return row_idx\n'
                   '\n'
                   '    def find_task(self, task_id):\n'
@@ -5989,6 +6030,9 @@ _EMBEDDED_SOURCES = {'monthly_close': '## FiBuMate_PATCH_MARKER: 20260609_PROTOC
                     '        if self.get_expand_key(task) in self.expanded_tasks:\n'
                     '            for sub in visible_subtasks:\n'
                     '                self.normalize_documentation_fields(sub)\n'
+                    '                sub.setdefault("subtasks", [])\n'
+                    '                visible_sub_subtasks = [c for c in sub.get("subtasks", []) or [] if not '
+                    'c.get("deleted") and str(c.get("title", "")).strip()]\n'
                     '                sub_bg = "#ECFDF5" if sub.get("status") == STATUS_DONE else COLORS["subtask_bg"]\n'
                     '                sub_row_idx = row_idx\n'
                     '                sub_btn = tk.Button(table, text="✓" if sub.get("status") == STATUS_DONE else "□", '
@@ -5997,9 +6041,23 @@ _EMBEDDED_SOURCES = {'monthly_close': '## FiBuMate_PATCH_MARKER: 20260609_PROTOC
                     'COLORS["text"], bd=0, font=zfont(self.app, 14, "bold"), state="normal" if can_complete else '
                     '"disabled")\n'
                     '                sub_btn.grid(row=row_idx, column=0, sticky="nsew", padx=1, pady=1)\n'
-                    '                tk.Label(table, text="↳ " + sub.get("title", ""), bg=sub_bg, fg=COLORS["text"], '
-                    'font=zfont(self.app, 12), padx=18, pady=5, anchor="w").grid(row=row_idx, column=1, sticky="nsew", '
-                    'padx=1, pady=1)\n'
+                    '                sub_task_cell = tk.Frame(table, bg=sub_bg)\n'
+                    '                sub_task_cell.grid(row=row_idx, column=1, sticky="nsew", padx=1, pady=1)\n'
+                    '                sub_action = tk.Frame(sub_task_cell, bg=sub_bg)\n'
+                    '                sub_action.pack(side="right", padx=(6, 8), pady=3)\n'
+                    '                if visible_sub_subtasks:\n'
+                    '                    sub_expand_key = '
+                    'f"subsub|{task.get(\'id\',\'\')}|{sub.get(\'id\',\'\')}|{sub.get(\'title\',\'\')}"\n'
+                    '                    sub_expanded = sub_expand_key in self.expanded_tasks\n'
+                    '                    sub_toggle_text = "Unter-Unteraufgaben einklappen v" if sub_expanded else '
+                    '"Unter-Unteraufgaben ausklappen >"\n'
+                    '                    tk.Button(sub_action, text=sub_toggle_text, command=lambda '
+                    'key=sub_expand_key: self.toggle_subtasks_visibility(key), bg=sub_bg, fg=COLORS["blue"], bd=0, '
+                    'padx=4, pady=4, cursor="hand2", font=zfont(self.app, 10, "bold")).pack(side="right", padx=(0, '
+                    '4))\n'
+                    '                tk.Label(sub_task_cell, text="↳ " + sub.get("title", ""), bg=sub_bg, '
+                    'fg=COLORS["text"], font=zfont(self.app, 12), padx=18, pady=5, anchor="w", '
+                    'justify="left").pack(side="left", fill="both", expand=True)\n'
                     '                sub_doc = tk.Frame(table, bg=sub_bg); sub_doc.grid(row=row_idx, column=2, '
                     'sticky="nsew", padx=1, pady=1)\n'
                     '                self.create_documentation_button(sub_doc, sub, sub.get("title", "Unteraufgabe"), '
@@ -6025,6 +6083,32 @@ _EMBEDDED_SOURCES = {'monthly_close': '## FiBuMate_PATCH_MARKER: 20260609_PROTOC
                     'sticky="nsew", padx=1, pady=1)\n'
                     '                self._register_live_subtask_widgets(table, sub_row_idx, task, sub, sub_btn)\n'
                     '                row_idx += 1\n'
+                    '                if visible_sub_subtasks and sub_expand_key in self.expanded_tasks:\n'
+                    '                    for child in visible_sub_subtasks:\n'
+                    '                        child_bg = "#E0F2FE" if child.get("status") == STATUS_DONE else '
+                    '"#F0F9FF"\n'
+                    '                        child_btn = tk.Button(table, text="✓" if child.get("status") == '
+                    'STATUS_DONE else "□", command=lambda t=task, s=sub, c=child: self.toggle_sub_subtask(t, s, c), '
+                    'bg="#BAE6FD" if child.get("status") == STATUS_DONE else child_bg, fg=COLORS["dark_green"] if '
+                    'child.get("status") == STATUS_DONE else COLORS["text"], bd=0, font=zfont(self.app, 13, "bold"), '
+                    'state="normal" if can_complete else "disabled")\n'
+                    '                        child_btn.grid(row=row_idx, column=0, sticky="nsew", padx=1, pady=1)\n'
+                    '                        tk.Label(table, text="↳ ↳ " + child.get("title", ""), bg=child_bg, '
+                    'fg=COLORS["text"], font=zfont(self.app, 11), padx=34, pady=4, anchor="w", '
+                    'justify="left").grid(row=row_idx, column=1, sticky="nsew", padx=1, pady=1)\n'
+                    '                        for col in (2, 4, 5, 6, 7, 8, 9):\n'
+                    '                            tk.Label(table, text="", bg=child_bg, fg=COLORS["text"], '
+                    'font=zfont(self.app, 11), padx=6, pady=4).grid(row=row_idx, column=col, sticky="nsew", padx=1, '
+                    'pady=1)\n'
+                    '                        owner_text = child.get("owner") or sub.get("owner") or task.get("owner", '
+                    '"")\n'
+                    '                        tk.Label(table, text=owner_text, bg=child_bg, fg=COLORS["text2"], '
+                    'font=zfont(self.app, 11), padx=6, pady=4, anchor="center", justify="center").grid(row=row_idx, '
+                    'column=3, sticky="nsew", padx=1, pady=1)\n'
+                    '                        if self.edit_mode and self.can_edit():\n'
+                    '                            tk.Label(table, text="", bg=child_bg).grid(row=row_idx, column=10, '
+                    'sticky="nsew", padx=1, pady=1)\n'
+                    '                        row_idx += 1\n'
                     '        return row_idx\n'
                     '\n'
                     '    def find_task(self, task_id):\n'
@@ -13496,7 +13580,7 @@ def _load_embedded_module(module_key: str):
 # Datum: 2026-07-20
 # Zweck: Quartals-/Jahresabschluss-Einstiege werden auf den Monatsabschluss umgeleitet.
 # ---------------------------------------------------------------------------
-APP_VERSION = "0.538-task-popup-local-scroll"
+APP_VERSION = "0.539-subsubtask-expand-rows"
 _FM536_PREV_LOAD_EMBEDDED_MODULE = _load_embedded_module
 
 def _load_embedded_module(module_key: str):
@@ -13519,3 +13603,80 @@ SUBSUBTASK_POPUP_READABLE_VERSION = "0.537-subsubtask-popup-readable"
 
 # v0.538: Aufgaben-/Unteraufgaben-Popup scrollt lokal; Mausrad bewegt nicht das Hauptfenster.
 TASK_POPUP_LOCAL_SCROLL_VERSION = "0.538-task-popup-local-scroll"
+
+
+# ---------------------------------------------------------------------------
+# FM539 - Unter-Unteraufgaben in Kalenderansicht auf-/zuklappbar
+# Datum: 2026-07-20
+# Zweck: Unter-Unteraufgaben erscheinen analog zu Unteraufgaben unterhalb der Unteraufgabe und sind farblich abgesetzt.
+# ---------------------------------------------------------------------------
+SUBSUBTASK_EXPAND_ROWS_VERSION = "0.539-subsubtask-expand-rows"
+
+def _fm539_child_tasks_done(subtask):
+    try:
+        children = [c for c in subtask.get("subtasks", []) or [] if not c.get("deleted") and str(c.get("title", "")).strip()]
+        return bool(children) and all(c.get("status") == STATUS_DONE for c in children)
+    except Exception:
+        return True
+
+def _fm539_patch_class(cls):
+    if not cls or getattr(cls, "_fm539_subsub_expand_patched", False):
+        return
+    old_toggle_subtask = getattr(cls, "toggle_subtask", None)
+    if old_toggle_subtask:
+        def toggle_subtask(self, task, subtask, _old=old_toggle_subtask):
+            try:
+                # Eine Unteraufgabe mit offenen Unter-Unteraufgaben darf nicht direkt abgeschlossen werden.
+                if subtask.get("subtasks") and subtask.get("status") != STATUS_DONE and not _fm539_child_tasks_done(subtask):
+                    messagebox.showinfo("Abschlusskalender", "Bitte erst alle Unter-Unteraufgaben dieser Unteraufgabe erledigen.")
+                    return
+            except Exception:
+                pass
+            return _old(self, task, subtask)
+        cls.toggle_subtask = toggle_subtask
+    def toggle_sub_subtask(self, task, subtask, child):
+        if not self.require_unlocked("Diese Änderung"):
+            return
+        real = self.find_task(task.get("id"))
+        if not real:
+            return
+        if not self.can_complete_task(real):
+            messagebox.showwarning("Abschlusskalender", "Du kannst nur Unter-Unteraufgaben als erledigt markieren, wenn du selbst als zuständig eingetragen bist.")
+            self.render_team_detail(real.get("team"))
+            return
+        target_sub = None
+        for sub in real.get("subtasks", []) or []:
+            if sub.get("id") == subtask.get("id") or sub.get("title") == subtask.get("title"):
+                target_sub = sub
+                break
+        if target_sub is None:
+            return
+        target_sub.setdefault("subtasks", [])
+        target_child = None
+        for c in target_sub.get("subtasks", []) or []:
+            if c.get("id") == child.get("id") or c.get("title") == child.get("title"):
+                target_child = c
+                break
+        if target_child is None:
+            return
+        target_child["status"] = STATUS_OPEN if target_child.get("status") == STATUS_DONE else STATUS_DONE
+        children = [c for c in target_sub.get("subtasks", []) or [] if not c.get("deleted") and str(c.get("title", "")).strip()]
+        if children:
+            if all(c.get("status") == STATUS_DONE for c in children):
+                target_sub["status"] = STATUS_DONE
+            elif target_sub.get("status") == STATUS_DONE:
+                target_sub["status"] = STATUS_OPEN
+        sync_parent_status_from_subtasks(real)
+        self.save()
+        self.render_team_detail(real.get("team"))
+    cls.toggle_sub_subtask = toggle_sub_subtask
+    cls._fm539_subsub_expand_patched = True
+
+_FM539_PREV_LOAD_EMBEDDED_MODULE = _load_embedded_module
+
+def _load_embedded_module(module_key: str):
+    mod = _FM539_PREV_LOAD_EMBEDDED_MODULE(module_key)
+    for _cls_name in ("MonthlyCloseUI", "QuarterlyCloseUI", "YearlyCloseUI"):
+        _fm539_patch_class(getattr(mod, _cls_name, None))
+    _MODULE_CACHE[module_key] = mod
+    return mod
