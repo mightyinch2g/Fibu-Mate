@@ -16726,7 +16726,7 @@ def _fm501_db_init():
             closing_id INTEGER NOT NULL,
             abschlussdatum TEXT,
             monat_key TEXT,
-            geschaeftsvorfall TEXT,
+            geschäftsvorfall TEXT,
             positionstyp TEXT,
             anzahl INTEGER,
             stueckkosten REAL,
@@ -16736,7 +16736,7 @@ def _fm501_db_init():
             plausibel INTEGER,
             sort_order INTEGER,
             raw_line TEXT,
-            UNIQUE(closing_id, geschaeftsvorfall, positionstyp, sort_order)
+            UNIQUE(closing_id, geschäftsvorfall, positionstyp, sort_order)
         )''')
         con.commit()
     finally:
@@ -16843,7 +16843,7 @@ def _fm501_parse_entgelt_text(text):
         calc = round((count or 0) * (unit or 0), 2)
         diff = round((total or 0) - calc, 2)
         result['items'].append({
-            'geschaeftsvorfall': label, 'positionstyp': 'Geschäftsvorfälle', 'anzahl': count,
+            'geschäftsvorfall': label, 'positionstyp': 'Geschäftsvorfälle', 'anzahl': count,
             'stueckkosten': unit, 'gesamtbetrag': total, 'berechneter_betrag': calc,
             'abweichung': diff, 'plausibel': 1 if abs(diff) < 0.011 else 0,
             'sort_order': order, 'raw_line': g.group(0).strip()
@@ -16865,7 +16865,7 @@ def _fm501_parse_entgelt_text(text):
         calc = round((count or 0) * (unit or 0), 2)
         diff = round((total or 0) - calc, 2)
         result['items'].append({
-            'geschaeftsvorfall': label, 'positionstyp': 'Sonstige Entgeltposition', 'anzahl': count,
+            'geschäftsvorfall': label, 'positionstyp': 'Sonstige Entgeltposition', 'anzahl': count,
             'stueckkosten': unit, 'gesamtbetrag': total, 'berechneter_betrag': calc,
             'abweichung': diff, 'plausibel': 1 if abs(diff) < 0.011 else 0,
             'sort_order': order, 'raw_line': g.group(0).strip()
@@ -16876,7 +16876,7 @@ def _fm501_parse_entgelt_text(text):
         order += 1
         amount = _fm501_de_float(m.group(1))
         result['items'].append({
-            'geschaeftsvorfall': 'Mindestbetrag', 'positionstyp': 'Mindestbetrag', 'anzahl': None,
+            'geschäftsvorfall': 'Mindestbetrag', 'positionstyp': 'Mindestbetrag', 'anzahl': None,
             'stueckkosten': None, 'gesamtbetrag': amount, 'berechneter_betrag': amount,
             'abweichung': 0.0, 'plausibel': 1, 'sort_order': order, 'raw_line': m.group(0).strip()
         })
@@ -16939,9 +16939,9 @@ def _fm501_import_excel(path, app=None):
             # Bei Reimport alte Positionen ersetzen, Kopf bleibt eindeutig.
             cur.execute('DELETE FROM fee_items WHERE closing_id=?', (closing_id,))
             for item in parsed.get('items', []):
-                cur.execute('''INSERT OR IGNORE INTO fee_items(closing_id,abschlussdatum,monat_key,geschaeftsvorfall,positionstyp,anzahl,stueckkosten,gesamtbetrag,berechneter_betrag,abweichung,plausibel,sort_order,raw_line)
+                cur.execute('''INSERT OR IGNORE INTO fee_items(closing_id,abschlussdatum,monat_key,geschäftsvorfall,positionstyp,anzahl,stueckkosten,gesamtbetrag,berechneter_betrag,abweichung,plausibel,sort_order,raw_line)
                                VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)''',
-                            (closing_id, abschluss, monat_key, item.get('geschaeftsvorfall'), item.get('positionstyp'), item.get('anzahl'), item.get('stueckkosten'), item.get('gesamtbetrag'), item.get('berechneter_betrag'), item.get('abweichung'), item.get('plausibel'), item.get('sort_order'), item.get('raw_line')))
+                            (closing_id, abschluss, monat_key, item.get('geschäftsvorfall'), item.get('positionstyp'), item.get('anzahl'), item.get('stueckkosten'), item.get('gesamtbetrag'), item.get('berechneter_betrag'), item.get('abweichung'), item.get('plausibel'), item.get('sort_order'), item.get('raw_line')))
                 detail_count += 1
         cur.execute('UPDATE imports SET closing_count=?, detail_count=? WHERE id=?', (closing_count, detail_count, import_id))
         con.commit()
@@ -16965,7 +16965,7 @@ def _fm501_fetch_items(closing_id=None):
     try:
         if closing_id:
             return [dict(r) for r in con.execute('SELECT * FROM fee_items WHERE closing_id=? ORDER BY sort_order, id', (closing_id,)).fetchall()]
-        return [dict(r) for r in con.execute('SELECT * FROM fee_items ORDER BY abschlussdatum, geschaeftsvorfall').fetchall()]
+        return [dict(r) for r in con.execute('SELECT * FROM fee_items ORDER BY abschlussdatum, geschäftsvorfall').fetchall()]
     finally:
         con.close()
 
@@ -16977,7 +16977,7 @@ def _fm501_summary_stats():
         row = con.execute('SELECT COUNT(*) c, SUM(betrag_brutto) brutto, SUM(betrag_netto) netto, SUM(ust) ust FROM closings').fetchone()
         detail = con.execute('SELECT COUNT(*) c, SUM(gesamtbetrag) gesamt FROM fee_items').fetchone()
         months = con.execute('SELECT monat_key, betrag_brutto FROM closings ORDER BY abschlussdatum').fetchall()
-        top = con.execute('SELECT geschaeftsvorfall, SUM(gesamtbetrag) gesamt, SUM(COALESCE(anzahl,0)) anzahl, AVG(stueckkosten) avg_unit FROM fee_items GROUP BY geschaeftsvorfall ORDER BY gesamt DESC LIMIT 8').fetchall()
+        top = con.execute('SELECT geschäftsvorfall, SUM(gesamtbetrag) gesamt, SUM(COALESCE(anzahl,0)) anzahl, AVG(stueckkosten) avg_unit FROM fee_items GROUP BY geschäftsvorfall ORDER BY gesamt DESC LIMIT 8').fetchall()
         return {'closings': row['c'] or 0, 'brutto': row['brutto'] or 0, 'netto': row['netto'] or 0, 'ust': row['ust'] or 0, 'details': detail['c'] or 0, 'detail_sum': detail['gesamt'] or 0, 'months': [dict(x) for x in months], 'top': [dict(x) for x in top]}
     finally:
         con.close()
@@ -17024,7 +17024,7 @@ def _fm501_export_analysis_excel(app=None):
         ws2.append(headers2)
         for c in ws2[1]: c.font = Font(bold=True); c.fill = sub_fill; c.border = border
         for i in items:
-            ws2.append([i.get('monat_key'), i.get('abschlussdatum'), i.get('geschaeftsvorfall'), i.get('positionstyp'), i.get('anzahl'), i.get('stueckkosten'), i.get('gesamtbetrag'), i.get('berechneter_betrag'), i.get('abweichung'), 'Ja' if i.get('plausibel') else 'Nein'])
+            ws2.append([i.get('monat_key'), i.get('abschlussdatum'), i.get('geschäftsvorfall'), i.get('positionstyp'), i.get('anzahl'), i.get('stueckkosten'), i.get('gesamtbetrag'), i.get('berechneter_betrag'), i.get('abweichung'), 'Ja' if i.get('plausibel') else 'Nein'])
         for row in ws2.iter_rows(min_row=2, min_col=6, max_col=9):
             for cell in row: cell.number_format = '#,##0.00 €'
         for col, width in {'A':12,'B':14,'C':32,'D':24,'E':12,'F':14,'G':14,'H':14,'I':14,'J':12}.items(): ws2.column_dimensions[col].width = width
@@ -17033,7 +17033,7 @@ def _fm501_export_analysis_excel(app=None):
         for c in ws3[1]: c.font = Font(bold=True); c.fill = header_fill; c.border = border
         stats = _fm501_summary_stats()
         for t in stats.get('top', []):
-            ws3.append([t.get('geschaeftsvorfall'), t.get('gesamt'), t.get('anzahl'), t.get('avg_unit')])
+            ws3.append([t.get('geschäftsvorfall'), t.get('gesamt'), t.get('anzahl'), t.get('avg_unit')])
         for row in ws3.iter_rows(min_row=2, min_col=2, max_col=4):
             for cell in row: cell.number_format = '#,##0.00 €' if cell.column in (2,4) else '#,##0'
         ws3.column_dimensions['A'].width = 32; ws3.column_dimensions['B'].width = 16; ws3.column_dimensions['C'].width = 14; ws3.column_dimensions['D'].width = 16
@@ -17079,7 +17079,7 @@ def _fm501_draw_top_list(parent, top):
         tk.Label(parent, text='Noch keine Detailpositionen importiert.', bg=WHITE, fg=TEXT2, font=body_font(10)).pack(anchor='w', padx=10, pady=8)
         return
     for row in top:
-        txt = f"{row.get('geschaeftsvorfall','')}  |  {_fm501_fmt_eur(row.get('gesamt'))}  |  Anzahl {_fm501_fmt_num(row.get('anzahl'))}  |  Ø {_fm501_fmt_eur(row.get('avg_unit'))}"
+        txt = f"{row.get('geschäftsvorfall','')}  |  {_fm501_fmt_eur(row.get('gesamt'))}  |  Anzahl {_fm501_fmt_num(row.get('anzahl'))}  |  Ø {_fm501_fmt_eur(row.get('avg_unit'))}"
         tk.Label(parent, text=txt, bg=WHITE, fg=TEXT, font=body_font(9), anchor='w', justify='left').pack(fill='x', padx=10, pady=1)
 
 
@@ -17118,10 +17118,10 @@ def _fm501_render_account_analysis_tool(self):
         item_tree.delete(*item_tree.get_children())
         cid = selected_closing_id.get('id')
         for i in _fm501_fetch_items(cid):
-            item_tree.insert('', 'end', values=(i.get('monat_key'), i.get('geschaeftsvorfall'), i.get('positionstyp'), _fm501_fmt_num(i.get('anzahl')) if i.get('anzahl') is not None else '', _fm501_fmt_eur(i.get('stueckkosten')) if i.get('stueckkosten') is not None else '', _fm501_fmt_eur(i.get('gesamtbetrag')), _fm501_fmt_eur(i.get('abweichung')), 'Ja' if i.get('plausibel') else 'Nein'))
+            item_tree.insert('', 'end', values=(i.get('monat_key'), i.get('geschäftsvorfall'), i.get('positionstyp'), _fm501_fmt_num(i.get('anzahl')) if i.get('anzahl') is not None else '', _fm501_fmt_eur(i.get('stueckkosten')) if i.get('stueckkosten') is not None else '', _fm501_fmt_eur(i.get('gesamtbetrag')), _fm501_fmt_eur(i.get('abweichung')), 'Ja' if i.get('plausibel') else 'Nein'))
         charts.delete('all')
         _fm501_draw_bar_chart(charts, 8, 8, max(420, int(w*0.48)), 205, stats.get('months', [])[-12:], 'Brutto-Entgelte je Abschlussmonat', 'betrag_brutto', 'monat_key')
-        _fm501_draw_bar_chart(charts, max(440, int(w*0.50)), 8, max(420, int(w*0.45)), 205, stats.get('top', []), 'Top Gebührenpositionen', 'gesamt', 'geschaeftsvorfall')
+        _fm501_draw_bar_chart(charts, max(440, int(w*0.50)), 8, max(420, int(w*0.45)), 205, stats.get('top', []), 'Top Gebührenpositionen', 'gesamt', 'geschäftsvorfall')
         _fm501_draw_top_list(top_frame, stats.get('top', []))
 
     def import_file():
@@ -17995,9 +17995,9 @@ def _fm505_import_excel(path, app=None, bank=None, konto=None, replace_existing=
             closing_count += 1
             cur.execute('DELETE FROM fee_items WHERE closing_id=?', (closing_id,))
             for item in parsed.get('items', []):
-                cur.execute('''INSERT OR IGNORE INTO fee_items(closing_id,abschlussdatum,monat_key,geschaeftsvorfall,positionstyp,anzahl,stueckkosten,gesamtbetrag,berechneter_betrag,abweichung,plausibel,sort_order,raw_line,bank,konto)
+                cur.execute('''INSERT OR IGNORE INTO fee_items(closing_id,abschlussdatum,monat_key,geschäftsvorfall,positionstyp,anzahl,stueckkosten,gesamtbetrag,berechneter_betrag,abweichung,plausibel,sort_order,raw_line,bank,konto)
                                VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)''',
-                            (closing_id, abschluss, monat_key, item.get('geschaeftsvorfall'), item.get('positionstyp'), item.get('anzahl'), item.get('stueckkosten'), item.get('gesamtbetrag'), item.get('berechneter_betrag'), item.get('abweichung'), item.get('plausibel'), item.get('sort_order'), item.get('raw_line'), bank, konto))
+                            (closing_id, abschluss, monat_key, item.get('geschäftsvorfall'), item.get('positionstyp'), item.get('anzahl'), item.get('stueckkosten'), item.get('gesamtbetrag'), item.get('berechneter_betrag'), item.get('abweichung'), item.get('plausibel'), item.get('sort_order'), item.get('raw_line'), bank, konto))
                 detail_count += 1
         cur.execute('UPDATE imports SET closing_count=?, detail_count=? WHERE id=?', (closing_count, detail_count, import_id))
         con.commit()
@@ -18020,7 +18020,7 @@ def _fm505_filter_match(row, filters):
         return False
     if filters.get('bis') and get('abschlussdatum') and get('abschlussdatum') > filters['bis']:
         return False
-    if filters.get('gv') and filters['gv'].lower() not in get('geschaeftsvorfall').lower():
+    if filters.get('gv') and filters['gv'].lower() not in get('geschäftsvorfall').lower():
         return False
     if filters.get('typ') and get('positionstyp') != filters['typ']:
         return False
@@ -18029,7 +18029,7 @@ def _fm505_filter_match(row, filters):
         if int(row.get('plausibel') or 0) != want:
             return False
     if filters.get('mindest') in ('Ja','Nein'):
-        is_min = 'mindestbetrag' in get('positionstyp').lower() or 'mindestbetrag' in get('geschaeftsvorfall').lower()
+        is_min = 'mindestbetrag' in get('positionstyp').lower() or 'mindestbetrag' in get('geschäftsvorfall').lower()
         if (filters['mindest']=='Ja') != is_min:
             return False
     q = str(filters.get('q') or '').strip().lower()
@@ -18071,7 +18071,7 @@ def _fm505_fetch_items(filters=None, closing_id=None):
         if closing_id:
             rows=[dict(r) for r in con.execute('SELECT * FROM fee_items WHERE closing_id=? ORDER BY sort_order, id', (closing_id,)).fetchall()]
         else:
-            rows=[dict(r) for r in con.execute('SELECT * FROM fee_items WHERE closing_id NOT IN (SELECT id FROM closings WHERE import_id IN (SELECT id FROM imports WHERE COALESCE(deleted,0)=1)) ORDER BY abschlussdatum DESC, geschaeftsvorfall').fetchall()]
+            rows=[dict(r) for r in con.execute('SELECT * FROM fee_items WHERE closing_id NOT IN (SELECT id FROM closings WHERE import_id IN (SELECT id FROM imports WHERE COALESCE(deleted,0)=1)) ORDER BY abschlussdatum DESC, geschäftsvorfall').fetchall()]
         if filters:
             rows=[r for r in rows if _fm505_filter_match(r, filters)]
         return rows
@@ -18094,8 +18094,8 @@ def _fm505_summary_stats(filters=None):
         months.append({'monat_key':mk,'betrag_brutto':val})
     top_map={}
     for i in items:
-        key=i.get('geschaeftsvorfall') or ''
-        rec=top_map.setdefault(key, {'geschaeftsvorfall':key,'gesamt':0.0,'anzahl':0.0,'weighted_unit_num':0.0,'unit_values':[]})
+        key=i.get('geschäftsvorfall') or ''
+        rec=top_map.setdefault(key, {'geschäftsvorfall':key,'gesamt':0.0,'anzahl':0.0,'weighted_unit_num':0.0,'unit_values':[]})
         ges=float(i.get('gesamtbetrag') or 0); anz=float(i.get('anzahl') or 0); stk=i.get('stueckkosten')
         rec['gesamt']+=ges; rec['anzahl']+=anz
         if anz and stk is not None:
@@ -18170,12 +18170,12 @@ def _fm505_chart_data(filters, metric='brutto', chart_type='months'):
     items=_fm505_fetch_items(filters)
     closings=_fm505_fetch_closings(filters)
     if chart_type=='top':
-        return _fm505_summary_stats(filters).get('top',[])[:10], 'gesamt', 'geschaeftsvorfall'
+        return _fm505_summary_stats(filters).get('top',[])[:10], 'gesamt', 'geschäftsvorfall'
     if chart_type=='unit_dev':
         gv=str(filters.get('gv') or '').strip()
         data_map={}
         for i in items:
-            if gv and gv.lower() not in str(i.get('geschaeftsvorfall') or '').lower():
+            if gv and gv.lower() not in str(i.get('geschäftsvorfall') or '').lower():
                 continue
             mk=i.get('monat_key') or ''
             anz=float(i.get('anzahl') or 0); ges=float(i.get('gesamtbetrag') or 0)
@@ -18231,7 +18231,7 @@ def _fm505_render_account_analysis_tool(self):
         for cb in [bank_cb, chart_bank_cb]: cb.configure(values=banks)
         for cb in [konto_cb, chart_konto_cb]: cb.configure(values=konten)
         for cb in [filter_von_cb, filter_bis_cb, chart_von_cb, chart_bis_cb]: cb.configure(values=dates)
-        gvs=['']+_fm506_distinct_values_fast('fee_items','geschaeftsvorfall')
+        gvs=['']+_fm506_distinct_values_fast('fee_items','geschäftsvorfall')
         types=['']+_fm506_distinct_values_fast('fee_items','positionstyp')
         gv_cb.configure(values=gvs); typ_cb.configure(values=types)
         try:
@@ -18256,9 +18256,9 @@ def _fm505_render_account_analysis_tool(self):
         kpi_var.set(f"Entgeltabschlüsse: {stats['closings']}   |   Einzelpositionen: {stats['details']}   |   Brutto: {_fm501_fmt_eur(stats['brutto'])}   |   Netto: {_fm501_fmt_eur(stats['netto'])}   |   USt: {_fm501_fmt_eur(stats['ust'])}")
         fill_tree(import_tree, imports, None, lambda r:(r.get('bank') or '', r.get('konto') or '', r.get('filename') or '', r.get('imported_at') or '', r.get('closing_count') or 0, r.get('detail_count') or 0))
         fill_tree(closing_tree, closings, None, lambda r:(r.get('bank') or '', r.get('konto') or '', r.get('monat_key') or '', r.get('abschlussdatum') or '', r.get('buchungsdatum') or '', _fm501_fmt_eur(r.get('betrag_brutto')), _fm501_fmt_eur(r.get('betrag_netto')), _fm501_fmt_eur(r.get('ust')), str(r.get('rechnungsnummer') or '').split('|')[-1], r.get('source_file') or ''))
-        fill_tree(item_tree, items, None, lambda r:(r.get('bank') or '', r.get('konto') or '', r.get('monat_key') or '', r.get('geschaeftsvorfall') or '', r.get('positionstyp') or '', _fm501_fmt_num(r.get('anzahl')) if r.get('anzahl') is not None else '', _fm501_fmt_eur(r.get('stueckkosten')) if r.get('stueckkosten') is not None else '', _fm501_fmt_eur(r.get('gesamtbetrag')), _fm501_fmt_eur(r.get('abweichung')), 'Ja' if r.get('plausibel') else 'Nein'))
+        fill_tree(item_tree, items, None, lambda r:(r.get('bank') or '', r.get('konto') or '', r.get('monat_key') or '', r.get('geschäftsvorfall') or '', r.get('positionstyp') or '', _fm501_fmt_num(r.get('anzahl')) if r.get('anzahl') is not None else '', _fm501_fmt_eur(r.get('stueckkosten')) if r.get('stueckkosten') is not None else '', _fm501_fmt_eur(r.get('gesamtbetrag')), _fm501_fmt_eur(r.get('abweichung')), 'Ja' if r.get('plausibel') else 'Nein'))
         top=_fm505_summary_stats(f).get('top',[])
-        fill_tree(top_tree, top, None, lambda r:(r.get('geschaeftsvorfall') or '', _fm501_fmt_eur(r.get('gesamt')), _fm501_fmt_num(r.get('anzahl')), _fm501_fmt_eur(r.get('avg_unit'))))
+        fill_tree(top_tree, top, None, lambda r:(r.get('geschäftsvorfall') or '', _fm501_fmt_eur(r.get('gesamt')), _fm501_fmt_num(r.get('anzahl')), _fm501_fmt_eur(r.get('avg_unit'))))
         status_var.set(f"Datenbank: {_fm501_konto_db_path()}   |   Sichtbare Importe: {len(imports)}")
 
     def draw_charts():
@@ -18872,7 +18872,7 @@ def _fm506_chart_data(filters, metric='brutto', chart_type='months'):
     series_map = {name: {} for name in selected}
     all_months = set()
     for item in items:
-        gv = str(item.get('geschaeftsvorfall') or '')
+        gv = str(item.get('geschäftsvorfall') or '')
         monat = item.get('monat_key') or ''
         if not monat:
             continue
@@ -18978,7 +18978,7 @@ def _fm507_db_init_fast():
         )''')
         cur.execute('CREATE INDEX IF NOT EXISTS idx_imports_bank_konto_deleted ON imports(bank,konto,deleted)')
         cur.execute('CREATE INDEX IF NOT EXISTS idx_closings_import_date_month ON closings(import_id,abschlussdatum,monat_key)')
-        cur.execute('CREATE INDEX IF NOT EXISTS idx_fee_items_lookup ON fee_items(closing_id,monat_key,geschaeftsvorfall,positionstyp)')
+        cur.execute('CREATE INDEX IF NOT EXISTS idx_fee_items_lookup ON fee_items(closing_id,monat_key,geschäftsvorfall,positionstyp)')
         cur.execute('CREATE INDEX IF NOT EXISTS idx_treasury_accounts_bank ON treasury_accounts(bank_id,active)')
         con.commit()
     finally:
@@ -18997,7 +18997,7 @@ def _fm506_distinct_values_fast(table, col):
     allowed = {
         'imports': {'bank','konto'},
         'closings': {'abschlussdatum','monat_key'},
-        'fee_items': {'geschaeftsvorfall','positionstyp'}
+        'fee_items': {'geschäftsvorfall','positionstyp'}
     }
     if table not in allowed or col not in allowed[table]:
         return []
@@ -21002,8 +21002,595 @@ try:
 except Exception:
     pass
 
-if __name__ == "__main__":
-    FiBuMateApp().run()
+
+
+# ------------------------------------------------------------------
+# FiBu Mate v0.529 - Kontenumsatz-Cockpit 2.0
+# ------------------------------------------------------------------
+# Neuer Parallelaufbau: Das bisherige Modul "Kontenauswertung" bleibt erhalten und wird
+# in den Bereich "In Entwicklung" verschoben. Produktiv sichtbar wird das neue
+# "Kontenumsatz-Cockpit" unter Tools -> Tools - Treasury.
+FM_KONTO_UMSATZ_COCKPIT_VERSION = "0.529"
+FM_KU2_CATEGORIES = [
+    "Kontenpool", "SEPA Gutschrift", "SEPA Auszahlung", "SEPA Einzug", "SEPA Rückgabe",
+    "Gebühren", "Kontoabrechnung", "Auslandszahlung", "Devisen", "Festgeld", "Zinsen",
+    "Steuern/Abgaben", "Krankenkassen", "Miete/Leasing", "Logistik/Versand",
+    "EC-Cash/Karten", "Personal", "Sonstige"
+]
+
+try:
+    TOOL_REGISTRY["konto_umsatz_cockpit"] = {"title":"Kontenumsatz-Cockpit", "module":"", "favorite_label":"Kontenumsatz"}
+    MODULE_DESCRIPTIONS["konto_umsatz_cockpit"] = "Modernes Treasury-Cockpit für Kontoumsätze: TXT/CSV-Import, SEPA-, Gebühren-, Kontenpool-, Partner-, Liquiditäts- und Anomalieauswertung inklusive Excel-Export."
+    MODULE_DESCRIPTIONS["account_analysis"] = "Alte Kontenauswertung auf Basis der v0.501-Struktur; bleibt als Referenz in In Entwicklung verfügbar."
+except Exception:
+    pass
+
+
+def _ku2_role_rank(app):
+    try: return int(app.role_rank(app.my_role()))
+    except Exception: return 1
+
+
+def _ku2_can_import(app): return _ku2_role_rank(app) >= 3
+
+def _ku2_can_delete(app): return _ku2_role_rank(app) >= 3
+
+def _ku2_can_admin(app): return _ku2_role_rank(app) >= 4
+
+
+def _ku2_db_path():
+    try: return _fm501_konto_db_path()
+    except Exception:
+        base=os.path.join(NETWORK_ROOT,"Fibu_Mate_Doc","Database")
+        try: os.makedirs(base,exist_ok=True); return os.path.join(base,"kontenauswertung.sqlite3")
+        except Exception: return os.path.join(SCRIPT_DIR,"kontenauswertung.sqlite3")
+
+
+def _ku2_connect():
+    import sqlite3
+    con=sqlite3.connect(_ku2_db_path())
+    con.row_factory=sqlite3.Row
+    return con
+
+
+def _ku2_init_db():
+    con=_ku2_connect(); cur=con.cursor()
+    cur.execute('''CREATE TABLE IF NOT EXISTS ku2_imports (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        filename TEXT, filepath TEXT, file_hash TEXT UNIQUE, imported_at TEXT, imported_by TEXT,
+        source_type TEXT, row_count INTEGER DEFAULT 0, inserted_count INTEGER DEFAULT 0, duplicate_count INTEGER DEFAULT 0,
+        error_count INTEGER DEFAULT 0, note TEXT
+    )''')
+    cur.execute('''CREATE TABLE IF NOT EXISTS ku2_transactions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        import_id INTEGER, row_no INTEGER, source_type TEXT, source_bank TEXT, source_account TEXT,
+        account_label TEXT, account_holder TEXT, counterparty TEXT, counterparty_raw TEXT, counter_account TEXT,
+        iban TEXT, bic TEXT, booking_date TEXT, value_date TEXT, booking_month TEXT, amount REAL,
+        direction TEXT, booking_text TEXT, purpose TEXT, purpose_full TEXT, transaction_code TEXT,
+        gv_code TEXT, gv_text TEXT, reference TEXT, sepa_ref TEXT, mandate_ref TEXT, creditor_id TEXT,
+        fee_amount REAL DEFAULT 0, return_reason TEXT, category TEXT, subcategory TEXT,
+        is_pool INTEGER DEFAULT 0, is_fee INTEGER DEFAULT 0, is_return INTEGER DEFAULT 0, is_foreign INTEGER DEFAULT 0,
+        is_deviation INTEGER DEFAULT 0, anomaly_score INTEGER DEFAULT 0, anomaly_reason TEXT,
+        balance_after REAL, balance_before REAL, raw_line TEXT, raw_json TEXT, unique_key TEXT UNIQUE,
+        created_at TEXT
+    )''')
+    cur.execute('''CREATE TABLE IF NOT EXISTS ku2_saved_views (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT UNIQUE, filters_json TEXT, created_at TEXT, created_by TEXT
+    )''')
+    cur.execute('''CREATE TABLE IF NOT EXISTS ku2_rules (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, pattern TEXT, field TEXT, category TEXT, subcategory TEXT, active INTEGER DEFAULT 1, note TEXT
+    )''')
+    cur.execute('CREATE INDEX IF NOT EXISTS idx_ku2_tx_date ON ku2_transactions(booking_date)')
+    cur.execute('CREATE INDEX IF NOT EXISTS idx_ku2_tx_month ON ku2_transactions(booking_month)')
+    cur.execute('CREATE INDEX IF NOT EXISTS idx_ku2_tx_account ON ku2_transactions(source_bank,source_account)')
+    cur.execute('CREATE INDEX IF NOT EXISTS idx_ku2_tx_cat ON ku2_transactions(category,is_fee,is_pool,is_return)')
+    cur.execute('CREATE INDEX IF NOT EXISTS idx_ku2_tx_partner ON ku2_transactions(counterparty)')
+    con.commit(); con.close()
+
+
+def _ku2_hash_file(path):
+    import hashlib
+    h=hashlib.sha256()
+    with open(path,'rb') as f:
+        for chunk in iter(lambda:f.read(1024*1024), b''):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def _ku2_read_text(path):
+    for enc in ('utf-8-sig','utf-8','cp1252','latin-1'):
+        try:
+            with open(path,'r',encoding=enc,newline='') as f:
+                return f.read(), enc
+        except Exception:
+            continue
+    with open(path,'rb') as f:
+        return f.read().decode('latin-1','replace'), 'latin-1-replace'
+
+
+def _ku2_clean(v):
+    return ' '.join(str(v or '').replace('\x00',' ').strip().split())
+
+
+def _ku2_parse_amount(v):
+    s=str(v or '').strip().replace('"','').replace(' ','')
+    if not s: return None
+    neg=False
+    if s.startswith('-'):
+        neg=True; s=s[1:]
+    s=s.replace('.','').replace(',','.')
+    try:
+        val=float(s)
+        return -val if neg else val
+    except Exception:
+        return None
+
+
+def _ku2_parse_date(v):
+    s=str(v or '').strip().replace('"','')
+    if not s: return ''
+    for fmt in ('%d.%m.%y','%d.%m.%Y','%d.%m.%y.','%d.%m.%Y.'):
+        try:
+            return datetime.strptime(s,fmt).strftime('%Y-%m-%d')
+        except Exception:
+            pass
+    return s
+
+
+def _ku2_month(date_s):
+    try: return datetime.strptime(date_s,'%Y-%m-%d').strftime('%Y-%m')
+    except Exception: return str(date_s or '')[:7]
+
+
+def _ku2_extract_token(text, prefix):
+    s=str(text or '')
+    m=re.search(re.escape(prefix)+r'([^\s\+;|]+)', s, re.IGNORECASE)
+    return m.group(1).strip() if m else ''
+
+
+def _ku2_category(row, text):
+    big=text.upper()
+    tx=_ku2_clean(row[29] if len(row)>29 else '').upper()
+    gv=_ku2_clean(row[10] if len(row)>10 else '').upper()
+    code=_ku2_clean(row[11] if len(row)>11 else '')
+    if tx=='CMZ' or 'KONTENPOOL' in big or 'CASH CONCENTRATING' in big or 'CASHPOOLING' in big or code in ('833','834'):
+        return 'Kontenpool'
+    if tx=='RTI' or 'RUECKGABE' in big or 'RÜCKGABE' in big or 'RUECKLASTSCHRIFT' in big or 'RÜCKLASTSCHRIFT' in big or 'RUECKBELASTUNG' in big or 'RÜCKBELASTUNG' in big:
+        return 'SEPA Rückgabe'
+    if tx=='CHG' or 'GEBUEHR' in big or 'GEBÜHR' in big or 'ENTGELT' in big or 'POSTENPREIS' in big or gv in ('KONTOABRECHNUNG','ENTGELT/PORTOERSATZ') or code in ('805','807','808','809'):
+        return 'Gebühren' if 'KONTOABRECHNUNG' not in big else 'Kontoabrechnung'
+    if 'AUSLAND' in big or 'AWV' in big or 'PAR.67' in big or 'MELDEPFLICHT' in big:
+        return 'Auslandszahlung'
+    if 'DEVISEN' in big or 'FEX' in big or 'EUR/USD' in big or 'EUR/CHF' in big:
+        return 'Devisen'
+    if 'FESTGELD' in big:
+        return 'Festgeld'
+    if 'ZINS' in big or 'HABENZINS' in big:
+        return 'Zinsen'
+    if 'FINANZAMT' in big or 'STEUER' in big or 'UST' in big:
+        return 'Steuern/Abgaben'
+    if any(k in big for k in ('AOK','BARMER','DAK','BKK','TECHNIKER KRANKENKASSE','KRANKENKASSE','IKK','HKK','SBK')):
+        return 'Krankenkassen'
+    if any(k in big for k in ('MIETE','LEASING','VW LEASING','KAZENMAIER')):
+        return 'Miete/Leasing'
+    if any(k in big for k in ('DEUTSCHE POST','DHL','DPD','LOGISTIK','VERSAND')):
+        return 'Logistik/Versand'
+    if any(k in big for k in ('EC-CASH','EASYCASH','PAYONE','KARTENEINZUG','KREDITKARTEN')):
+        return 'EC-Cash/Karten'
+    if any(k in big for k in ('LOHN','GEHALT','PERSONAL','PENSION')):
+        return 'Personal'
+    if 'SEPA EINZUG' in big or 'LASTSCHRIFT' in big or tx in ('COL','DDT') or code in ('104','105','108','174','196','997','992'):
+        return 'SEPA Einzug'
+    if 'SEPA DATEI' in big or 'SAMMELUEBERWEISUNG' in big or 'SAMMELÜBERWEISUNG' in big or (tx=='TRF' and ('KREF+' in big or code in ('116','191'))):
+        return 'SEPA Auszahlung'
+    if 'SEPA GUTSCHRIFT' in big or 'GUTSCHRIFT' in big or tx=='TRF' or code in ('166','168','188'):
+        return 'SEPA Gutschrift'
+    return 'Sonstige'
+
+
+def _ku2_row_to_tx(row, row_no, import_id, raw_line):
+    row=list(row)+['']*60
+    source_bank=_ku2_clean(row[0]); source_account=_ku2_clean(row[1])
+    counterparty=_ku2_clean((row[3]+' '+row[4]).strip()) or 'NOTPROVIDED'
+    booking_date=_ku2_parse_date(row[5])
+    value_date=_ku2_parse_date(row[31] or row[9] or row[5])
+    amount=_ku2_parse_amount(row[7])
+    pieces=[]
+    for idx in [3,4,10,21,29,30,32,38,39,40,41,42,43,44,45,46,47,48,49,50]:
+        if idx < len(row) and _ku2_clean(row[idx]): pieces.append(_ku2_clean(row[idx]))
+    purpose_full=' | '.join(pieces)
+    cat=_ku2_category(row,purpose_full)
+    direction='Eingang' if (amount or 0) >= 0 else 'Ausgang'
+    is_pool=1 if cat=='Kontenpool' else 0
+    is_fee=1 if cat in ('Gebühren','Kontoabrechnung') else 0
+    is_return=1 if cat=='SEPA Rückgabe' else 0
+    is_foreign=1 if cat in ('Auslandszahlung','Devisen') or re.search(r'\b[A-Z]{2}\d{2}', purpose_full or '') else 0
+    anomaly=[]; score=0
+    if abs(amount or 0) >= 1000000:
+        anomaly.append('Großbetrag >= 1 Mio. EUR'); score+=3
+    if 'NONREF' in purpose_full.upper() or 'NOTPROVIDED' in purpose_full.upper():
+        anomaly.append('Referenz fehlt/unspezifisch'); score+=1
+    if is_return:
+        anomaly.append('Rückgabe/Rücklastschrift'); score+=2
+    try:
+        if booking_date and value_date and booking_date!=value_date:
+            d=(datetime.strptime(value_date,'%Y-%m-%d')-datetime.strptime(booking_date,'%Y-%m-%d')).days
+            if abs(d)>=2: anomaly.append('Valuta-Abweichung >= 2 Tage'); score+=1
+    except Exception: pass
+    if 'AWV' in purpose_full.upper() or 'MELDEPFLICHT' in purpose_full.upper() or 'PAR.67' in purpose_full.upper():
+        anomaly.append('AWV-/Meldepflicht-Hinweis'); score+=2
+    unique_src='|'.join([source_bank,source_account,booking_date,str(row_no),str(amount),purpose_full,raw_line])
+    import hashlib, json as _json
+    return {
+        'import_id':import_id,'row_no':row_no,'source_type':'TXT','source_bank':source_bank,'source_account':source_account,
+        'account_label':_ku2_clean(row[13]),'account_holder':_ku2_clean(row[14]),'counterparty':counterparty,
+        'counterparty_raw':_ku2_clean((row[3]+' '+row[4]).strip()),'counter_account':_ku2_clean(row[16]),
+        'iban':_ku2_clean(row[16]) if str(row[16]).upper().startswith(('DE','AT','CH','NL','FR','GB','IT','LU','BE','FI','DK','SE','CZ','PL','IE','TR')) else '',
+        'bic':_ku2_clean(row[8]),'booking_date':booking_date,'value_date':value_date,'booking_month':_ku2_month(booking_date),
+        'amount':amount or 0.0,'direction':direction,'booking_text':_ku2_clean(row[10]),'purpose':_ku2_clean(row[32]),
+        'purpose_full':purpose_full,'transaction_code':_ku2_clean(row[29]),'gv_code':_ku2_clean(row[11]),'gv_text':_ku2_clean(row[10]),
+        'reference':_ku2_clean(row[21]) or _ku2_clean(row[32]),'sepa_ref':_ku2_extract_token(purpose_full,'EREF+'),
+        'mandate_ref':_ku2_extract_token(purpose_full,'MREF+'),'creditor_id':_ku2_extract_token(purpose_full,'CRED+'),
+        'fee_amount':0.0,'return_reason':_ku2_clean(row[30]),'category':cat,'subcategory':'','is_pool':is_pool,
+        'is_fee':is_fee,'is_return':is_return,'is_foreign':is_foreign,'is_deviation':1 if score else 0,
+        'anomaly_score':score,'anomaly_reason':'; '.join(anomaly),'balance_after':_ku2_parse_amount(row[24]) or 0.0,
+        'balance_before':_ku2_parse_amount(row[25]) or 0.0,'raw_line':raw_line,'raw_json':_json.dumps(row,ensure_ascii=False),
+        'unique_key':hashlib.sha256(unique_src.encode('utf-8','ignore')).hexdigest(),'created_at':datetime.now().isoformat(timespec='seconds')
+    }
+
+
+def _ku2_insert_tx(cur, tx):
+    cols=list(tx.keys())
+    cur.execute('INSERT OR IGNORE INTO ku2_transactions ('+','.join(cols)+') VALUES ('+','.join(['?']*len(cols))+')',[tx[c] for c in cols])
+    return int(cur.rowcount or 0)
+
+
+def _ku2_import_txt(path, user=''):
+    _ku2_init_db()
+    import csv, io, json as _json
+    content, enc=_ku2_read_text(path)
+    file_hash=_ku2_hash_file(path)
+    con=_ku2_connect(); cur=con.cursor()
+    cur.execute('SELECT id,row_count FROM ku2_imports WHERE file_hash=?',(file_hash,))
+    old=cur.fetchone()
+    if old:
+        raise RuntimeError('Diese Datei wurde bereits importiert. Import-ID: '+str(old['id']))
+    cur.execute('INSERT INTO ku2_imports(filename,filepath,file_hash,imported_at,imported_by,source_type,note) VALUES (?,?,?,?,?,?,?)',(
+        os.path.basename(path),path,file_hash,datetime.now().isoformat(timespec='seconds'),user,'TXT','Encoding '+enc))
+    import_id=cur.lastrowid
+    sample=content[:8192]
+    try:
+        dialect=csv.Sniffer().sniff(sample,delimiters=';,\t|')
+    except Exception:
+        class D(csv.excel):
+            delimiter=';'; quotechar='"'
+        dialect=D
+    reader=csv.reader(io.StringIO(content), dialect)
+    rows=inserted=dups=errors=0
+    for row in reader:
+        if not row or not any(str(x).strip() for x in row): continue
+        rows+=1
+        try:
+            raw=';'.join(row)
+            tx=_ku2_row_to_tx(row, rows, import_id, raw)
+            ok=_ku2_insert_tx(cur, tx)
+            inserted+=ok; dups+=0 if ok else 1
+        except Exception:
+            errors+=1
+    cur.execute('UPDATE ku2_imports SET row_count=?, inserted_count=?, duplicate_count=?, error_count=? WHERE id=?',(rows,inserted,dups,errors,import_id))
+    con.commit(); con.close()
+    return {'import_id':import_id,'rows':rows,'inserted':inserted,'duplicates':dups,'errors':errors,'db':_ku2_db_path()}
+
+
+def _ku2_distinct(field):
+    _ku2_init_db(); con=_ku2_connect(); cur=con.cursor()
+    try:
+        cur.execute('SELECT DISTINCT '+field+' AS v FROM ku2_transactions WHERE COALESCE('+field+',\'\')<>\'\' ORDER BY v')
+        vals=[r['v'] for r in cur.fetchall()]
+    except Exception: vals=[]
+    con.close(); return vals
+
+
+def _ku2_filters_where(filters):
+    wh=[]; params=[]
+    if filters.get('date_from'):
+        wh.append('booking_date>=?'); params.append(filters['date_from'])
+    if filters.get('date_to'):
+        wh.append('booking_date<=?'); params.append(filters['date_to'])
+    if filters.get('bank'):
+        wh.append('source_bank=?'); params.append(filters['bank'])
+    if filters.get('account'):
+        wh.append('source_account=?'); params.append(filters['account'])
+    if filters.get('category'):
+        wh.append('category=?'); params.append(filters['category'])
+    if filters.get('direction'):
+        wh.append('direction=?'); params.append(filters['direction'])
+    if filters.get('search'):
+        wh.append('(UPPER(counterparty) LIKE ? OR UPPER(purpose_full) LIKE ? OR UPPER(booking_text) LIKE ?)')
+        q='%'+filters['search'].upper()+'%'; params += [q,q,q]
+    return (' WHERE '+ ' AND '.join(wh)) if wh else '', params
+
+
+def _ku2_fetch(filters, limit=500):
+    _ku2_init_db(); con=_ku2_connect(); cur=con.cursor(); where,params=_ku2_filters_where(filters)
+    cur.execute('SELECT * FROM ku2_transactions '+where+' ORDER BY booking_date DESC,id DESC LIMIT ?',params+[int(limit)])
+    rows=[dict(r) for r in cur.fetchall()]; con.close(); return rows
+
+
+def _ku2_agg(filters):
+    _ku2_init_db(); con=_ku2_connect(); cur=con.cursor(); where,params=_ku2_filters_where(filters)
+    def one(sql, extra=()):
+        cur.execute(sql+where,params+list(extra)); r=cur.fetchone(); return dict(r) if r else {}
+    cur.execute('SELECT COUNT(*) cnt, COALESCE(SUM(amount),0) netto, COALESCE(SUM(CASE WHEN amount>=0 THEN amount ELSE 0 END),0) eingang, COALESCE(SUM(CASE WHEN amount<0 THEN amount ELSE 0 END),0) ausgang FROM ku2_transactions '+where,params)
+    k=dict(cur.fetchone() or {})
+    cur.execute('SELECT booking_month, COALESCE(SUM(amount),0) netto, COALESCE(SUM(CASE WHEN amount>=0 THEN amount ELSE 0 END),0) eingang, COALESCE(SUM(CASE WHEN amount<0 THEN amount ELSE 0 END),0) ausgang, COUNT(*) cnt FROM ku2_transactions '+where+' GROUP BY booking_month ORDER BY booking_month',params)
+    months=[dict(r) for r in cur.fetchall()]
+    cur.execute('SELECT category, COUNT(*) cnt, COALESCE(SUM(amount),0) summe FROM ku2_transactions '+where+' GROUP BY category ORDER BY ABS(summe) DESC',params)
+    cats=[dict(r) for r in cur.fetchall()]
+    cur.execute('SELECT counterparty, COUNT(*) cnt, COALESCE(SUM(amount),0) summe FROM ku2_transactions '+where+' GROUP BY counterparty ORDER BY ABS(summe) DESC LIMIT 30',params)
+    partners=[dict(r) for r in cur.fetchall()]
+    cur.execute('SELECT * FROM ku2_transactions '+where+' AND anomaly_score>0 ORDER BY anomaly_score DESC, ABS(amount) DESC LIMIT 200' if where else 'SELECT * FROM ku2_transactions WHERE anomaly_score>0 ORDER BY anomaly_score DESC, ABS(amount) DESC LIMIT 200', params)
+    anomalies=[dict(r) for r in cur.fetchall()]
+    con.close(); return {'kpi':k,'months':months,'categories':cats,'partners':partners,'anomalies':anomalies}
+
+
+def _ku2_money(v):
+    try:
+        return f"{float(v):,.2f}".replace(',', 'X').replace('.', ',').replace('X','.') + ' EUR'
+    except Exception: return str(v or '')
+
+
+def _ku2_export_excel(app, filters):
+    from tkinter import filedialog
+    path=filedialog.asksaveasfilename(title='Kontenumsatz-Cockpit exportieren',defaultextension='.xlsx',initialfile='Kontenumsatz-Cockpit_'+datetime.now().strftime('%Y_%m_%d')+'.xlsx',filetypes=[('Excel-Dateien','*.xlsx')])
+    if not path: return
+    try:
+        from openpyxl import Workbook
+        from openpyxl.styles import Font, PatternFill, Alignment
+        from openpyxl.chart import BarChart, Reference
+    except Exception as exc:
+        messagebox.showerror('Kontenumsatz-Cockpit','Excel-Export benötigt openpyxl.\n\n'+str(exc)); return
+    rows=_ku2_fetch(filters,limit=1000000); agg=_ku2_agg(filters)
+    wb=Workbook(); ws=wb.active; ws.title='Dashboard'
+    ws.append(['Kennzahl','Wert'])
+    for k,v in [('Buchungen',agg['kpi'].get('cnt',0)),('Eingänge',_ku2_money(agg['kpi'].get('eingang',0))),('Ausgänge',_ku2_money(agg['kpi'].get('ausgang',0))),('Netto',_ku2_money(agg['kpi'].get('netto',0)))]: ws.append([k,v])
+    ws.append([]); ws.append(['Monat','Netto','Eingang','Ausgang','Anzahl'])
+    for m in agg['months']: ws.append([m.get('booking_month'),m.get('netto'),m.get('eingang'),m.get('ausgang'),m.get('cnt')])
+    ws2=wb.create_sheet('Buchungen')
+    cols=['booking_date','value_date','source_bank','source_account','counterparty','amount','direction','category','booking_text','purpose_full','transaction_code','gv_code','anomaly_reason']
+    ws2.append(cols)
+    for r in rows: ws2.append([r.get(c) for c in cols])
+    for title,key,data in [('Gebühren','category',[r for r in rows if r.get('is_fee')]),('Kontenpool','category',[r for r in rows if r.get('is_pool')]),('SEPA_Rückgaben','category',[r for r in rows if r.get('is_return')]),('Partner','counterparty',agg['partners']),('Anomalien','anomaly_reason',agg['anomalies'])]:
+        wsx=wb.create_sheet(title[:31])
+        if data and 'id' in data[0]:
+            wsx.append(cols)
+            for r in data: wsx.append([r.get(c) for c in cols])
+        else:
+            wsx.append(list(data[0].keys()) if data else ['Keine Daten'])
+            for r in data: wsx.append([r.get(c) for c in data[0].keys()])
+    for sh in wb.worksheets:
+        for cell in sh[1]:
+            cell.font=Font(bold=True); cell.fill=PatternFill('solid',fgColor='D9EAF7'); cell.alignment=Alignment(horizontal='center')
+        try:
+            sh.freeze_panes='A2'
+            for col in sh.columns:
+                letter=col[0].column_letter; sh.column_dimensions[letter].width=min(55,max(10,max(len(str(c.value or '')) for c in col[:100])+2))
+        except Exception: pass
+    wb.save(path)
+    try:
+        if 'register_output_file' in globals(): register_output_file(path, 'Excel', 'Kontenumsatz-Cockpit')
+    except Exception: pass
+    messagebox.showinfo('Kontenumsatz-Cockpit','Excel-Export erstellt:\n'+path)
+
+
+def _ku2_simple_tree(parent, columns, rows, height=12):
+    frame=tk.Frame(parent,bg=WHITE)
+    tree=ttk.Treeview(frame,columns=columns,show='headings',height=height)
+    vs=tk.Scrollbar(frame,orient='vertical',command=tree.yview); hs=tk.Scrollbar(frame,orient='horizontal',command=tree.xview)
+    tree.configure(yscrollcommand=vs.set,xscrollcommand=hs.set)
+    for c in columns:
+        tree.heading(c,text=c)
+        tree.column(c,width=130,anchor='w')
+    tree.grid(row=0,column=0,sticky='nsew'); vs.grid(row=0,column=1,sticky='ns'); hs.grid(row=1,column=0,sticky='ew')
+    frame.grid_rowconfigure(0,weight=1); frame.grid_columnconfigure(0,weight=1)
+    for r in rows:
+        vals=[]
+        for c in columns:
+            v=r.get(c,'') if isinstance(r,dict) else ''
+            if c=='amount' or c in ('summe','netto','eingang','ausgang'): v=_ku2_money(v)
+            vals.append(v)
+        tree.insert('', 'end', values=vals)
+    return frame
+
+
+def _ku2_draw_bar_canvas(parent, months):
+    cv=tk.Canvas(parent,bg=WHITE,highlightthickness=0,height=170)
+    cv.pack(fill='x',expand=False,padx=8,pady=8)
+    vals=[float(m.get('netto') or 0) for m in months[-12:]]
+    labels=[str(m.get('booking_month') or '')[-5:] for m in months[-12:]]
+    if not vals:
+        cv.create_text(20,80,text='Noch keine Daten importiert.',anchor='w',fill=TEXT2,font=body_font(11)); return cv
+    max_abs=max(abs(v) for v in vals) or 1.0
+    w=760; h=150; base=80; bw=max(18,int(w/max(1,len(vals)))-8)
+    cv.create_line(18,base,w+20,base,fill=LINE)
+    for i,v in enumerate(vals):
+        x=28+i*(bw+8); bar=int((abs(v)/max_abs)*60); color='#059669' if v>=0 else '#DC2626'
+        y1=base-bar if v>=0 else base; y2=base if v>=0 else base+bar
+        cv.create_rectangle(x,y1,x+bw,y2,fill=color,outline=color)
+        cv.create_text(x+bw/2,145,text=labels[i],fill=TEXT2,font=body_font(8))
+    cv.create_text(18,10,text='Netto-Cashflow je Monat (letzte 12 Monate)',anchor='w',fill=BLUE,font=body_font(11,'bold'))
+    return cv
+
+
+def _ku2_current_filters(app):
+    st=getattr(app,'ku2_filter_vars',{})
+    return {k:(v.get().strip() if hasattr(v,'get') else str(v or '').strip()) for k,v in st.items()}
+
+
+def _ku2_reload(app):
+    try: app.render_page()
+    except Exception: pass
+
+
+def _ku2_import_dialog(app):
+    if not _ku2_can_import(app):
+        messagebox.showwarning('Kontenumsatz-Cockpit','Keine Berechtigung zum Import.'); return
+    from tkinter import filedialog
+    path=filedialog.askopenfilename(title='Kontoumsatz-Datei importieren',filetypes=[('Kontoumsatz TXT/CSV','*.txt *.csv'),('Alle Dateien','*.*')])
+    if not path: return
+    try:
+        res=_ku2_import_txt(path,getattr(app,'current_user_display','') or getattr(app,'current_user_key',''))
+        messagebox.showinfo('Kontenumsatz-Cockpit',f"Import abgeschlossen.\n\nZeilen: {res['rows']}\nNeue Buchungen: {res['inserted']}\nDubletten: {res['duplicates']}\nFehler: {res['errors']}\n\nDatenbank:\n{res['db']}")
+        app.render_page()
+    except Exception as exc:
+        messagebox.showerror('Kontenumsatz-Cockpit','Import fehlgeschlagen:\n'+str(exc))
+
+
+def _ku2_save_view(app):
+    try:
+        from tkinter import simpledialog
+        name=simpledialog.askstring('Ansicht speichern','Name der Ansicht:',parent=app.root)
+    except Exception: name=''
+    name=_ku2_clean(name)
+    if not name: return
+    import json as _json
+    f=_ku2_current_filters(app)
+    con=_ku2_connect(); cur=con.cursor()
+    cur.execute('INSERT OR REPLACE INTO ku2_saved_views(name,filters_json,created_at,created_by) VALUES (?,?,?,?)',(name,_json.dumps(f,ensure_ascii=False),datetime.now().isoformat(timespec='seconds'),getattr(app,'current_user_key','')))
+    con.commit(); con.close(); messagebox.showinfo('Kontenumsatz-Cockpit','Ansicht gespeichert: '+name); app.render_page()
+
+
+def _ku2_load_view(app, name):
+    import json as _json
+    if not name: return
+    con=_ku2_connect(); cur=con.cursor(); cur.execute('SELECT filters_json FROM ku2_saved_views WHERE name=?',(name,)); r=cur.fetchone(); con.close()
+    if not r: return
+    try: data=_json.loads(r['filters_json'])
+    except Exception: data={}
+    for k,v in data.items():
+        if k in getattr(app,'ku2_filter_vars',{}): app.ku2_filter_vars[k].set(v)
+    app.render_page()
+
+
+def _ku2_saved_views():
+    _ku2_init_db(); con=_ku2_connect(); cur=con.cursor(); cur.execute('SELECT name FROM ku2_saved_views ORDER BY name'); vals=[r['name'] for r in cur.fetchall()]; con.close(); return vals
+
+
+def _ku2_render_cockpit(self):
+    _ku2_init_db()
+    if not hasattr(self,'ku2_filter_vars'):
+        self.ku2_filter_vars={
+            'date_from':tk.StringVar(value=''), 'date_to':tk.StringVar(value=''), 'bank':tk.StringVar(value=''), 'account':tk.StringVar(value=''),
+            'category':tk.StringVar(value=''), 'direction':tk.StringVar(value=''), 'search':tk.StringVar(value='')
+        }
+    filters=_ku2_current_filters(self); agg=_ku2_agg(filters); rows=_ku2_fetch(filters,limit=700)
+    w,h=self.canvas.winfo_width(),self.canvas.winfo_height(); y=145; left_w=max(300,min(390,int(w*0.22))); right_x=left_w+46
+    # Linke Filterspalte
+    lf=tk.Frame(self.root,bg=WHITE,highlightbackground=LINE,highlightthickness=2); self.widget_items.append(lf)
+    tk.Label(lf,text='Filter & Ansichten',bg=WHITE,fg=BLUE,font=body_font(14,'bold')).pack(anchor='w',padx=14,pady=(14,8))
+    form=tk.Frame(lf,bg=WHITE); form.pack(fill='x',padx=14)
+    def field(label,key,values=None):
+        tk.Label(form,text=label,bg=WHITE,fg=TEXT2,font=body_font(9)).pack(anchor='w',pady=(6,1))
+        if values is None:
+            ent=tk.Entry(form,textvariable=self.ku2_filter_vars[key],bg='#F8FAFC',fg=TEXT,font=body_font(10),relief='solid',bd=1); ent.pack(fill='x',ipady=4); ent.bind('<Return>',lambda e:_ku2_reload(self))
+        else:
+            vals=['']+values
+            cb=ttk.Combobox(form,textvariable=self.ku2_filter_vars[key],values=vals,state='readonly',font=body_font(10)); cb.pack(fill='x',ipady=2); cb.bind('<<ComboboxSelected>>',lambda e:_ku2_reload(self))
+    field('Datum von (JJJJ-MM-TT)','date_from'); field('Datum bis (JJJJ-MM-TT)','date_to')
+    field('Bank/BLZ','bank',_ku2_distinct('source_bank')); field('Konto','account',_ku2_distinct('source_account'))
+    field('Kategorie','category',FM_KU2_CATEGORIES); field('Richtung','direction',['Eingang','Ausgang']); field('Suche','search')
+    btns=tk.Frame(lf,bg=WHITE); btns.pack(fill='x',padx=14,pady=12)
+    tk.Button(btns,text='Anwenden',command=lambda:_ku2_reload(self),bg='#CFEAD6',fg=TEXT,font=body_font(10,'bold'),relief='solid',bd=1).pack(fill='x',pady=3,ipady=4)
+    tk.Button(btns,text='Filter leeren',command=lambda:[v.set('') for v in self.ku2_filter_vars.values()] or _ku2_reload(self),bg=WHITE,fg=TEXT,font=body_font(10),relief='solid',bd=1).pack(fill='x',pady=3,ipady=4)
+    tk.Button(btns,text='TXT/CSV importieren',command=lambda:_ku2_import_dialog(self),bg=WHITE if _ku2_can_import(self) else GREY_DISABLED,fg=TEXT,font=body_font(10,'bold'),relief='solid',bd=1).pack(fill='x',pady=(12,3),ipady=5)
+    tk.Button(btns,text='Excel-Export',command=lambda:_ku2_export_excel(self,_ku2_current_filters(self)),bg=WHITE,fg=TEXT,font=body_font(10),relief='solid',bd=1).pack(fill='x',pady=3,ipady=4)
+    tk.Button(btns,text='Ansicht speichern',command=lambda:_ku2_save_view(self),bg=WHITE,fg=TEXT,font=body_font(10),relief='solid',bd=1).pack(fill='x',pady=3,ipady=4)
+    views=_ku2_saved_views()
+    if views:
+        tk.Label(lf,text='Gespeicherte Ansichten',bg=WHITE,fg=TEXT2,font=body_font(9,'bold')).pack(anchor='w',padx=14,pady=(8,2))
+        for nm in views[:8]: tk.Button(lf,text=nm,command=lambda n=nm:_ku2_load_view(self,n),bg='#F8FAFC',fg=TEXT,font=body_font(9),relief='solid',bd=1).pack(fill='x',padx=14,pady=2)
+    tk.Label(lf,text='Berechtigung: E1/E2 ansehen/exportieren, E3/E4 importieren/löschen, E4 Datenbankwartung. Excel/SFIRM sind als Folgeimporte vorgemerkt.',bg=WHITE,fg=TEXT2,font=body_font(8),wraplength=left_w-34,justify='left').pack(fill='x',padx=14,pady=(12,8))
+    self.canvas.create_window(ui_s(22),ui_s(y),window=lf,anchor='nw',width=ui_s(left_w),height=ui_s(max(520,h-y-32)))
+    # Rechte Analysefläche
+    rf=tk.Frame(self.root,bg=WHITE,highlightbackground=LINE,highlightthickness=2); self.widget_items.append(rf)
+    top=tk.Frame(rf,bg=WHITE); top.pack(fill='x',padx=14,pady=(12,6))
+    tk.Label(top,text='Kontenumsatz-Cockpit',bg=WHITE,fg=BLUE,font=body_font(18,'bold')).pack(side='left')
+    tk.Label(top,text='v'+FM_KONTO_UMSATZ_COCKPIT_VERSION,bg=WHITE,fg=TEXT2,font=body_font(10)).pack(side='left',padx=10)
+    kpis=tk.Frame(rf,bg=WHITE); kpis.pack(fill='x',padx=14,pady=(4,8))
+    for title,val,color in [('Buchungen',agg['kpi'].get('cnt',0),BLUE),('Eingänge',_ku2_money(agg['kpi'].get('eingang',0)),'#059669'),('Ausgänge',_ku2_money(agg['kpi'].get('ausgang',0)),'#DC2626'),('Netto',_ku2_money(agg['kpi'].get('netto',0)),TEXT)]:
+        card=tk.Frame(kpis,bg='#F8FAFC',highlightbackground='#CBD5E1',highlightthickness=1); card.pack(side='left',fill='x',expand=True,padx=(0,8))
+        tk.Label(card,text=title,bg='#F8FAFC',fg=TEXT2,font=body_font(9)).pack(anchor='w',padx=10,pady=(7,0))
+        tk.Label(card,text=str(val),bg='#F8FAFC',fg=color,font=body_font(13,'bold')).pack(anchor='w',padx=10,pady=(0,8))
+    nb=ttk.Notebook(rf); nb.pack(fill='both',expand=True,padx=14,pady=(0,14))
+    tab_dash=tk.Frame(nb,bg=WHITE); nb.add(tab_dash,text='Dashboard')
+    _ku2_draw_bar_canvas(tab_dash,agg['months'])
+    _ku2_simple_tree(tab_dash,['category','cnt','summe'],agg['categories'],height=9).pack(fill='both',expand=True,padx=8,pady=8)
+    tab_b=tk.Frame(nb,bg=WHITE); nb.add(tab_b,text='Buchungen')
+    _ku2_simple_tree(tab_b,['booking_date','value_date','source_account','counterparty','amount','direction','category','booking_text'],rows,18).pack(fill='both',expand=True,padx=8,pady=8)
+    tab_g=tk.Frame(nb,bg=WHITE); nb.add(tab_g,text='Gebühren')
+    fees=[r for r in rows if r.get('is_fee')]; _ku2_simple_tree(tab_g,['booking_date','counterparty','amount','category','booking_text','purpose_full'],fees,18).pack(fill='both',expand=True,padx=8,pady=8)
+    tab_p=tk.Frame(nb,bg=WHITE); nb.add(tab_p,text='Kontenpool')
+    pools=[r for r in rows if r.get('is_pool')]; _ku2_simple_tree(tab_p,['booking_date','source_account','counterparty','amount','booking_text','purpose_full'],pools,18).pack(fill='both',expand=True,padx=8,pady=8)
+    tab_s=tk.Frame(nb,bg=WHITE); nb.add(tab_s,text='SEPA/Rückgaben')
+    sepa=[r for r in rows if 'SEPA' in str(r.get('category','')) or r.get('is_return')]; _ku2_simple_tree(tab_s,['booking_date','counterparty','amount','category','sepa_ref','mandate_ref','return_reason','purpose_full'],sepa,18).pack(fill='both',expand=True,padx=8,pady=8)
+    tab_pa=tk.Frame(nb,bg=WHITE); nb.add(tab_pa,text='Partner')
+    _ku2_simple_tree(tab_pa,['counterparty','cnt','summe'],agg['partners'],18).pack(fill='both',expand=True,padx=8,pady=8)
+    tab_a=tk.Frame(nb,bg=WHITE); nb.add(tab_a,text='Anomalien')
+    _ku2_simple_tree(tab_a,['booking_date','counterparty','amount','category','anomaly_score','anomaly_reason','purpose_full'],agg['anomalies'],18).pack(fill='both',expand=True,padx=8,pady=8)
+    self.canvas.create_window(ui_s(right_x),ui_s(y),window=rf,anchor='nw',width=ui_s(max(880,w-right_x-26)),height=ui_s(max(520,h-y-32)))
+
+
+def _ku2_render_treasury_tools_menu(self):
+    items=[('Kontenumsatz-Cockpit','account_revenue_cockpit')]
+    self.render_center_menu(items,title='Tools - Treasury')
+    self.draw_bottom_logo()
+
+
+def _ku2_try_show_tool(self, tool_id):
+    if tool_id=='konto_umsatz_cockpit':
+        return self.show_page('account_revenue_cockpit','Kontenumsatz-Cockpit',True)
+    try: return _ku2_prev_try_show_tool(self, tool_id)
+    except Exception: return None
+
+try:
+    _ku2_prev_render_page = FiBuMateApp.render_page
+except Exception:
+    _ku2_prev_render_page = None
+
+def _ku2_render_page(self):
+    if self.current_page == 'account_revenue_cockpit':
+        self.clear_widgets(); self.draw_background(); self.draw_header(self.current_title); self.draw_controls(); self.draw_path_bar(); self.draw_favorites_bar(); self.render_konto_umsatz_cockpit(); return
+    if _ku2_prev_render_page:
+        return _ku2_prev_render_page(self)
+
+try:
+    _ku2_prev_render_in_dev_menu = FiBuMateApp.render_in_dev_menu
+except Exception:
+    _ku2_prev_render_in_dev_menu = None
+
+def _ku2_render_in_dev_menu(self):
+    # Eigener sauberer Entwicklungsbereich inkl. alter Kontenauswertung als Referenz.
+    modules=[]
+    try:
+        if '_fm520_modules_for_page' in globals(): modules=list(_fm520_modules_for_page('in_dev'))
+    except Exception: modules=[]
+    if not modules:
+        modules=[('Compliance & Audit','page:compliance_audit'),('X001 SAP - Test','x001_sap_test'),('AFI-Upload (lokale KI)','supplier_invoice_afi_upload'),('AFI-Kontierungs-Assistent (stabil)','afi_copilot_stable')]
+    # render_module_menu kann nur Registry-Module direkt; alte Kontenauswertung daher als eigener Center-Eintrag davor.
+    items=[('Kontenauswertung (alt)','account_analysis')]+[(t,m) for t,m in modules if m!='account_analysis']
+    self.render_center_menu(items,title='In Entwicklung')
+    self.draw_bottom_logo()
+
+try:
+    FiBuMateApp.render_konto_umsatz_cockpit = _ku2_render_cockpit
+    FiBuMateApp.render_treasury_tools_menu = _ku2_render_treasury_tools_menu
+    FiBuMateApp.render_page = _ku2_render_page
+    FiBuMateApp.render_in_dev_menu = _ku2_render_in_dev_menu
+except Exception:
+    pass
+
+
+# FM530_ORDER_FIX_20260720: moved late monkey patches before Tk mainloop
 
 # ------------------------------------------------------------------
 # FM_AFICOPILOT_20260720_FINAL
@@ -21033,3 +21620,1470 @@ def _fm_afi_copilot_render_in_dev_menu(self):
 
 FiBuMateApp.render_afi_uploads_menu = _fm_afi_copilot_render_afi_uploads_menu
 FiBuMateApp.render_in_dev_menu = _fm_afi_copilot_render_in_dev_menu
+
+# ------------------------------------------------------------------
+# FiBu Mate v0.530 - Transaktionsgebühren-Stückkostenanalyse
+# Datum: 2026-07-20
+# ------------------------------------------------------------------
+FM530_VERSION = "0.530"
+try:
+    TOOL_REGISTRY["transaction_fee_analysis"] = {"title":"Transaktionsgebühren-Analyse", "module":"", "favorite_label":"Gebührenanalyse"}
+    MODULE_DESCRIPTIONS["transaction_fee_analysis"] = "Analyse der Einzelstueckkosten von Transaktionsgebühren inklusive BLZ-Bank-Konto-Verknuepfung, Zeitreihen, Auffälligkeiten und automatischer Diagrammauswahl."
+except Exception:
+    pass
+
+def _fm530_cols(con, table):
+    try: return {str(r[1] if not hasattr(r,'keys') else r['name']) for r in con.execute(f'PRAGMA table_info({table})').fetchall()}
+    except Exception: return set()
+
+def _fm530_add_col(con, table, col, spec):
+    try:
+        if col not in _fm530_cols(con, table): con.execute(f'ALTER TABLE {table} ADD COLUMN {col} {spec}')
+    except Exception: pass
+
+def _fm530_init_db():
+    try: _fm507_db_init_fast()
+    except Exception:
+        try: _fm505_db_init()
+        except Exception:
+            try: _fm501_db_init()
+            except Exception: pass
+    con=_fm501_db_connect(); cur=con.cursor()
+    try:
+        for table in ('imports','closings','fee_items'):
+            for col,spec in (('bank_id','INTEGER'),('account_id','INTEGER'),('blz','TEXT')): _fm530_add_col(con,table,col,spec)
+        try:
+            for col,spec in (('bank_id','INTEGER'),('account_id','INTEGER'),('blz','TEXT')): _fm530_add_col(con,'ku2_transactions',col,spec)
+        except Exception: pass
+        cur.execute('CREATE INDEX IF NOT EXISTS idx_fm530_fee_link ON fee_items(bank_id,account_id,blz,abschlussdatum,monat_key,geschäftsvorfall)')
+        cur.execute('CREATE INDEX IF NOT EXISTS idx_fm530_bank_blz ON treasury_banks(blz)')
+        con.commit()
+    finally:
+        con.close()
+
+def _fm530_period(date_s, month_s='', granularity='auto'):
+    s=str(date_s or '').strip(); m=str(month_s or '').strip(); d=None
+    try: d=datetime.strptime(s[:10],'%Y-%m-%d')
+    except Exception: pass
+    if granularity=='auto': granularity='day' if d else 'month'
+    if granularity=='day' and d: return d.strftime('%Y-%m-%d')
+    if granularity=='quarter' and d: return f'{d.year}-Q{((d.month-1)//3)+1}'
+    if granularity=='year' and d: return str(d.year)
+    if granularity=='month':
+        if d: return d.strftime('%Y-%m')
+        mt=re.match(r'^(\d{1,2})/(\d{2,4})$',m)
+        if mt:
+            yy=int(mt.group(2)); yy=2000+yy if yy<100 else yy
+            return f'{yy:04d}-{int(mt.group(1)):02d}'
+    return m or s[:10]
+
+def _fm530_find_or_create_bank_account(con, bank_text, account_text):
+    bank_text=str(bank_text or '').strip(); account_text=str(account_text or '').strip()
+    if not bank_text and not account_text: return None,None
+    bank=None
+    if bank_text:
+        bank=con.execute("SELECT * FROM treasury_banks WHERE lower(bankname)=lower(?) OR lower(kurzname)=lower(?) OR blz=? ORDER BY active DESC,id LIMIT 1",(bank_text,bank_text,bank_text)).fetchone()
+    if not bank:
+        now=datetime.now().isoformat(timespec='seconds'); blz=bank_text if re.fullmatch(r'\d{6,12}',bank_text) else ''; name=('Bank '+bank_text) if blz else (bank_text or 'Unbekannte Bank')
+        con.execute('INSERT OR IGNORE INTO treasury_banks(bankname,kurzname,bic,blz,kommentar,active,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?)',(name,name[:30],'',blz,'Automatisch aus Gebühren-/Kontoumsatzdaten angelegt',1,now,now)); con.commit()
+        bank=con.execute('SELECT * FROM treasury_banks WHERE lower(bankname)=lower(?) ORDER BY id DESC LIMIT 1',(name,)).fetchone()
+    if not bank: return None,None
+    bid=int(bank['id']); acc=None
+    if account_text:
+        acc=con.execute("SELECT * FROM treasury_accounts WHERE bank_id=? AND (lower(account_name)=lower(?) OR kontonummer=? OR iban=?) ORDER BY active DESC,id LIMIT 1",(bid,account_text,account_text,account_text)).fetchone()
+        if not acc:
+            now=datetime.now().isoformat(timespec='seconds'); knr=account_text if re.fullmatch(r'\d{4,18}',account_text) else ''; iban=account_text if account_text.upper().startswith(('DE','AT','CH','NL','FR','GB','IT','LU','BE','FI','DK','SE','CZ','PL','IE','TR')) else ''
+            con.execute('INSERT OR IGNORE INTO treasury_accounts(bank_id,account_name,kontonummer,iban,waehrung,sap_konto,kommentar,active,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?)',(bid,account_text,knr,iban,'EUR','','Automatisch aus Gebühren-/Kontoumsatzdaten angelegt',1,now,now)); con.commit()
+            acc=con.execute('SELECT * FROM treasury_accounts WHERE bank_id=? AND lower(account_name)=lower(?) ORDER BY id DESC LIMIT 1',(bid,account_text)).fetchone()
+    return bank,acc
+
+def _fm530_sync_links(show_message=False, app=None):
+    _fm530_init_db(); con=_fm501_db_connect(); cur=con.cursor(); fee=0; tx=0
+    try:
+        for r in cur.execute("SELECT id,COALESCE(bank,'') bank,COALESCE(konto,'') konto FROM fee_items WHERE COALESCE(bank_id,0)=0 OR COALESCE(account_id,0)=0 OR COALESCE(blz,'')='' LIMIT 10000").fetchall():
+            b,a=_fm530_find_or_create_bank_account(con,r['bank'],r['konto'])
+            if b: cur.execute('UPDATE fee_items SET bank_id=?, account_id=?, blz=? WHERE id=?',(int(b['id']),int(a['id']) if a else None,b['blz'] or '',int(r['id']))); fee+=1
+        try:
+            for r in cur.execute("SELECT id,COALESCE(source_bank,'') bank,COALESCE(source_account,'') konto FROM ku2_transactions WHERE COALESCE(bank_id,0)=0 OR COALESCE(account_id,0)=0 OR COALESCE(blz,'')='' LIMIT 10000").fetchall():
+                b,a=_fm530_find_or_create_bank_account(con,r['bank'],r['konto'])
+                if b: cur.execute('UPDATE ku2_transactions SET bank_id=?, account_id=?, blz=? WHERE id=?',(int(b['id']),int(a['id']) if a else None,b['blz'] or '',int(r['id']))); tx+=1
+        except Exception: pass
+        con.commit()
+    finally: con.close()
+    if show_message:
+        try: messagebox.showinfo('Transaktionsgebühren-Analyse',f'Verknuepfung aktualisiert.\n\nGebührenpositionen: {fee}\nKontoumsaetze: {tx}')
+        except Exception: pass
+    return {'fee_items':fee,'transactions':tx}
+
+def _fm530_distinct(field):
+    _fm530_init_db(); con=_fm501_db_connect()
+    try:
+        if field=='bank': sql="SELECT DISTINCT COALESCE(b.bankname,f.bank,'') v FROM fee_items f LEFT JOIN treasury_banks b ON b.id=f.bank_id WHERE COALESCE(b.bankname,f.bank,'')<>'' ORDER BY v"
+        elif field=='konto': sql="SELECT DISTINCT COALESCE(a.account_name,f.konto,'') v FROM fee_items f LEFT JOIN treasury_accounts a ON a.id=f.account_id WHERE COALESCE(a.account_name,f.konto,'')<>'' ORDER BY v"
+        elif field=='blz': sql="SELECT DISTINCT COALESCE(f.blz,b.blz,'') v FROM fee_items f LEFT JOIN treasury_banks b ON b.id=f.bank_id WHERE COALESCE(f.blz,b.blz,'')<>'' ORDER BY v"
+        else: sql="SELECT DISTINCT COALESCE(geschäftsvorfall,'') v FROM fee_items WHERE COALESCE(geschäftsvorfall,'')<>'' ORDER BY v"
+        return [r['v'] for r in con.execute(sql).fetchall()]
+    finally: con.close()
+
+def _fm530_rows(filters=None):
+    filters=filters or {}; _fm530_init_db(); con=_fm501_db_connect()
+    try:
+        sql="""SELECT f.*,COALESCE(b.bankname,f.bank,'') bankname,COALESCE(a.account_name,f.konto,'') account_name,COALESCE(f.blz,b.blz,'') blz_master
+               FROM fee_items f LEFT JOIN treasury_banks b ON b.id=f.bank_id LEFT JOIN treasury_accounts a ON a.id=f.account_id
+               WHERE COALESCE(f.gesamtbetrag,0)<>0"""
+        raw=[dict(r) for r in con.execute(sql).fetchall()]
+    finally: con.close()
+    bank=filters.get('bank','').strip(); konto=filters.get('konto','').strip(); blz=filters.get('blz','').strip(); gv=filters.get('gv','').strip(); q=filters.get('q','').strip().casefold(); gran=filters.get('granularity','auto') or 'auto'; threshold=float(filters.get('threshold') or 10)
+    rows=[]
+    for r in raw:
+        if bank and r.get('bankname','')!=bank: continue
+        if konto and r.get('account_name','')!=konto: continue
+        if blz and r.get('blz_master','')!=blz: continue
+        if gv and gv.casefold() not in str(r.get('geschäftsvorfall') or '').casefold(): continue
+        hay=' '.join(str(r.get(k,'') or '') for k in ('bankname','account_name','blz_master','geschäftsvorfall','positionstyp')).casefold()
+        if q and q not in hay: continue
+        rows.append(r)
+    if gran=='auto':
+        days={str(r.get('abschlussdatum') or '')[:10] for r in rows if str(r.get('abschlussdatum') or '')[:10]}; months={_fm530_period(r.get('abschlussdatum'),r.get('monat_key'),'month') for r in rows}
+        gran='day' if len(days)>len(months) and len(days)<=250 else 'month'
+    agg={}
+    for r in rows:
+        period=_fm530_period(r.get('abschlussdatum'),r.get('monat_key'),gran); art=str(r.get('geschäftsvorfall') or 'Ohne Geschäftsvorfall'); key=(period,art)
+        a=agg.setdefault(key,{'period':period,'geschäftsvorfall':art,'anzahl':0.0,'gesamtbetrag':0.0,'unit_values':[],'bank':set(),'konto':set(),'blz':set()})
+        qty=float(r.get('anzahl') or 0); cost=float(r.get('gesamtbetrag') or 0); a['anzahl']+=qty; a['gesamtbetrag']+=cost
+        if r.get('stueckkosten') is not None: a['unit_values'].append(float(r.get('stueckkosten') or 0))
+        if r.get('bankname'): a['bank'].add(str(r.get('bankname')))
+        if r.get('account_name'): a['konto'].add(str(r.get('account_name')))
+        if r.get('blz_master'): a['blz'].add(str(r.get('blz_master')))
+    out=[]
+    for a in agg.values():
+        a['stueckkosten']=(a['gesamtbetrag']/a['anzahl']) if a['anzahl'] else (sum(a['unit_values'])/len(a['unit_values']) if a['unit_values'] else 0.0)
+        a['bank']=', '.join(sorted(a['bank']))[:90]; a['konto']=', '.join(sorted(a['konto']))[:90]; a['blz']=', '.join(sorted(a['blz']))[:60]; out.append(a)
+    out.sort(key=lambda x:(x['geschäftsvorfall'].casefold(),x['period'])); prev={}
+    for r in out:
+        old=prev.get(r['geschäftsvorfall']); r['veraenderung_pct']=((r['stueckkosten']-old['stueckkosten'])/abs(old['stueckkosten'])*100.0) if old and old.get('stueckkosten') else 0.0; r['auffällig']=1 if abs(r['veraenderung_pct'])>=threshold else 0; prev[r['geschäftsvorfall']]=r
+    if filters.get('only_alerts'): out=[r for r in out if r.get('auffällig')]
+    return out,gran
+
+def _fm530_draw_chart(canvas, rows, mode='unit'):
+    canvas.delete('all'); w=max(700,int(canvas.winfo_width() or 900)); h=max(260,int(canvas.winfo_height() or 285)); canvas.create_rectangle(0,0,w,h,fill=WHITE,outline=LINE)
+    if not rows: canvas.create_text(20,32,text='Keine Daten fuer die aktuelle Filterung.',anchor='w',fill=TEXT2,font=body_font(11,'bold')); return
+    left,top,right,bottom=60,34,w-28,h-48; vals=[(r.get('stueckkosten') if mode=='unit' else r.get('gesamtbetrag')) or 0 for r in rows]; mn=min(vals); mx=max(vals); rng=(mx-mn) or 1.0
+    canvas.create_text(left,16,text=('Automatisch: Liniendiagramm fuer Stückkostenentwicklung' if mode=='unit' else 'Automatisch: Balkendiagramm fuer Kostenvergleich'),anchor='w',fill=BLUE,font=body_font(11,'bold'))
+    for i in range(5): y=top+(bottom-top)*i/4; canvas.create_line(left,y,right,y,fill='#E5E7EB'); canvas.create_text(left-8,y,text=f'{mx-rng*i/4:.2f}',anchor='e',fill=TEXT2,font=body_font(8))
+    if mode=='unit':
+        periods=sorted({r['period'] for r in rows})[-24:]; names=sorted({r['geschäftsvorfall'] for r in rows},key=lambda n:-sum(x.get('gesamtbetrag',0) for x in rows if x['geschäftsvorfall']==n))[:6]; xmap={p:left+(right-left)*i/max(1,len(periods)-1) for i,p in enumerate(periods)}; colors=[BLUE,RED,'#059669','#7C3AED','#D97706','#0891B2']
+        for si,n in enumerate(names):
+            pts=[(xmap[r['period']],bottom-(((r.get('stueckkosten') or 0)-mn)/rng)*(bottom-top),r) for r in rows if r['period'] in xmap and r['geschäftsvorfall']==n]; pts.sort(key=lambda t:t[0]); color=colors[si%len(colors)]
+            for a,b in zip(pts,pts[1:]): canvas.create_line(a[0],a[1],b[0],b[1],fill=color,width=2)
+            for x,y,_r in pts: canvas.create_oval(x-3,y-3,x+3,y+3,fill=color,outline=color)
+            canvas.create_text(right-200,top+16*si,text=n[:32],anchor='w',fill=color,font=body_font(8,'bold'))
+        for p in periods[::max(1,len(periods)//8 or 1)]: canvas.create_text(xmap[p],bottom+18,text=p,fill=TEXT2,font=body_font(8))
+    else:
+        top_rows=sorted(rows,key=lambda r:r.get('gesamtbetrag',0),reverse=True)[:12]; bw=max(10,(right-left)/max(1,len(top_rows))*0.68)
+        for i,r in enumerate(top_rows): x=left+i*((right-left)/max(1,len(top_rows)))+6; y=bottom-(((r.get('gesamtbetrag') or 0)-mn)/rng)*(bottom-top); canvas.create_rectangle(x,y,x+bw,bottom,fill=BLUE,outline=BLUE); canvas.create_text(x+bw/2,bottom+18,text=str(r.get('geschäftsvorfall',''))[:10],fill=TEXT2,font=body_font(7))
+
+def _fm530_export(rows):
+    try: from openpyxl import Workbook
+    except Exception as exc: messagebox.showerror('Transaktionsgebühren-Analyse','Excel-Export benoetigt openpyxl.\n\n'+str(exc)); return
+    path=filedialog.asksaveasfilename(title='Transaktionsgebühren-Analyse exportieren',defaultextension='.xlsx',initialfile='Transaktionsgebühren_Analyse_'+datetime.now().strftime('%Y_%m_%d')+'.xlsx',filetypes=[('Excel','*.xlsx')])
+    if not path: return
+    wb=Workbook(); ws=wb.active; ws.title='Stückkosten'; ws.append(['Periode','Bank','BLZ','Konto','Transaktionsart','Anzahl','Gesamtkosten','Stückkosten gewichtet','Veraenderung %','Auffällig'])
+    for r in rows: ws.append([r.get('period'),r.get('bank'),r.get('blz'),r.get('konto'),r.get('geschäftsvorfall'),r.get('anzahl'),r.get('gesamtbetrag'),r.get('stueckkosten'),r.get('veraenderung_pct'),'Ja' if r.get('auffällig') else 'Nein'])
+    wb.save(path)
+    try: register_output_file(path,'Excel','Transaktionsgebühren-Analyse')
+    except Exception: pass
+    messagebox.showinfo('Transaktionsgebühren-Analyse','Excel-Export erstellt:\n'+path)
+
+def _fm530_render_transaction_fee_analysis(self):
+    try: _fm530_sync_links(False,self)
+    except Exception: pass
+    try: self.clear_widgets(); self.draw_background(); self.draw_header('Transaktionsgebühren-Analyse'); self.draw_controls(); self.draw_path_bar(); self.draw_favorites_bar()
+    except Exception: pass
+    self.current_page='transaction_fee_analysis'; self.current_title='Transaktionsgebühren-Analyse'
+    frame=tk.Frame(self.root,bg=BG); self.widget_items.append(frame); self.canvas.create_window(0,132,window=frame,anchor='nw',width=self.canvas.winfo_width(),height=max(420,self.canvas.winfo_height()-170))
+    top=tk.Frame(frame,bg=WHITE,highlightbackground=LINE,highlightthickness=1); top.pack(fill='x',padx=20,pady=(8,8)); tk.Label(top,text='Transaktionsgebühren-Analyse',bg=WHITE,fg=BLUE,font=body_font(18,'bold')).pack(side='left',padx=12,pady=10); tk.Label(top,text='Einzelstueckkosten, BLZ-Bank-Konto-Verknuepfung und Auffälligkeiten',bg=WHITE,fg=TEXT2,font=body_font(10)).pack(side='left',padx=8)
+    main=tk.Frame(frame,bg=BG); main.pack(fill='both',expand=True,padx=20,pady=(0,10)); filters=tk.Frame(main,bg=WHITE,highlightbackground=LINE,highlightthickness=1); filters.pack(fill='x',pady=(0,8))
+    bank_var=tk.StringVar(value=''); blz_var=tk.StringVar(value=''); konto_var=tk.StringVar(value=''); gv_var=tk.StringVar(value=''); gran_var=tk.StringVar(value='auto'); threshold_var=tk.StringVar(value='10'); q_var=tk.StringVar(value=''); alert_var=tk.BooleanVar(value=False); mode_var=tk.StringVar(value='Stückkostenentwicklung')
+    def combo(v, vals, width): return ttk.Combobox(filters,textvariable=v,values=['']+list(vals),state='normal',font=body_font(9),width=width)
+    controls=[('Bank',combo(bank_var,_fm530_distinct('bank'),18)),('BLZ',combo(blz_var,_fm530_distinct('blz'),12)),('Konto',combo(konto_var,_fm530_distinct('konto'),15)),('Transaktionsart',combo(gv_var,_fm530_distinct('geschäftsvorfall'),24)),('Stückelung',ttk.Combobox(filters,textvariable=gran_var,values=['auto','day','month','quarter','year'],state='readonly',font=body_font(9),width=9)),('Grenze %',tk.Entry(filters,textvariable=threshold_var,bg=WHITE,fg=TEXT,font=body_font(9),relief='solid',bd=1,width=7)),('Suche',tk.Entry(filters,textvariable=q_var,bg=WHITE,fg=TEXT,font=body_font(9),relief='solid',bd=1,width=18)),('Diagramm',ttk.Combobox(filters,textvariable=mode_var,values=['Stückkostenentwicklung','Kostenvergleich'],state='readonly',font=body_font(9),width=20))]
+    for i,(lab,wid) in enumerate(controls): tk.Label(filters,text=lab,bg=WHITE,fg=TEXT2,font=body_font(8)).grid(row=0,column=i,sticky='w',padx=(8,2),pady=(6,1)); wid.grid(row=1,column=i,sticky='w',padx=(8,2),pady=(0,7))
+    tk.Checkbutton(filters,text='nur Auffälligkeiten',variable=alert_var,bg=WHITE,fg=TEXT,font=body_font(9),activebackground=WHITE).grid(row=1,column=len(controls),padx=8,pady=(0,7),sticky='w')
+    buttons=tk.Frame(filters,bg=WHITE); buttons.grid(row=2,column=0,columnspan=len(controls)+2,sticky='w',padx=8,pady=(0,8)); kpi=tk.Frame(main,bg=BG); kpi.pack(fill='x',pady=(0,8)); chart=tk.Canvas(main,bg=WHITE,height=295,highlightthickness=1,highlightbackground=LINE); chart.pack(fill='x',pady=(0,8))
+    table_frame=tk.Frame(main,bg=WHITE,highlightbackground=LINE,highlightthickness=1); table_frame.pack(fill='both',expand=True); cols=('period','bank','blz','konto','gv','anzahl','gesamt','unit','delta','alert'); tree=ttk.Treeview(table_frame,columns=cols,show='headings',height=12)
+    for c,t,wid,anc in [('period','Periode',82,'w'),('bank','Bank',125,'w'),('blz','BLZ',78,'w'),('konto','Konto',115,'w'),('gv','Transaktionsart',230,'w'),('anzahl','Anzahl',82,'e'),('gesamt','Gesamtkosten',105,'e'),('unit','Stückkosten',105,'e'),('delta','Delta %',82,'e'),('alert','Auff.',55,'w')]: tree.heading(c,text=t); tree.column(c,width=wid,anchor=anc)
+    ysb=ttk.Scrollbar(table_frame,orient='vertical',command=tree.yview); tree.configure(yscrollcommand=ysb.set); tree.pack(side='left',fill='both',expand=True,padx=6,pady=6); ysb.pack(side='right',fill='y',pady=6); current_rows=[]
+    def draw_kpis(rows,gran):
+        for ch in kpi.winfo_children(): ch.destroy()
+        total=sum(float(r.get('gesamtbetrag') or 0) for r in rows); qty=sum(float(r.get('anzahl') or 0) for r in rows); unit=(total/qty) if qty else 0.0; alerts=sum(1 for r in rows if r.get('auffällig'))
+        for title,value in [('Gesamtkosten',f'{total:,.2f} EUR'),('Transaktionen',f'{qty:,.0f}'),('Durchschnitt Stückkosten',f'{unit:.4f} EUR'),('Auffälligkeiten',str(alerts)),('Stückelung',gran)]: box=tk.Frame(kpi,bg=WHITE,highlightbackground=LINE,highlightthickness=1); box.pack(side='left',padx=(0,8),ipadx=10,ipady=6); tk.Label(box,text=title,bg=WHITE,fg=TEXT2,font=body_font(8)).pack(anchor='w'); tk.Label(box,text=value,bg=WHITE,fg=BLUE,font=body_font(12,'bold')).pack(anchor='w')
+    def refresh():
+        nonlocal current_rows
+        current_rows,gran=_fm530_rows({'bank':bank_var.get().strip(),'blz':blz_var.get().strip(),'konto':konto_var.get().strip(),'gv':gv_var.get().strip(),'granularity':gran_var.get().strip(),'threshold':threshold_var.get().strip() or '10','q':q_var.get().strip(),'only_alerts':alert_var.get()})
+        for item in tree.get_children(): tree.delete(item)
+        for r in current_rows[:1500]: tree.insert('', 'end', values=(r.get('period'),r.get('bank'),r.get('blz'),r.get('konto'),r.get('geschäftsvorfall'),f"{r.get('anzahl',0):.0f}",f"{r.get('gesamtbetrag',0):.2f}",f"{r.get('stueckkosten',0):.4f}",f"{r.get('veraenderung_pct',0):.1f}",'Ja' if r.get('auffällig') else ''))
+        draw_kpis(current_rows,gran); _fm530_draw_chart(chart,current_rows,'unit' if mode_var.get()=='Stückkostenentwicklung' else 'cost')
+    tk.Button(buttons,text='Auswertung aktualisieren',command=refresh,bg=WHITE,fg=BLUE,font=body_font(9,'bold'),relief='solid',bd=1,padx=10,pady=4).pack(side='left',padx=(0,8)); tk.Button(buttons,text='BLZ/Bank/Konto verknüpfen',command=lambda:(_fm530_sync_links(True,self),refresh()),bg=WHITE,fg=TEXT,font=body_font(9),relief='solid',bd=1,padx=10,pady=4).pack(side='left',padx=(0,8)); tk.Button(buttons,text='Excel-Export',command=lambda:_fm530_export(current_rows),bg=WHITE,fg=TEXT,font=body_font(9),relief='solid',bd=1,padx=10,pady=4).pack(side='left')
+    try: self.root.after(100,refresh)
+    except Exception: refresh()
+
+def _fm530_open_transaction_fee_analysis(self):
+    return _fm530_render_transaction_fee_analysis(self)
+try:
+    _FM530_PREV_SHOW_PAGE=FiBuMateApp.show_page
+    def _fm530_show_page(self,page,title=None,*args,**kwargs):
+        if page=='transaction_fee_analysis': return _fm530_render_transaction_fee_analysis(self)
+        return _FM530_PREV_SHOW_PAGE(self,page,title,*args,**kwargs)
+    FiBuMateApp.show_page=_fm530_show_page
+except Exception: pass
+try:
+    _FM530_PREV_RENDER_SPECIAL_PAGE=FiBuMateApp.render_special_page
+    def _fm530_render_special_page(self,page,title=''):
+        if page=='transaction_fee_analysis': return _fm530_render_transaction_fee_analysis(self)
+        return _FM530_PREV_RENDER_SPECIAL_PAGE(self,page,title)
+    FiBuMateApp.render_special_page=_fm530_render_special_page
+except Exception: pass
+try:
+    _FM530_PREV_TREASURY_MENU=FiBuMateApp.render_treasury_tools_menu
+    def _fm530_render_treasury_tools_menu(self):
+        _FM530_PREV_TREASURY_MENU(self)
+        try:
+            tile=Tile(self.root,self,'transaction_fee_analysis','Transaktionsgebühren-Analyse',command=lambda:_fm530_open_transaction_fee_analysis(self),favorite_enabled=False,center_text=True,icon_type='fibu_treasury')
+            self.widget_items.append(tile); self.canvas.create_window(ui_s(690),ui_s(215),window=tile,anchor='nw',width=ui_s(300),height=ui_s(150))
+        except Exception: pass
+    FiBuMateApp.render_treasury_tools_menu=_fm530_render_treasury_tools_menu
+except Exception: pass
+try:
+    FiBuMateApp.render_transaction_fee_analysis=_fm530_render_transaction_fee_analysis
+    FiBuMateApp.open_transaction_fee_analysis=_fm530_open_transaction_fee_analysis
+except Exception: pass
+
+
+
+# ------------------------------------------------------------------
+# FiBu Mate v0.531 - Kontenumsatz-Cockpit konsolidieren
+# Datum: 2026-07-20
+# Zweck:
+# - Tools -> Treasury zeigt nur noch das Kontenumsatz-Cockpit.
+# - Transaktionsgebührenanalyse ist in die Primäranalyse des Cockpits integriert.
+# - Bank- und Kontenstammdaten sind als eigener Cockpit-Reiter integriert.
+# - Alte Treasury-Zwischenmodule sind nur noch in "In Entwicklung" erreichbar.
+# ------------------------------------------------------------------
+FM531_VERSION = "0.531"
+try:
+    TOOL_REGISTRY["konto_umsatz_cockpit"] = {"title":"Kontenumsatz-Cockpit", "module":"", "favorite_label":"Kontenumsatz"}
+    MODULE_DESCRIPTIONS["konto_umsatz_cockpit"] = "Produktives Treasury-Cockpit fuer Kontoumsaetze, Primäranalyse, Transaktionsgebühren und Bank- und Kontenstammdaten."
+except Exception:
+    pass
+
+_FM531_OLD_TREASURY_PAGES = {"account_analysis", "treasury_master_data", "transaction_fee_analysis", "treasury_kontenauswertung"}
+
+
+def _fm531_page_id(item):
+    try:
+        if isinstance(item, (list, tuple)) and item:
+            return str(item[0])
+        if isinstance(item, dict):
+            return str(item.get('page') or item.get('page_name') or item.get('id') or '')
+        return str(item)
+    except Exception:
+        return ''
+
+
+def _fm531_prune_cockpit_back_history(self):
+    try:
+        hist = list(getattr(self, 'page_history', []) or [])
+        self.page_history = [x for x in hist if _fm531_page_id(x) not in _FM531_OLD_TREASURY_PAGES]
+    except Exception:
+        pass
+    try:
+        bc = list(getattr(self, 'breadcrumb', []) or [])
+        self.breadcrumb = [x for x in bc if _fm531_page_id(x) not in _FM531_OLD_TREASURY_PAGES]
+    except Exception:
+        pass
+
+
+def _fm531_clear_filter_vars(app):
+    try:
+        for v in app.ku2_filter_vars.values():
+            v.set('')
+    except Exception:
+        pass
+    try:
+        _ku2_reload(app)
+    except Exception:
+        app.render_page()
+
+
+def _fm531_money(value):
+    try:
+        return _ku2_money(value)
+    except Exception:
+        try:
+            return f"{float(value):,.2f} EUR"
+        except Exception:
+            return str(value)
+
+
+def _fm531_kpi_card(parent, title, value, color):
+    card = tk.Frame(parent, bg='#F8FAFC', highlightbackground='#CBD5E1', highlightthickness=1)
+    card.pack(side='left', fill='x', expand=True, padx=(0, 8))
+    tk.Label(card, text=title, bg='#F8FAFC', fg=TEXT2, font=body_font(9)).pack(anchor='w', padx=10, pady=(7, 0))
+    tk.Label(card, text=str(value), bg='#F8FAFC', fg=color, font=body_font(13, 'bold')).pack(anchor='w', padx=10, pady=(0, 8))
+    return card
+
+
+def _fm531_tree(parent, columns, rows, height=12):
+    frame = tk.Frame(parent, bg=WHITE)
+    tree = ttk.Treeview(frame, columns=columns, show='headings', height=height)
+    for c in columns:
+        tree.heading(c, text=c)
+        anchor = 'e' if c in ('amount', 'summe', 'gesamtbetrag', 'stueckkosten', 'veraenderung_pct', 'anzahl') else 'w'
+        width = 115 if c not in ('purpose_full', 'booking_text', 'geschäftsvorfall') else 240
+        tree.column(c, width=width, anchor=anchor, stretch=True)
+    for r in rows or []:
+        vals = []
+        for c in columns:
+            try:
+                val = r.get(c, '') if isinstance(r, dict) else r[c]
+            except Exception:
+                val = ''
+            if isinstance(val, float):
+                val = f"{val:.4f}" if c in ('stueckkosten', 'veraenderung_pct') else f"{val:.2f}"
+            vals.append(val)
+        tree.insert('', 'end', values=vals)
+    ysb = ttk.Scrollbar(frame, orient='vertical', command=tree.yview)
+    tree.configure(yscrollcommand=ysb.set)
+    tree.pack(side='left', fill='both', expand=True)
+    ysb.pack(side='right', fill='y')
+    return frame
+
+
+def _fm531_render_primary_tab(app, parent, agg, rows):
+    if not hasattr(app, 'fm531_analysis_mode'):
+        app.fm531_analysis_mode = tk.StringVar(value='Gesamtüberblick')
+        app.fm531_fee_event = tk.StringVar(value='')
+        app.fm531_fee_threshold = tk.StringVar(value='10')
+        app.fm531_fee_only_alerts = tk.BooleanVar(value=False)
+    head = tk.Frame(parent, bg=WHITE)
+    head.pack(fill='x', padx=10, pady=(8, 6))
+    tk.Label(head, text='Primäranalyse', bg=WHITE, fg=BLUE, font=body_font(13, 'bold')).pack(side='left', padx=(0, 10))
+    modes = ['Gesamtüberblick', 'Transaktionsgebühren / Stückkosten', 'Vorgänge / Kategorien', 'Partneranalyse']
+    ttk.Combobox(head, textvariable=app.fm531_analysis_mode, values=modes, state='readonly', font=body_font(10), width=33).pack(side='left', padx=(0, 8))
+    try:
+        events = [''] + _fm530_distinct('geschäftsvorfall')
+    except Exception:
+        events = ['']
+    tk.Label(head, text='Vorfall', bg=WHITE, fg=TEXT2, font=body_font(9)).pack(side='left', padx=(8, 4))
+    ttk.Combobox(head, textvariable=app.fm531_fee_event, values=events, state='normal', font=body_font(10), width=26).pack(side='left', padx=(0, 8))
+    tk.Label(head, text='Auffällig ab %', bg=WHITE, fg=TEXT2, font=body_font(9)).pack(side='left', padx=(8, 4))
+    tk.Entry(head, textvariable=app.fm531_fee_threshold, bg='#F8FAFC', fg=TEXT, font=body_font(10), relief='solid', bd=1, width=6).pack(side='left')
+    tk.Checkbutton(head, text='nur Auffälligkeiten', variable=app.fm531_fee_only_alerts, bg=WHITE, fg=TEXT, font=body_font(9), activebackground=WHITE).pack(side='left', padx=(10, 0))
+    tk.Button(head, text='Analyse aktualisieren', command=app.render_page, bg=WHITE, fg=TEXT, font=body_font(9), relief='solid', bd=1).pack(side='right', padx=(8, 0), ipady=2)
+    body = tk.Frame(parent, bg=WHITE)
+    body.pack(fill='both', expand=True, padx=10, pady=(0, 8))
+    mode = app.fm531_analysis_mode.get()
+    if mode == 'Transaktionsgebühren / Stückkosten':
+        filters = {
+            'bank': app.ku2_filter_vars.get('bank').get() if hasattr(app, 'ku2_filter_vars') and 'bank' in app.ku2_filter_vars else '',
+            'konto': app.ku2_filter_vars.get('account').get() if hasattr(app, 'ku2_filter_vars') and 'account' in app.ku2_filter_vars else '',
+            'gv': app.fm531_fee_event.get(),
+            'threshold': app.fm531_fee_threshold.get() or '10',
+            'only_alerts': app.fm531_fee_only_alerts.get(),
+            'granularity': 'auto',
+        }
+        try:
+            fee_rows, gran = _fm530_rows(filters)
+        except Exception:
+            fee_rows, gran = [], 'auto'
+        top = tk.Frame(body, bg=WHITE)
+        top.pack(fill='x', pady=(0, 8))
+        total = sum(float(r.get('gesamtbetrag') or 0) for r in fee_rows)
+        qty = sum(float(r.get('anzahl') or 0) for r in fee_rows)
+        unit = (total / qty) if qty else 0.0
+        alerts = sum(1 for r in fee_rows if r.get('auffällig'))
+        _fm531_kpi_card(top, 'Gebühren gesamt', _fm531_money(total), BLUE)
+        _fm531_kpi_card(top, 'Transaktionen', f"{qty:.0f}", TEXT)
+        _fm531_kpi_card(top, 'Ø Stückkosten', f"{unit:.4f} EUR", '#059669')
+        _fm531_kpi_card(top, 'Auffälligkeiten', alerts, RED if alerts else TEXT)
+        chart = tk.Canvas(body, bg=WHITE, height=230, highlightthickness=1, highlightbackground=LINE)
+        chart.pack(fill='x', pady=(0, 8))
+        try:
+            _fm530_draw_chart(chart, fee_rows, 'unit')
+        except Exception:
+            chart.create_text(16, 22, text='Diagramm konnte nicht erstellt werden.', anchor='w', fill=TEXT2, font=body_font(10))
+        cols = ['period', 'bank', 'blz', 'konto', 'geschäftsvorfall', 'anzahl', 'gesamtbetrag', 'stueckkosten', 'veraenderung_pct', 'auffällig']
+        _fm531_tree(body, cols, fee_rows, height=11).pack(fill='both', expand=True)
+        return
+    if mode == 'Partneranalyse':
+        _fm531_tree(body, ['counterparty', 'cnt', 'summe'], agg.get('partners', []), height=18).pack(fill='both', expand=True, padx=2, pady=2)
+        return
+    if mode == 'Vorgänge / Kategorien':
+        split = tk.PanedWindow(body, orient='horizontal', bg=WHITE, sashwidth=4)
+        split.pack(fill='both', expand=True)
+        left = tk.Frame(split, bg=WHITE); right = tk.Frame(split, bg=WHITE)
+        split.add(left); split.add(right)
+        tk.Label(left, text='Kategorien / Vorgänge', bg=WHITE, fg=BLUE, font=body_font(11, 'bold')).pack(anchor='w', padx=6, pady=(0, 4))
+        _fm531_tree(left, ['category', 'cnt', 'summe'], agg.get('categories', []), height=15).pack(fill='both', expand=True, padx=4, pady=4)
+        tk.Label(right, text='Auffällige Buchungen', bg=WHITE, fg=BLUE, font=body_font(11, 'bold')).pack(anchor='w', padx=6, pady=(0, 4))
+        _fm531_tree(right, ['booking_date', 'counterparty', 'amount', 'category', 'anomaly_score', 'anomaly_reason', 'purpose_full'], agg.get('anomalies', []), height=15).pack(fill='both', expand=True, padx=4, pady=4)
+        return
+    # Default: Gesamtüberblick
+    try:
+        _ku2_draw_bar_canvas(body, agg.get('months', []))
+    except Exception:
+        pass
+    _fm531_tree(body, ['category', 'cnt', 'summe'], agg.get('categories', []), height=10).pack(fill='both', expand=True, padx=4, pady=8)
+
+
+def _fm531_db_columns(con, table):
+    try:
+        return [r['name'] if hasattr(r, 'keys') else r[1] for r in con.execute(f'PRAGMA table_info({table})').fetchall()]
+    except Exception:
+        return []
+
+
+def _fm531_fetch_master_data():
+    try:
+        _fm530_init_db()
+    except Exception:
+        try: _ku2_init_db()
+        except Exception: pass
+    con = _fm501_db_connect()
+    try:
+        banks = [dict(r) for r in con.execute('SELECT * FROM treasury_banks ORDER BY active DESC, bankname, id').fetchall()]
+    except Exception:
+        banks = []
+    try:
+        accounts = [dict(r) for r in con.execute('SELECT a.*, b.bankname, b.blz FROM treasury_accounts a LEFT JOIN treasury_banks b ON b.id=a.bank_id ORDER BY b.bankname, a.account_name, a.id').fetchall()]
+    except Exception:
+        accounts = []
+    try:
+        con.close()
+    except Exception:
+        pass
+    return banks, accounts
+
+
+def _fm531_create_bank(app):
+    try:
+        from tkinter import simpledialog
+        name = simpledialog.askstring('Bank anlegen', 'Bankname:', parent=app.root)
+        if not name: return
+        blz = simpledialog.askstring('Bank anlegen', 'BLZ (optional):', parent=app.root) or ''
+        bic = simpledialog.askstring('Bank anlegen', 'BIC (optional):', parent=app.root) or ''
+        _fm530_init_db(); con = _fm501_db_connect(); now = datetime.now().isoformat(timespec='seconds')
+        con.execute('INSERT INTO treasury_banks(bankname,kurzname,bic,blz,kommentar,active,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?)', (name, name[:30], bic, blz, 'Manuell im Kontenumsatz-Cockpit angelegt', 1, now, now))
+        con.commit(); con.close(); app.render_page()
+    except Exception as exc:
+        try: messagebox.showerror('Bank- und Kontenstammdaten', 'Bank konnte nicht angelegt werden:\n' + str(exc))
+        except Exception: pass
+
+
+def _fm531_create_account(app):
+    try:
+        from tkinter import simpledialog
+        bank_id = simpledialog.askinteger('Konto anlegen', 'Bank-ID:', parent=app.root)
+        if not bank_id: return
+        name = simpledialog.askstring('Konto anlegen', 'Kontoname:', parent=app.root)
+        if not name: return
+        knr = simpledialog.askstring('Konto anlegen', 'Kontonummer (optional):', parent=app.root) or ''
+        iban = simpledialog.askstring('Konto anlegen', 'IBAN (optional):', parent=app.root) or ''
+        _fm530_init_db(); con = _fm501_db_connect(); now = datetime.now().isoformat(timespec='seconds')
+        con.execute('INSERT INTO treasury_accounts(bank_id,account_name,kontonummer,iban,waehrung,sap_konto,kommentar,active,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?)', (int(bank_id), name, knr, iban, 'EUR', '', 'Manuell im Kontenumsatz-Cockpit angelegt', 1, now, now))
+        con.commit(); con.close(); app.render_page()
+    except Exception as exc:
+        try: messagebox.showerror('Bank- und Kontenstammdaten', 'Konto konnte nicht angelegt werden:\n' + str(exc))
+        except Exception: pass
+
+
+def _fm531_render_master_tab(app, parent):
+    top = tk.Frame(parent, bg=WHITE)
+    top.pack(fill='x', padx=10, pady=(8, 6))
+    tk.Label(top, text='Bank- und Kontenstammdaten', bg=WHITE, fg=BLUE, font=body_font(13, 'bold')).pack(side='left')
+    tk.Button(top, text='BLZ/Bank/Konto aus Umsaetzen verknüpfen', command=lambda: (_fm530_sync_links(True, app), app.render_page()), bg=WHITE, fg=TEXT, font=body_font(9), relief='solid', bd=1).pack(side='right', padx=(6, 0), ipady=2)
+    tk.Button(top, text='Konto anlegen', command=lambda: _fm531_create_account(app), bg=WHITE, fg=TEXT, font=body_font(9), relief='solid', bd=1).pack(side='right', padx=(6, 0), ipady=2)
+    tk.Button(top, text='Bank anlegen', command=lambda: _fm531_create_bank(app), bg=WHITE, fg=TEXT, font=body_font(9), relief='solid', bd=1).pack(side='right', padx=(6, 0), ipady=2)
+    banks, accounts = _fm531_fetch_master_data()
+    nb = ttk.Notebook(parent)
+    nb.pack(fill='both', expand=True, padx=10, pady=(0, 10))
+    tab_b = tk.Frame(nb, bg=WHITE); nb.add(tab_b, text='Banken')
+    _fm531_tree(tab_b, ['id', 'bankname', 'kurzname', 'bic', 'blz', 'active', 'updated_at'], banks, height=18).pack(fill='both', expand=True, padx=6, pady=6)
+    tab_a = tk.Frame(nb, bg=WHITE); nb.add(tab_a, text='Konten')
+    _fm531_tree(tab_a, ['id', 'bank_id', 'bankname', 'blz', 'account_name', 'kontonummer', 'iban', 'waehrung', 'sap_konto', 'active'], accounts, height=18).pack(fill='both', expand=True, padx=6, pady=6)
+
+
+def _fm531_render_cockpit(self):
+    _ku2_init_db()
+    _fm531_prune_cockpit_back_history(self)
+    if not hasattr(self, 'ku2_filter_vars'):
+        self.ku2_filter_vars = {
+            'date_from': tk.StringVar(value=''), 'date_to': tk.StringVar(value=''), 'bank': tk.StringVar(value=''), 'account': tk.StringVar(value=''),
+            'category': tk.StringVar(value=''), 'direction': tk.StringVar(value=''), 'search': tk.StringVar(value='')
+        }
+    filters = _ku2_current_filters(self); agg = _ku2_agg(filters); rows = _ku2_fetch(filters, limit=700)
+    w, h = self.canvas.winfo_width(), self.canvas.winfo_height(); y = 145; left_w = max(300, min(390, int(w * 0.22))); right_x = left_w + 46
+    lf = tk.Frame(self.root, bg=WHITE, highlightbackground=LINE, highlightthickness=2); self.widget_items.append(lf)
+    tk.Label(lf, text='Filter & Ansichten', bg=WHITE, fg=BLUE, font=body_font(14, 'bold')).pack(anchor='w', padx=14, pady=(14, 8))
+    form = tk.Frame(lf, bg=WHITE); form.pack(fill='x', padx=14)
+    def field(label, key, values=None):
+        tk.Label(form, text=label, bg=WHITE, fg=TEXT2, font=body_font(9)).pack(anchor='w', pady=(6, 1))
+        if values is None:
+            ent = tk.Entry(form, textvariable=self.ku2_filter_vars[key], bg='#F8FAFC', fg=TEXT, font=body_font(10), relief='solid', bd=1)
+            ent.pack(fill='x', ipady=4); ent.bind('<Return>', lambda e: _ku2_reload(self))
+        else:
+            cb = ttk.Combobox(form, textvariable=self.ku2_filter_vars[key], values=[''] + list(values), state='readonly', font=body_font(10))
+            cb.pack(fill='x', ipady=2); cb.bind('<<ComboboxSelected>>', lambda e: _ku2_reload(self))
+    field('Datum von (JJJJ-MM-TT)', 'date_from'); field('Datum bis (JJJJ-MM-TT)', 'date_to')
+    field('Bank/BLZ', 'bank', _ku2_distinct('source_bank')); field('Konto', 'account', _ku2_distinct('source_account'))
+    field('Kategorie', 'category', FM_KU2_CATEGORIES); field('Richtung', 'direction', ['Eingang', 'Ausgang']); field('Suche', 'search')
+    btns = tk.Frame(lf, bg=WHITE); btns.pack(fill='x', padx=14, pady=12)
+    tk.Button(btns, text='Anwenden', command=lambda: _ku2_reload(self), bg='#CFEAD6', fg=TEXT, font=body_font(10, 'bold'), relief='solid', bd=1).pack(fill='x', pady=3, ipady=4)
+    tk.Button(btns, text='Filter leeren', command=lambda: _fm531_clear_filter_vars(self), bg=WHITE, fg=TEXT, font=body_font(10), relief='solid', bd=1).pack(fill='x', pady=3, ipady=4)
+    tk.Button(btns, text='TXT/CSV importieren', command=lambda: _ku2_import_dialog(self), bg=WHITE if _ku2_can_import(self) else GREY_DISABLED, fg=TEXT, font=body_font(10, 'bold'), relief='solid', bd=1).pack(fill='x', pady=(12, 3), ipady=5)
+    tk.Button(btns, text='Excel-Export', command=lambda: _ku2_export_excel(self, _ku2_current_filters(self)), bg=WHITE, fg=TEXT, font=body_font(10), relief='solid', bd=1).pack(fill='x', pady=3, ipady=4)
+    tk.Button(btns, text='Ansicht speichern', command=lambda: _ku2_save_view(self), bg=WHITE, fg=TEXT, font=body_font(10), relief='solid', bd=1).pack(fill='x', pady=3, ipady=4)
+    views = _ku2_saved_views()
+    if views:
+        tk.Label(lf, text='Gespeicherte Ansichten', bg=WHITE, fg=TEXT2, font=body_font(9, 'bold')).pack(anchor='w', padx=14, pady=(8, 2))
+        for nm in views[:8]:
+            tk.Button(lf, text=nm, command=lambda n=nm: _ku2_load_view(self, n), bg='#F8FAFC', fg=TEXT, font=body_font(9), relief='solid', bd=1).pack(fill='x', padx=14, pady=2)
+    tk.Label(lf, text='Treasury produktiv: Cockpit inkl. Primäranalyse, Transaktionsgebühren und Bank- und Kontenstammdaten. Alte Treasury-Werkzeuge liegen nur noch in In Entwicklung.', bg=WHITE, fg=TEXT2, font=body_font(8), wraplength=left_w-34, justify='left').pack(fill='x', padx=14, pady=(12, 8))
+    self.canvas.create_window(ui_s(22), ui_s(y), window=lf, anchor='nw', width=ui_s(left_w), height=ui_s(max(520, h-y-32)))
+    rf = tk.Frame(self.root, bg=WHITE, highlightbackground=LINE, highlightthickness=2); self.widget_items.append(rf)
+    top = tk.Frame(rf, bg=WHITE); top.pack(fill='x', padx=14, pady=(12, 6))
+    tk.Label(top, text='Kontenumsatz-Cockpit', bg=WHITE, fg=BLUE, font=body_font(18, 'bold')).pack(side='left')
+    tk.Label(top, text='v' + str(FM_KONTO_UMSATZ_COCKPIT_VERSION) + ' / FM533', bg=WHITE, fg=TEXT2, font=body_font(10)).pack(side='left', padx=10)
+    if not hasattr(self, 'fm533_main_view'):
+        self.fm533_main_view = tk.StringVar(value='overview')
+    def _fm533_select_main_view(view):
+        self.fm533_main_view.set(view)
+        self.render_page()
+    main_tabs = tk.Frame(rf, bg=WHITE)
+    main_tabs.pack(fill='x', padx=14, pady=(0, 8))
+    for _label, _view in [('Übersicht', 'overview'), ('Bank- und Kontenstammdaten', 'master')]:
+        active = self.fm533_main_view.get() == _view
+        tk.Button(
+            main_tabs, text=_label, command=lambda v=_view: _fm533_select_main_view(v),
+            bg=('#DDEAF7' if active else WHITE), fg=(BLUE if active else TEXT),
+            font=body_font(10, 'bold' if active else None), relief='solid', bd=1, padx=14, pady=4
+        ).pack(side='left', padx=(0, 8))
+    if self.fm533_main_view.get() == 'master':
+        _fm533_render_master_tab(self, rf)
+        self.canvas.create_window(ui_s(right_x), ui_s(y), window=rf, anchor='nw', width=ui_s(max(880, w-right_x-26)), height=ui_s(max(520, h-y-32)))
+        return
+    kpis = tk.Frame(rf, bg=WHITE); kpis.pack(fill='x', padx=14, pady=(4, 8))
+    _fm531_kpi_card(kpis, 'Buchungen', agg['kpi'].get('cnt', 0), BLUE)
+    _fm531_kpi_card(kpis, 'Eingänge', _fm531_money(agg['kpi'].get('eingang', 0)), '#059669')
+    _fm531_kpi_card(kpis, 'Ausgänge', _fm531_money(agg['kpi'].get('ausgang', 0)), '#DC2626')
+    _fm531_kpi_card(kpis, 'Netto', _fm531_money(agg['kpi'].get('netto', 0)), TEXT)
+    nb = ttk.Notebook(rf); nb.pack(fill='both', expand=True, padx=14, pady=(0, 14))
+    tab_primary = tk.Frame(nb, bg=WHITE); nb.add(tab_primary, text='Primäranalyse')
+    _fm531_render_primary_tab(self, tab_primary, agg, rows)
+    tab_b = tk.Frame(nb, bg=WHITE); nb.add(tab_b, text='Buchungen')
+    _ku2_simple_tree(tab_b, ['booking_date', 'value_date', 'source_account', 'counterparty', 'amount', 'direction', 'category', 'booking_text'], rows, 18).pack(fill='both', expand=True, padx=8, pady=8)
+    tab_p = tk.Frame(nb, bg=WHITE); nb.add(tab_p, text='Kontenpool')
+    pools = [r for r in rows if r.get('is_pool')]; _ku2_simple_tree(tab_p, ['booking_date', 'source_account', 'counterparty', 'amount', 'booking_text', 'purpose_full'], pools, 18).pack(fill='both', expand=True, padx=8, pady=8)
+    tab_s = tk.Frame(nb, bg=WHITE); nb.add(tab_s, text='SEPA/Rückgaben')
+    sepa = [r for r in rows if 'SEPA' in str(r.get('category', '')) or r.get('is_return')]; _ku2_simple_tree(tab_s, ['booking_date', 'counterparty', 'amount', 'category', 'sepa_ref', 'mandate_ref', 'return_reason', 'purpose_full'], sepa, 18).pack(fill='both', expand=True, padx=8, pady=8)
+    tab_pa = tk.Frame(nb, bg=WHITE); nb.add(tab_pa, text='Partner')
+    _ku2_simple_tree(tab_pa, ['counterparty', 'cnt', 'summe'], agg['partners'], 18).pack(fill='both', expand=True, padx=8, pady=8)
+    tab_a = tk.Frame(nb, bg=WHITE); nb.add(tab_a, text='Anomalien')
+    _ku2_simple_tree(tab_a, ['booking_date', 'counterparty', 'amount', 'category', 'anomaly_score', 'anomaly_reason', 'purpose_full'], agg['anomalies'], 18).pack(fill='both', expand=True, padx=8, pady=8)
+    self.canvas.create_window(ui_s(right_x), ui_s(y), window=rf, anchor='nw', width=ui_s(max(880, w-right_x-26)), height=ui_s(max(520, h-y-32)))
+
+
+def _fm531_render_treasury_tools_menu(self):
+    items = [('Kontenumsatz-Cockpit', 'account_revenue_cockpit')]
+    self.render_center_menu(items, title='Tools - Treasury')
+    self.draw_bottom_logo()
+
+
+def _fm531_render_in_dev_menu(self):
+    modules = [
+        ('Kontenauswertung (alt)', 'account_analysis'),
+        ('Banken- und Kontenstammdaten (alt)', 'treasury_master_data'),
+        ('Compliance & Audit', 'page:compliance_audit'),
+        ('X001 SAP - Test', 'x001_sap_test'),
+        ('AFI-Upload (lokale KI)', 'supplier_invoice_afi_upload'),
+        ('AFI-Kontierungs-Assistent (stabil)', 'afi_copilot_stable'),
+    ]
+    self.render_center_menu(modules, title='In Entwicklung')
+    self.draw_bottom_logo()
+
+try:
+    _FM531_PREV_RENDER_PAGE = FiBuMateApp.render_page
+    def _fm531_render_page(self):
+        if getattr(self, 'current_page', '') == 'account_revenue_cockpit':
+            _fm531_prune_cockpit_back_history(self)
+            self.clear_widgets(); self.draw_background(); self.draw_header(self.current_title); self.draw_controls(); self.draw_path_bar(); self.draw_favorites_bar(); self.render_konto_umsatz_cockpit(); return
+        return _FM531_PREV_RENDER_PAGE(self)
+    FiBuMateApp.render_page = _fm531_render_page
+except Exception:
+    pass
+
+try:
+    FiBuMateApp.render_konto_umsatz_cockpit = _fm531_render_cockpit
+    FiBuMateApp.render_treasury_tools_menu = _fm531_render_treasury_tools_menu
+    FiBuMateApp.render_in_dev_menu = _fm531_render_in_dev_menu
+    FiBuMateApp.open_transaction_fee_analysis = lambda self: self.show_page('account_revenue_cockpit', 'Kontenumsatz-Cockpit', True)
+    FiBuMateApp.render_transaction_fee_analysis = _fm531_render_cockpit
+except Exception:
+    pass
+
+
+
+# ------------------------------------------------------------------
+# FiBu Mate v0.532 - Umlaut-/Diagrammkorrektur Stückkosten
+# Datum: 2026-07-20
+# Zweck:
+# - Globale UI-Regel fortführen: Umlaute in sichtbaren Texten korrekt darstellen.
+# - Diagramme mit Einheiten versehen.
+# - Stückkostenentwicklung bei konstanten Werten als horizontale Linie darstellen.
+# ------------------------------------------------------------------
+FM532_VERSION = "0.532"
+
+
+def _fm532_chart_values(rows, mode='unit'):
+    vals = []
+    for r in rows or []:
+        try:
+            vals.append(float((r.get('stückkosten') if 'stückkosten' in r else r.get('stueckkosten')) if mode == 'unit' else r.get('gesamtbetrag')))
+        except Exception:
+            try:
+                vals.append(float(r.get('stueckkosten') if mode == 'unit' else r.get('gesamtbetrag')))
+            except Exception:
+                pass
+    return vals
+
+
+def _fm532_round_tolerance(vals):
+    if not vals:
+        return 1e-9
+    base = max(1.0, max(abs(v) for v in vals))
+    return max(1e-9, base * 1e-7)
+
+
+def _fm532_plot_y(value, mn, mx, top, bottom, flat=False):
+    if flat:
+        return (top + bottom) / 2
+    rng = (mx - mn) or 1.0
+    return bottom - ((float(value) - mn) / rng) * (bottom - top)
+
+
+def _fm532_draw_chart(canvas, rows, mode='unit'):
+    canvas.delete('all')
+    w = max(700, int(canvas.winfo_width() or 900))
+    h = max(260, int(canvas.winfo_height() or 285))
+    canvas.create_rectangle(0, 0, w, h, fill=WHITE, outline=LINE)
+    if not rows:
+        canvas.create_text(20, 32, text='Keine Daten für die aktuelle Filterung.', anchor='w', fill=TEXT2, font=body_font(11, 'bold'))
+        return
+    left, top, right, bottom = 74, 38, w - 34, h - 58
+    vals = _fm532_chart_values(rows, mode)
+    if not vals:
+        canvas.create_text(20, 32, text='Keine numerischen Werte für das Diagramm vorhanden.', anchor='w', fill=TEXT2, font=body_font(11, 'bold'))
+        return
+    raw_mn, raw_mx = min(vals), max(vals)
+    tol = _fm532_round_tolerance(vals)
+    flat = abs(raw_mx - raw_mn) <= tol
+    if flat:
+        pad = max(abs(raw_mx) * 0.05, 0.0025 if mode == 'unit' else 1.0)
+        mn, mx = raw_mn - pad, raw_mx + pad
+    else:
+        pad = (raw_mx - raw_mn) * 0.08
+        mn, mx = raw_mn - pad, raw_mx + pad
+    unit = 'EUR/Stück' if mode == 'unit' else 'EUR'
+    title = 'Stückkostenentwicklung' if mode == 'unit' else 'Kostenvergleich'
+    subtitle = 'Konstante Werte werden als horizontale Linie dargestellt.' if flat else 'Automatische Skalierung mit Toleranz gegen Rundungsdifferenzen.'
+    canvas.create_text(left, 16, text=f'{title} ({unit})', anchor='w', fill=BLUE, font=body_font(11, 'bold'))
+    canvas.create_text(right, 16, text=subtitle, anchor='e', fill=TEXT2, font=body_font(8))
+    # Y-Achse und Gitter mit Einheit
+    canvas.create_line(left, top, left, bottom, fill=LINE)
+    canvas.create_line(left, bottom, right, bottom, fill=LINE)
+    for i in range(5):
+        y = top + (bottom - top) * i / 4
+        value = mx - (mx - mn) * i / 4
+        label = f'{value:.4f} {unit}' if mode == 'unit' else f'{value:,.2f} {unit}'
+        canvas.create_line(left, y, right, y, fill='#E5E7EB')
+        canvas.create_text(left - 8, y, text=label, anchor='e', fill=TEXT2, font=body_font(8))
+    canvas.create_text(14, (top + bottom) / 2, text=unit, anchor='w', fill=TEXT2, font=body_font(8, 'bold'))
+    if mode == 'unit':
+        periods = sorted({r.get('period') for r in rows if r.get('period')})[-24:]
+        names = sorted({r.get('geschäftsvorfall') or r.get('geschaeftsvorfall') for r in rows if (r.get('geschäftsvorfall') or r.get('geschaeftsvorfall'))}, key=lambda n: -sum(float(x.get('gesamtbetrag', 0) or 0) for x in rows if (x.get('geschäftsvorfall') or x.get('geschaeftsvorfall')) == n))[:6]
+        xmap = {p: left + (right - left) * i / max(1, len(periods) - 1) for i, p in enumerate(periods)}
+        colors = [BLUE, RED, '#059669', '#7C3AED', '#D97706', '#0891B2']
+        for si, n in enumerate(names):
+            pts = []
+            for r in rows:
+                if r.get('period') not in xmap or (r.get('geschäftsvorfall') or r.get('geschaeftsvorfall')) != n:
+                    continue
+                value = float((r.get('stückkosten') if 'stückkosten' in r else r.get('stueckkosten')) or 0)
+                pts.append((xmap[r.get('period')], _fm532_plot_y(value, mn, mx, top, bottom, flat), r))
+            pts.sort(key=lambda t: t[0])
+            color = colors[si % len(colors)]
+            for a, b in zip(pts, pts[1:]):
+                canvas.create_line(a[0], a[1], b[0], b[1], fill=color, width=2)
+            for x, y, _r in pts:
+                canvas.create_oval(x - 3, y - 3, x + 3, y + 3, fill=color, outline=color)
+            canvas.create_text(right - 230, top + 16 * si, text=str(n)[:36], anchor='w', fill=color, font=body_font(8, 'bold'))
+        step = max(1, len(periods) // 8 or 1)
+        for p in periods[::step]:
+            canvas.create_text(xmap[p], bottom + 18, text=p, fill=TEXT2, font=body_font(8))
+        canvas.create_text((left + right) / 2, h - 18, text='Periode', fill=TEXT2, font=body_font(8, 'bold'))
+    else:
+        top_rows = sorted(rows, key=lambda r: float(r.get('gesamtbetrag', 0) or 0), reverse=True)[:12]
+        bw = max(10, (right - left) / max(1, len(top_rows)) * 0.68)
+        for i, r in enumerate(top_rows):
+            x = left + i * ((right - left) / max(1, len(top_rows))) + 6
+            value = float(r.get('gesamtbetrag') or 0)
+            y = _fm532_plot_y(value, mn, mx, top, bottom, flat)
+            canvas.create_rectangle(x, y, x + bw, bottom, fill=BLUE, outline=BLUE)
+            canvas.create_text(x + bw / 2, bottom + 18, text=str(r.get('geschäftsvorfall') or r.get('geschaeftsvorfall') or '')[:10], fill=TEXT2, font=body_font(7))
+
+
+def _fm532_tree(parent, columns, rows, height=12):
+    label_map = {
+        'period': 'Periode', 'bank': 'Bank', 'blz': 'BLZ', 'konto': 'Konto',
+        'geschaeftsvorfall': 'Geschäftsvorfall', 'geschäftsvorfall': 'Geschäftsvorfall',
+        'anzahl': 'Anzahl', 'gesamtbetrag': 'Gesamtbetrag (EUR)',
+        'stueckkosten': 'Stückkosten (EUR/Stück)', 'stückkosten': 'Stückkosten (EUR/Stück)',
+        'veraenderung_pct': 'Veränderung %', 'auffaellig': 'Auffällig', 'amount': 'Betrag (EUR)', 'summe': 'Summe (EUR)',
+        'booking_date': 'Buchungsdatum', 'value_date': 'Valuta', 'source_account': 'Konto', 'counterparty': 'Partner',
+        'direction': 'Richtung', 'category': 'Kategorie', 'booking_text': 'Buchungstext', 'purpose_full': 'Verwendungszweck',
+        'anomaly_score': 'Auffälligkeit', 'anomaly_reason': 'Hinweis', 'cnt': 'Anzahl'
+    }
+    frame = tk.Frame(parent, bg=WHITE)
+    tree = ttk.Treeview(frame, columns=columns, show='headings', height=height)
+    for c in columns:
+        tree.heading(c, text=label_map.get(c, c))
+        anchor = 'e' if c in ('amount', 'summe', 'gesamtbetrag', 'stueckkosten', 'stückkosten', 'veraenderung_pct', 'anzahl') else 'w'
+        width = 125 if c not in ('purpose_full', 'booking_text', 'geschaeftsvorfall', 'geschäftsvorfall') else 245
+        tree.column(c, width=width, anchor=anchor, stretch=True)
+    for r in rows or []:
+        vals = []
+        for c in columns:
+            key = c
+            try:
+                val = r.get(key, '') if isinstance(r, dict) else r[key]
+            except Exception:
+                val = ''
+            if c == 'stueckkosten' and val == '' and isinstance(r, dict):
+                val = r.get('stückkosten', '')
+            if c == 'geschaeftsvorfall' and val == '' and isinstance(r, dict):
+                val = r.get('geschäftsvorfall', '')
+            if isinstance(val, float):
+                val = f'{val:.4f}' if c in ('stueckkosten', 'stückkosten', 'veraenderung_pct') else f'{val:.2f}'
+            vals.append(val)
+        tree.insert('', 'end', values=vals)
+    ysb = ttk.Scrollbar(frame, orient='vertical', command=tree.yview)
+    tree.configure(yscrollcommand=ysb.set)
+    tree.pack(side='left', fill='both', expand=True)
+    ysb.pack(side='right', fill='y')
+    return frame
+
+try:
+    _fm530_draw_chart = _fm532_draw_chart
+    _fm531_tree = _fm532_tree
+except Exception:
+    pass
+
+
+
+# FM532 final page-routing correction: old standalone transaction-fee calls open the cockpit.
+try:
+    _FM532_PREV_SHOW_PAGE = FiBuMateApp.show_page
+    def _fm532_show_page(self, page, title=None, *args, **kwargs):
+        if page == 'transaction_fee_analysis':
+            page = 'account_revenue_cockpit'
+            title = 'Kontenumsatz-Cockpit'
+        result = _FM532_PREV_SHOW_PAGE(self, page, title, *args, **kwargs)
+        if page == 'account_revenue_cockpit':
+            try: _fm531_prune_cockpit_back_history(self)
+            except Exception: pass
+        return result
+    FiBuMateApp.show_page = _fm532_show_page
+except Exception:
+    pass
+
+
+
+# ------------------------------------------------------------------
+# FiBu Mate v0.533 - Hauptreiter Stammdaten und Import-Verknüpfung
+# Datum: 2026-07-20
+# Zweck:
+# - Bank- und Kontenstammdaten als Hauptreiter neben Übersicht.
+# - Stammdaten nicht mehr als Analyse-/Schaubild-Unterreiter.
+# - Importierte Banken/Konten automatisch anlegen und mit Kontoumsätzen verknüpfen.
+# - Nicht verknüpfte Import-Kombinationen und Stammdaten ohne Zuordnung anzeigen.
+# ------------------------------------------------------------------
+FM533_VERSION = "0.533"
+
+
+def _fm533_db_cols(con, table):
+    try:
+        return {str(r['name'] if hasattr(r, 'keys') else r[1]) for r in con.execute(f'PRAGMA table_info({table})').fetchall()}
+    except Exception:
+        return set()
+
+
+def _fm533_unlinked_import_rows():
+    try:
+        _fm530_init_db()
+    except Exception:
+        try: _ku2_init_db()
+        except Exception: pass
+    con = _fm501_db_connect()
+    try:
+        cols = _fm533_db_cols(con, 'ku2_transactions')
+        if 'bank_id' not in cols or 'account_id' not in cols:
+            return []
+        sql = """
+            SELECT
+                COALESCE(source_bank,'') AS bank,
+                COALESCE(source_account,'') AS konto,
+                COUNT(*) AS buchungen,
+                SUM(CASE WHEN COALESCE(bank_id,0)=0 THEN 1 ELSE 0 END) AS bank_offen,
+                SUM(CASE WHEN COALESCE(account_id,0)=0 THEN 1 ELSE 0 END) AS konto_offen,
+                MIN(booking_date) AS erste_buchung,
+                MAX(booking_date) AS letzte_buchung
+            FROM ku2_transactions
+            WHERE COALESCE(source_bank,'')<>'' OR COALESCE(source_account,'')<>''
+            GROUP BY COALESCE(source_bank,''), COALESCE(source_account,'')
+            HAVING bank_offen>0 OR konto_offen>0
+            ORDER BY bank, konto
+        """
+        return [dict(r) for r in con.execute(sql).fetchall()]
+    except Exception:
+        return []
+    finally:
+        try: con.close()
+        except Exception: pass
+
+
+def _fm533_orphan_master_rows():
+    try:
+        _fm530_init_db()
+    except Exception:
+        pass
+    con = _fm501_db_connect()
+    try:
+        banks_without_accounts = []
+        accounts_without_bank = []
+        try:
+            banks_without_accounts = [dict(r) for r in con.execute("""
+                SELECT b.id, b.bankname, b.kurzname, b.blz, b.bic, b.active
+                FROM treasury_banks b
+                LEFT JOIN treasury_accounts a ON a.bank_id=b.id
+                GROUP BY b.id
+                HAVING COUNT(a.id)=0
+                ORDER BY b.bankname
+            """).fetchall()]
+        except Exception:
+            pass
+        try:
+            accounts_without_bank = [dict(r) for r in con.execute("""
+                SELECT a.id, a.bank_id, a.account_name, a.kontonummer, a.iban, a.waehrung, a.active
+                FROM treasury_accounts a
+                LEFT JOIN treasury_banks b ON b.id=a.bank_id
+                WHERE COALESCE(a.bank_id,0)=0 OR b.id IS NULL
+                ORDER BY a.account_name, a.id
+            """).fetchall()]
+        except Exception:
+            pass
+        out = []
+        for r in banks_without_accounts:
+            r = dict(r); r['typ'] = 'Bank ohne Konto'; out.append(r)
+        for r in accounts_without_bank:
+            r = dict(r); r['typ'] = 'Konto ohne Bank'; out.append(r)
+        return out
+    finally:
+        try: con.close()
+        except Exception: pass
+
+
+def _fm533_sync_imported_bank_accounts(app=None, show_message=True):
+    try:
+        _fm530_init_db()
+    except Exception:
+        try: _ku2_init_db()
+        except Exception: pass
+    con = _fm501_db_connect(); cur = con.cursor()
+    created_or_linked = 0; skipped = 0; errors = []
+    try:
+        cols = _fm533_db_cols(con, 'ku2_transactions')
+        if 'bank_id' not in cols or 'account_id' not in cols:
+            raise RuntimeError('Die Spalten bank_id/account_id fehlen in ku2_transactions.')
+        rows = cur.execute("""
+            SELECT COALESCE(source_bank,'') AS bank, COALESCE(source_account,'') AS konto, COUNT(*) AS cnt
+            FROM ku2_transactions
+            WHERE (COALESCE(bank_id,0)=0 OR COALESCE(account_id,0)=0)
+              AND (COALESCE(source_bank,'')<>'' OR COALESCE(source_account,'')<>'')
+            GROUP BY COALESCE(source_bank,''), COALESCE(source_account,'')
+            ORDER BY bank, konto
+        """).fetchall()
+        for r in rows:
+            bank_txt = str(r['bank'] or '').strip(); konto_txt = str(r['konto'] or '').strip()
+            if not bank_txt and not konto_txt:
+                skipped += int(r['cnt'] or 0); continue
+            try:
+                b, a = _fm530_find_or_create_bank_account(con, bank_txt, konto_txt)
+                if b:
+                    cur.execute("""
+                        UPDATE ku2_transactions
+                           SET bank_id=?, account_id=?, blz=?
+                         WHERE COALESCE(source_bank,'')=? AND COALESCE(source_account,'')=?
+                           AND (COALESCE(bank_id,0)=0 OR COALESCE(account_id,0)=0 OR COALESCE(blz,'')='')
+                    """, (int(b['id']), int(a['id']) if a else None, b['blz'] or '', bank_txt, konto_txt))
+                    created_or_linked += cur.rowcount if cur.rowcount is not None else 0
+                else:
+                    skipped += int(r['cnt'] or 0)
+            except Exception as exc:
+                errors.append(f'{bank_txt} / {konto_txt}: {exc}')
+        con.commit()
+    finally:
+        try: con.close()
+        except Exception: pass
+    if show_message:
+        msg = f'Verknüpfung abgeschlossen.\n\nAktualisierte Buchungen: {created_or_linked}\nÜbersprungen: {skipped}'
+        if errors: msg += '\n\nHinweise:\n' + '\n'.join(errors[:8])
+        try: messagebox.showinfo('Bank- und Kontenstammdaten', msg)
+        except Exception: pass
+    try:
+        if app is not None: app.render_page()
+    except Exception:
+        pass
+    return {'updated': created_or_linked, 'skipped': skipped, 'errors': errors}
+
+
+def _fm533_render_master_tab(app, parent):
+    top = tk.Frame(parent, bg=WHITE)
+    top.pack(fill='x', padx=14, pady=(0, 8))
+    tk.Label(top, text='Bank- und Kontenstammdaten', bg=WHITE, fg=BLUE, font=body_font(15, 'bold')).pack(side='left')
+    tk.Button(top, text='Importdaten verknüpfen / fehlende Stammdaten anlegen', command=lambda: _fm533_sync_imported_bank_accounts(app, True), bg='#CFEAD6', fg=TEXT, font=body_font(9, 'bold'), relief='solid', bd=1).pack(side='right', padx=(8, 0), ipady=2)
+    tk.Button(top, text='Konto anlegen', command=lambda: _fm531_create_account(app), bg=WHITE, fg=TEXT, font=body_font(9), relief='solid', bd=1).pack(side='right', padx=(8, 0), ipady=2)
+    tk.Button(top, text='Bank anlegen', command=lambda: _fm531_create_bank(app), bg=WHITE, fg=TEXT, font=body_font(9), relief='solid', bd=1).pack(side='right', padx=(8, 0), ipady=2)
+    hint = tk.Frame(parent, bg='#F8FAFC', highlightbackground='#CBD5E1', highlightthickness=1)
+    hint.pack(fill='x', padx=14, pady=(0, 8))
+    tk.Label(hint, text='Hier werden Banken und Konten aus importierten Umsätzen mit den Stammdaten verknüpft. Nicht vorhandene Banken/Konten können automatisch angelegt werden; offene Kombinationen bleiben im Reiter „Nicht verknüpft“ sichtbar.', bg='#F8FAFC', fg=TEXT2, font=body_font(9), wraplength=1100, justify='left').pack(anchor='w', padx=10, pady=7)
+    banks, accounts = _fm531_fetch_master_data()
+    unlinked = _fm533_unlinked_import_rows()
+    orphans = _fm533_orphan_master_rows()
+    kpis = tk.Frame(parent, bg=WHITE)
+    kpis.pack(fill='x', padx=14, pady=(0, 8))
+    try: _fm531_kpi_card(kpis, 'Banken', len(banks), BLUE)
+    except Exception: pass
+    try: _fm531_kpi_card(kpis, 'Konten', len(accounts), '#059669')
+    except Exception: pass
+    try: _fm531_kpi_card(kpis, 'Nicht verknüpfte Import-Kombinationen', len(unlinked), RED if unlinked else TEXT)
+    except Exception: pass
+    try: _fm531_kpi_card(kpis, 'Stammdaten ohne Zuordnung', len(orphans), '#D97706' if orphans else TEXT)
+    except Exception: pass
+    nb = ttk.Notebook(parent)
+    nb.pack(fill='both', expand=True, padx=14, pady=(0, 14))
+    tab_u = tk.Frame(nb, bg=WHITE); nb.add(tab_u, text='Nicht verknüpft')
+    _fm531_tree(tab_u, ['bank', 'konto', 'buchungen', 'bank_offen', 'konto_offen', 'erste_buchung', 'letzte_buchung'], unlinked, height=16).pack(fill='both', expand=True, padx=8, pady=8)
+    tab_b = tk.Frame(nb, bg=WHITE); nb.add(tab_b, text='Banken')
+    _fm531_tree(tab_b, ['id', 'bankname', 'kurzname', 'bic', 'blz', 'active', 'updated_at'], banks, height=16).pack(fill='both', expand=True, padx=8, pady=8)
+    tab_a = tk.Frame(nb, bg=WHITE); nb.add(tab_a, text='Konten')
+    _fm531_tree(tab_a, ['id', 'bank_id', 'bankname', 'blz', 'account_name', 'kontonummer', 'iban', 'waehrung', 'sap_konto', 'active'], accounts, height=16).pack(fill='both', expand=True, padx=8, pady=8)
+    tab_o = tk.Frame(nb, bg=WHITE); nb.add(tab_o, text='Ohne Zuordnung')
+    _fm531_tree(tab_o, ['typ', 'id', 'bank_id', 'bankname', 'account_name', 'kontonummer', 'iban', 'blz', 'bic', 'active'], orphans, height=16).pack(fill='both', expand=True, padx=8, pady=8)
+
+try:
+    _fm531_render_master_tab = _fm533_render_master_tab
+except Exception:
+    pass
+
+
+
+# ------------------------------------------------------------------
+# FiBu Mate v0.534 - Vorfallauswahl und filter-/sortierbare Tabellen
+# Datum: 2026-07-20
+# Zweck:
+# - Vorfallauswahl in der Primäranalyse reparieren, auch wenn Bestands-DBs
+#   noch technische Spaltennamen ohne Umlaut verwenden.
+# - Alle im Kontenumsatz-Cockpit erzeugten Tabellen je Spalte filterbar
+#   und per Klick auf die Spaltenüberschrift sortierbar machen.
+# ------------------------------------------------------------------
+FM534_VERSION = "0.534"
+
+
+def _fm534_dict_value(row, col):
+    if row is None:
+        return ''
+    aliases = {
+        'geschäftsvorfall': ['geschäftsvorfall', 'geschaeftsvorfall'],
+        'geschaeftsvorfall': ['geschaeftsvorfall', 'geschäftsvorfall'],
+        'auffällig': ['auffällig', 'auffaellig'],
+        'auffaellig': ['auffaellig', 'auffällig'],
+        'stückkosten': ['stückkosten', 'stueckkosten'],
+        'stueckkosten': ['stueckkosten', 'stückkosten'],
+    }
+    keys = aliases.get(col, [col])
+    for k in keys:
+        try:
+            if isinstance(row, dict) and k in row:
+                return row.get(k, '')
+            if hasattr(row, 'keys') and k in row.keys():
+                return row[k]
+        except Exception:
+            pass
+    try:
+        return row[col]
+    except Exception:
+        return ''
+
+
+def _fm534_float_or_text(value):
+    if value is None:
+        return (1, '')
+    txt = str(value).strip()
+    if txt == '':
+        return (1, '')
+    try:
+        n = float(txt.replace('.', '').replace(',', '.') if txt.count(',') == 1 and txt.count('.') >= 1 else txt.replace(',', '.'))
+        return (0, n)
+    except Exception:
+        return (1, txt.casefold())
+
+
+def _fm534_display_value(col, value):
+    if value is None:
+        return ''
+    if isinstance(value, float):
+        if col in ('stueckkosten', 'stückkosten', 'veraenderung_pct'):
+            return f'{value:.4f}'
+        return f'{value:.2f}'
+    return str(value)
+
+
+def _fm534_label(col):
+    return {
+        'period': 'Periode', 'bank': 'Bank', 'blz': 'BLZ', 'konto': 'Konto',
+        'geschaeftsvorfall': 'Geschäftsvorfall', 'geschäftsvorfall': 'Geschäftsvorfall',
+        'anzahl': 'Anzahl', 'gesamtbetrag': 'Gesamtbetrag (EUR)',
+        'stueckkosten': 'Stückkosten (EUR/Stück)', 'stückkosten': 'Stückkosten (EUR/Stück)',
+        'veraenderung_pct': 'Veränderung %', 'auffaellig': 'Auffällig', 'auffällig': 'Auffällig',
+        'amount': 'Betrag (EUR)', 'summe': 'Summe (EUR)', 'cnt': 'Anzahl',
+        'booking_date': 'Buchungsdatum', 'value_date': 'Valuta', 'source_account': 'Konto',
+        'counterparty': 'Partner', 'direction': 'Richtung', 'category': 'Kategorie',
+        'booking_text': 'Buchungstext', 'purpose_full': 'Verwendungszweck',
+        'anomaly_score': 'Auffälligkeit', 'anomaly_reason': 'Hinweis',
+        'bank_offen': 'Bank offen', 'konto_offen': 'Konto offen',
+        'erste_buchung': 'Erste Buchung', 'letzte_buchung': 'Letzte Buchung',
+        'typ': 'Typ', 'id': 'ID', 'bank_id': 'Bank-ID', 'account_name': 'Kontoname',
+        'kontonummer': 'Kontonummer', 'iban': 'IBAN', 'waehrung': 'Währung', 'sap_konto': 'SAP-Konto',
+        'active': 'Aktiv', 'updated_at': 'Geändert am', 'bankname': 'Bankname', 'kurzname': 'Kurzname', 'bic': 'BIC',
+        'sepa_ref': 'SEPA-Referenz', 'mandate_ref': 'Mandatsreferenz', 'return_reason': 'Rückgabegrund'
+    }.get(col, str(col))
+
+
+def _fm534_filterable_tree(parent, columns, rows, height=12):
+    # Einheitliche Tabelle: Filterzeile je Spalte + Klicksortierung je Überschrift.
+    all_rows = list(rows or [])
+    state = {'sort_col': None, 'desc': False}
+    frame = tk.Frame(parent, bg=WHITE)
+    filter_bar = tk.Frame(frame, bg=WHITE)
+    filter_bar.pack(fill='x', padx=0, pady=(0, 4))
+    tree_area = tk.Frame(frame, bg=WHITE)
+    tree_area.pack(fill='both', expand=True)
+    vars_by_col = {}
+    for c in columns:
+        box = tk.Frame(filter_bar, bg=WHITE)
+        box.pack(side='left', fill='x', expand=True, padx=(0, 4))
+        tk.Label(box, text=_fm534_label(c), bg=WHITE, fg=TEXT2, font=body_font(7)).pack(anchor='w')
+        var = tk.StringVar(value='')
+        ent = tk.Entry(box, textvariable=var, bg='#F8FAFC', fg=TEXT, font=body_font(8), relief='solid', bd=1)
+        ent.pack(fill='x', ipady=1)
+        vars_by_col[c] = var
+    tree = ttk.Treeview(tree_area, columns=columns, show='headings', height=height)
+    ysb = ttk.Scrollbar(tree_area, orient='vertical', command=tree.yview)
+    xsb = ttk.Scrollbar(frame, orient='horizontal', command=tree.xview)
+    tree.configure(yscrollcommand=ysb.set, xscrollcommand=xsb.set)
+    def refresh():
+        current = []
+        filters = {c: (v.get() or '').strip().casefold() for c, v in vars_by_col.items()}
+        for r in all_rows:
+            ok = True
+            for c, query in filters.items():
+                if query and query not in str(_fm534_dict_value(r, c)).casefold():
+                    ok = False; break
+            if ok:
+                current.append(r)
+        sc = state.get('sort_col')
+        if sc:
+            current.sort(key=lambda r: _fm534_float_or_text(_fm534_dict_value(r, sc)), reverse=bool(state.get('desc')))
+        for item in tree.get_children(''):
+            tree.delete(item)
+        for r in current:
+            vals = [_fm534_display_value(c, _fm534_dict_value(r, c)) for c in columns]
+            tree.insert('', 'end', values=vals)
+    def sort_by(col):
+        if state.get('sort_col') == col:
+            state['desc'] = not bool(state.get('desc'))
+        else:
+            state['sort_col'] = col; state['desc'] = False
+        for cc in columns:
+            marker = ''
+            if cc == state.get('sort_col'):
+                marker = ' ↓' if state.get('desc') else ' ↑'
+            tree.heading(cc, text=_fm534_label(cc) + marker, command=lambda c=cc: sort_by(c))
+        refresh()
+    for c in columns:
+        anchor = 'e' if c in ('amount', 'summe', 'gesamtbetrag', 'stueckkosten', 'stückkosten', 'veraenderung_pct', 'anzahl', 'cnt', 'buchungen', 'bank_offen', 'konto_offen') else 'w'
+        width = 125 if c not in ('purpose_full', 'booking_text', 'geschaeftsvorfall', 'geschäftsvorfall', 'counterparty') else 245
+        tree.heading(c, text=_fm534_label(c), command=lambda cc=c: sort_by(cc))
+        tree.column(c, width=width, anchor=anchor, stretch=True)
+    for v in vars_by_col.values():
+        try:
+            v.trace_add('write', lambda *_: refresh())
+        except Exception:
+            pass
+    tree.pack(side='left', fill='both', expand=True)
+    ysb.pack(side='right', fill='y')
+    xsb.pack(fill='x')
+    refresh()
+    return frame
+
+
+def _fm534_fee_event_values():
+    try:
+        _fm530_init_db()
+    except Exception:
+        pass
+    con = _fm501_db_connect()
+    try:
+        cols = _fm533_db_cols(con, 'fee_items') if '_fm533_db_cols' in globals() else _fm534_db_cols_local(con, 'fee_items')
+        values = []
+        for col in ('geschaeftsvorfall', 'geschäftsvorfall'):
+            if col in cols:
+                try:
+                    values.extend([str(r[0]).strip() for r in con.execute(f'SELECT DISTINCT {col} FROM fee_items WHERE COALESCE({col},\'\')<>\'\' ORDER BY {col}').fetchall() if str(r[0]).strip()])
+                except Exception:
+                    pass
+        seen = set(); out = []
+        for v in values:
+            k = v.casefold()
+            if k not in seen:
+                seen.add(k); out.append(v)
+        return out
+    finally:
+        try: con.close()
+        except Exception: pass
+
+
+def _fm534_db_cols_local(con, table):
+    try:
+        return {str(r['name'] if hasattr(r, 'keys') else r[1]) for r in con.execute(f'PRAGMA table_info({table})').fetchall()}
+    except Exception:
+        return set()
+
+
+def _fm534_distinct(col):
+    if col in ('geschaeftsvorfall', 'geschäftsvorfall'):
+        return _fm534_fee_event_values()
+    try:
+        return _fm530_distinct(col)
+    except Exception:
+        return []
+
+
+def _fm534_rows(filters):
+    # Normalisiert GUI-Filter mit Umlauten auf die technische Bestandslogik und stellt Rückgabe-Keys bereit.
+    f = dict(filters or {})
+    gv = f.get('gv') or f.get('geschäftsvorfall') or f.get('geschaeftsvorfall') or ''
+    f['gv'] = gv
+    try:
+        rows, gran = _fm530_rows(f)
+    except Exception:
+        # Fallback für Bestandsdatenbanken mit umbenannter SQL-Textspalte.
+        rows, gran = [], 'auto'
+    normalized = []
+    for r in rows or []:
+        d = dict(r)
+        if 'geschäftsvorfall' not in d and 'geschaeftsvorfall' in d:
+            d['geschäftsvorfall'] = d.get('geschaeftsvorfall')
+        if 'stueckkosten' not in d and 'stückkosten' in d:
+            d['stueckkosten'] = d.get('stückkosten')
+        if 'auffällig' not in d and 'auffaellig' in d:
+            d['auffällig'] = d.get('auffaellig')
+        normalized.append(d)
+    return normalized, gran
+
+
+def _fm534_render_primary_tab(app, parent, agg, rows):
+    if not hasattr(app, 'fm531_analysis_mode'):
+        app.fm531_analysis_mode = tk.StringVar(value='Gesamtüberblick')
+        app.fm531_fee_event = tk.StringVar(value='')
+        app.fm531_fee_threshold = tk.StringVar(value='10')
+        app.fm531_fee_only_alerts = tk.BooleanVar(value=False)
+    head = tk.Frame(parent, bg=WHITE)
+    head.pack(fill='x', padx=10, pady=(8, 6))
+    tk.Label(head, text='Primäranalyse', bg=WHITE, fg=BLUE, font=body_font(13, 'bold')).pack(side='left', padx=(0, 10))
+    modes = ['Gesamtüberblick', 'Transaktionsgebühren / Stückkosten', 'Vorgänge / Kategorien', 'Partneranalyse']
+    if app.fm531_analysis_mode.get() == 'Gesamtueberblick':
+        app.fm531_analysis_mode.set('Gesamtüberblick')
+    ttk.Combobox(head, textvariable=app.fm531_analysis_mode, values=modes, state='readonly', font=body_font(10), width=33).pack(side='left', padx=(0, 8))
+    events = [''] + _fm534_fee_event_values()
+    tk.Label(head, text='Vorfall', bg=WHITE, fg=TEXT2, font=body_font(9)).pack(side='left', padx=(8, 4))
+    cb = ttk.Combobox(head, textvariable=app.fm531_fee_event, values=events, state='normal', font=body_font(10), width=26)
+    cb.pack(side='left', padx=(0, 8))
+    tk.Label(head, text='Auffällig ab %', bg=WHITE, fg=TEXT2, font=body_font(9)).pack(side='left', padx=(8, 4))
+    tk.Entry(head, textvariable=app.fm531_fee_threshold, bg='#F8FAFC', fg=TEXT, font=body_font(10), relief='solid', bd=1, width=6).pack(side='left')
+    tk.Checkbutton(head, text='nur Auffälligkeiten', variable=app.fm531_fee_only_alerts, bg=WHITE, fg=TEXT, font=body_font(9), activebackground=WHITE).pack(side='left', padx=(10, 0))
+    tk.Button(head, text='Analyse aktualisieren', command=app.render_page, bg=WHITE, fg=TEXT, font=body_font(9), relief='solid', bd=1).pack(side='right', padx=(8, 0), ipady=2)
+    body = tk.Frame(parent, bg=WHITE)
+    body.pack(fill='both', expand=True, padx=10, pady=(0, 8))
+    mode = app.fm531_analysis_mode.get()
+    if mode == 'Transaktionsgebühren / Stückkosten':
+        filters = {
+            'bank': app.ku2_filter_vars.get('bank').get() if hasattr(app, 'ku2_filter_vars') and 'bank' in app.ku2_filter_vars else '',
+            'konto': app.ku2_filter_vars.get('account').get() if hasattr(app, 'ku2_filter_vars') and 'account' in app.ku2_filter_vars else '',
+            'gv': app.fm531_fee_event.get(),
+            'threshold': app.fm531_fee_threshold.get() or '10',
+            'only_alerts': app.fm531_fee_only_alerts.get(),
+            'granularity': 'auto',
+        }
+        fee_rows, gran = _fm534_rows(filters)
+        top = tk.Frame(body, bg=WHITE); top.pack(fill='x', pady=(0, 8))
+        total = sum(float(r.get('gesamtbetrag') or 0) for r in fee_rows)
+        qty = sum(float(r.get('anzahl') or 0) for r in fee_rows)
+        unit = (total / qty) if qty else 0.0
+        alerts = sum(1 for r in fee_rows if r.get('auffällig') or r.get('auffaellig'))
+        _fm531_kpi_card(top, 'Gebühren gesamt', _fm531_money(total), BLUE)
+        _fm531_kpi_card(top, 'Transaktionen', f'{qty:.0f}', TEXT)
+        _fm531_kpi_card(top, 'Ø Stückkosten', f'{unit:.4f} EUR/Stück', '#059669')
+        _fm531_kpi_card(top, 'Auffälligkeiten', alerts, RED if alerts else TEXT)
+        chart = tk.Canvas(body, bg=WHITE, height=230, highlightthickness=1, highlightbackground=LINE)
+        chart.pack(fill='x', pady=(0, 8))
+        try: _fm530_draw_chart(chart, fee_rows, 'unit')
+        except Exception: chart.create_text(16, 22, text='Diagramm konnte nicht erstellt werden.', anchor='w', fill=TEXT2, font=body_font(10))
+        _fm534_filterable_tree(body, ['period', 'bank', 'blz', 'konto', 'geschäftsvorfall', 'anzahl', 'gesamtbetrag', 'stueckkosten', 'veraenderung_pct', 'auffällig'], fee_rows, height=11).pack(fill='both', expand=True)
+        return
+    if mode == 'Partneranalyse':
+        _fm534_filterable_tree(body, ['counterparty', 'cnt', 'summe'], agg.get('partners', []), height=18).pack(fill='both', expand=True)
+        return
+    if mode == 'Vorgänge / Kategorien':
+        split = tk.PanedWindow(body, orient='horizontal', bg=WHITE, sashwidth=4); split.pack(fill='both', expand=True)
+        left = tk.Frame(split, bg=WHITE); right = tk.Frame(split, bg=WHITE); split.add(left); split.add(right)
+        tk.Label(left, text='Kategorien / Vorgänge', bg=WHITE, fg=BLUE, font=body_font(11, 'bold')).pack(anchor='w', padx=6, pady=(0, 4))
+        _fm534_filterable_tree(left, ['category', 'cnt', 'summe'], agg.get('categories', []), height=15).pack(fill='both', expand=True, padx=4, pady=4)
+        tk.Label(right, text='Auffällige Buchungen', bg=WHITE, fg=BLUE, font=body_font(11, 'bold')).pack(anchor='w', padx=6, pady=(0, 4))
+        _fm534_filterable_tree(right, ['booking_date', 'counterparty', 'amount', 'category', 'anomaly_score', 'anomaly_reason', 'purpose_full'], agg.get('anomalies', []), height=15).pack(fill='both', expand=True, padx=4, pady=4)
+        return
+    try: _ku2_draw_bar_canvas(body, agg.get('months', []))
+    except Exception: pass
+    _fm534_filterable_tree(body, ['category', 'cnt', 'summe'], agg.get('categories', []), height=10).pack(fill='both', expand=True, padx=4, pady=8)
+
+try:
+    _ku2_simple_tree = _fm534_filterable_tree
+    _fm531_tree = _fm534_filterable_tree
+    _fm531_render_primary_tab = _fm534_render_primary_tab
+    _fm530_distinct = _fm534_distinct
+except Exception:
+    pass
+
+
+# ------------------------------------------------------------------
+# FiBu Mate - Globales kontextsensitives Mausrad-Scrolling FINAL 2026-07-20
+# Version 0.535
+# Zweck:
+# - Bereits scrollbar aufgebaute Menüs/Tools scrollen per Mausrad unabhängig vom Widget unter dem Mauszeiger.
+# - Dropdowns/Comboboxen ändern per Mausrad keine Auswahl, sondern geben das Mausrad an den umgebenden Scrollbereich weiter.
+# - Es wird nur gescrollt, wenn der Zielbereich tatsächlich vertikal überläuft.
+# ------------------------------------------------------------------
+
+FM535_GLOBAL_CONTEXT_SCROLL_VERSION = "0.535-global-context-scroll"
+_FM535_ACTIVE_APP = None
+_FM535_ORIG_APP_INIT = None
+_FM535_ORIG_REGISTER_SCROLL_CANVAS = None
+_FM535_ORIG_TTK_COMBOBOX_INIT = None
+_FM535_ORIG_TK_SPINBOX_INIT = None
+
+
+def _fm535_widget_exists(widget):
+    try:
+        return widget is not None and widget.winfo_exists()
+    except Exception:
+        return False
+
+
+def _fm535_pointer_inside(widget, x_root, y_root):
+    try:
+        if not _fm535_widget_exists(widget):
+            return False
+        x1 = widget.winfo_rootx()
+        y1 = widget.winfo_rooty()
+        x2 = x1 + max(1, widget.winfo_width())
+        y2 = y1 + max(1, widget.winfo_height())
+        return x1 <= int(x_root) <= x2 and y1 <= int(y_root) <= y2
+    except Exception:
+        return False
+
+
+def _fm535_event_units(event, linux_delta=None):
+    try:
+        if linux_delta is not None:
+            return int(linux_delta)
+        if getattr(event, 'num', None) == 4:
+            return -1
+        if getattr(event, 'num', None) == 5:
+            return 1
+        delta = int(getattr(event, 'delta', 0) or 0)
+        if not delta:
+            return 0
+        units = int(-delta / 120)
+        return units if units else (-1 if delta > 0 else 1)
+    except Exception:
+        return 0
+
+
+def _fm535_widget_can_scroll_y(widget):
+    try:
+        if not _fm535_widget_exists(widget) or not hasattr(widget, 'yview'):
+            return False
+        cls = str(widget.winfo_class()).lower()
+        if cls == 'canvas':
+            widget.update_idletasks()
+            bbox = widget.bbox('all')
+            return bool(bbox and max(0, bbox[3] - bbox[1]) > max(1, widget.winfo_height()) + 2)
+        first, last = widget.yview()
+        return float(first) > 0.001 or float(last) < 0.999
+    except Exception:
+        return False
+
+
+def _fm535_find_scroll_canvas_at_pointer(app, event):
+    try:
+        x_root = int(getattr(event, 'x_root', 0) or 0)
+        y_root = int(getattr(event, 'y_root', 0) or 0)
+        canvases = list(getattr(app, '_fm535_scroll_canvases', []) or [])
+        # Reverse order: zuletzt registrierte/oberste Scrollbereiche gewinnen.
+        for canvas in reversed(canvases):
+            if _fm535_pointer_inside(canvas, x_root, y_root) and _fm535_widget_can_scroll_y(canvas):
+                return canvas
+    except Exception:
+        pass
+    return None
+
+
+def _fm535_find_scrollable_ancestor(widget):
+    try:
+        current = widget
+        while _fm535_widget_exists(current):
+            if _fm535_widget_can_scroll_y(current):
+                return current
+            current = current.master
+    except Exception:
+        pass
+    return None
+
+
+def _fm535_global_mousewheel(app, event, linux_delta=None):
+    try:
+        # Strg+Mausrad bleibt für bestehende Sonderlogiken tabu.
+        if bool(getattr(event, 'state', 0) & 0x0004):
+            return None
+        target = _fm535_find_scroll_canvas_at_pointer(app, event)
+        if target is None:
+            target = getattr(app, 'active_scroll_canvas', None)
+            if not _fm535_widget_can_scroll_y(target):
+                target = _fm535_find_scrollable_ancestor(getattr(event, 'widget', None))
+        if target is None or not _fm535_widget_can_scroll_y(target):
+            return None
+        scrollbar = getattr(target, '_fibu_mate_scrollbar', None)
+        try:
+            app._sync_scrollbar_visibility(target, scrollbar)
+        except Exception:
+            pass
+        units = _fm535_event_units(event, linux_delta)
+        if units:
+            target.yview_scroll(units, 'units')
+            try:
+                if hasattr(app, '_update_scroll_indicators'):
+                    app._update_scroll_indicators()
+            except Exception:
+                pass
+        return 'break'
+    except Exception:
+        return 'break'
+
+
+def _fm535_install_widget_wheel_block(widget):
+    try:
+        def _handler(event):
+            app = globals().get('_FM535_ACTIVE_APP')
+            if app is not None:
+                return _fm535_global_mousewheel(app, event)
+            return 'break'
+        widget.bind('<MouseWheel>', _handler, add=False)
+        widget.bind('<Button-4>', lambda e: _handler(e), add=False)
+        widget.bind('<Button-5>', lambda e: _handler(e), add=False)
+    except Exception:
+        pass
+
+
+def _fm535_install_global_scroll_bindings(app):
+    global _FM535_ACTIVE_APP
+    _FM535_ACTIVE_APP = app
+    try:
+        app._fm535_scroll_canvases = list(getattr(app, '_fm535_scroll_canvases', []) or [])
+    except Exception:
+        app._fm535_scroll_canvases = []
+    try:
+        app.root.bind_all('<MouseWheel>', lambda e: _fm535_global_mousewheel(app, e), add='+')
+        app.root.bind_all('<Button-4>', lambda e: _fm535_global_mousewheel(app, e, linux_delta=-1), add='+')
+        app.root.bind_all('<Button-5>', lambda e: _fm535_global_mousewheel(app, e, linux_delta=1), add='+')
+    except Exception:
+        pass
+
+
+def _fm535_install_combobox_spinbox_patch():
+    global _FM535_ORIG_TTK_COMBOBOX_INIT, _FM535_ORIG_TK_SPINBOX_INIT
+    try:
+        if _FM535_ORIG_TTK_COMBOBOX_INIT is None:
+            _FM535_ORIG_TTK_COMBOBOX_INIT = ttk.Combobox.__init__
+            def _combo_init(self, *args, **kwargs):
+                _FM535_ORIG_TTK_COMBOBOX_INIT(self, *args, **kwargs)
+                _fm535_install_widget_wheel_block(self)
+            ttk.Combobox.__init__ = _combo_init
+    except Exception:
+        pass
+    try:
+        if hasattr(tk, 'Spinbox') and _FM535_ORIG_TK_SPINBOX_INIT is None:
+            _FM535_ORIG_TK_SPINBOX_INIT = tk.Spinbox.__init__
+            def _spin_init(self, *args, **kwargs):
+                _FM535_ORIG_TK_SPINBOX_INIT(self, *args, **kwargs)
+                _fm535_install_widget_wheel_block(self)
+            tk.Spinbox.__init__ = _spin_init
+    except Exception:
+        pass
+
+try:
+    _FM535_ORIG_REGISTER_SCROLL_CANVAS = FiBuMateApp.register_scroll_canvas
+    def _fm535_register_scroll_canvas(self, canvas, scrollbar=None):
+        result = _FM535_ORIG_REGISTER_SCROLL_CANVAS(self, canvas, scrollbar)
+        try:
+            self._fm535_scroll_canvases = [c for c in getattr(self, '_fm535_scroll_canvases', []) if _fm535_widget_exists(c)]
+            if canvas is not None and canvas not in self._fm535_scroll_canvases:
+                self._fm535_scroll_canvases.append(canvas)
+        except Exception:
+            pass
+        return result
+    FiBuMateApp.register_scroll_canvas = _fm535_register_scroll_canvas
+except Exception:
+    pass
+
+try:
+    _FM535_ORIG_APP_INIT = FiBuMateApp.__init__
+    def _fm535_app_init(self, *args, **kwargs):
+        _FM535_ORIG_APP_INIT(self, *args, **kwargs)
+        _fm535_install_combobox_spinbox_patch()
+        _fm535_install_global_scroll_bindings(self)
+    FiBuMateApp.__init__ = _fm535_app_init
+except Exception:
+    pass
+
+if __name__ == "__main__":
+    FiBuMateApp().run()

@@ -8,7 +8,7 @@
 import sys
 import types
 
-APP_VERSION = "0.519-deadline-bookingcircle-mail"
+APP_VERSION = "0.522-documentation-count-real-files"
 MODULE_TITLE = "Abschlusskalender"
 
 _EMBEDDED_SOURCES = {'monthly_close': '## FiBuMate_PATCH_MARKER: 20260609_PROTOCOL_ONLY_SUBTASK_PROGRESS\n'
@@ -2621,10 +2621,8 @@ _EMBEDDED_SOURCES = {'monthly_close': '## FiBuMate_PATCH_MARKER: 20260609_PROTOC
                   '\n'
                   '        doc_frame = tk.Frame(table, bg=bg)\n'
                   '        doc_frame.grid(row=row_idx, column=2, sticky="nsew", padx=1, pady=1)\n'
-                  '        if visible_subtasks:\n'
-                  '            tk.Label(doc_frame, text="", bg=bg).pack(padx=4, pady=3)\n'
-                  '        else:\n'
-                  '            self.create_documentation_button(doc_frame, task, task.get("title", '
+                  '        # v0.520: Dokumentations-Button auch bei Aufgabengruppen anzeigen.\n'
+                  '        self.create_documentation_button(doc_frame, task, task.get("title", '
                   '"Aufgabe")).pack(padx=5, pady=3)\n'
                   '\n'
                   '        owner_cell = tk.Frame(table, bg=bg)\n'
@@ -2640,7 +2638,7 @@ _EMBEDDED_SOURCES = {'monthly_close': '## FiBuMate_PATCH_MARKER: 20260609_PROTOC
                   '        for offset, val in enumerate(values):\n'
                   '            anchor, justify = aligns[offset]\n'
                   '            tk.Label(table, text=val, bg=bg, fg=COLORS["text"], font=zfont(self.app, 12), padx=6, '
-                  'pady=6, anchor=anchor, justify=justify).grid(row=row_idx, column=4 + offset, sticky="nsew", padx=1, '
+                  'pady=4, anchor=anchor, justify=justify).grid(row=row_idx, column=4 + offset, sticky="nsew", padx=1, '
                   'pady=1)\n'
                   '        self.create_attachment_button(table, task, lambda t=task: '
                   'self.show_attachments(t)).grid(row=row_idx, column=8, sticky="nsew", padx=1, pady=1)\n'
@@ -5759,10 +5757,8 @@ _EMBEDDED_SOURCES = {'monthly_close': '## FiBuMate_PATCH_MARKER: 20260609_PROTOC
                     '\n'
                     '        doc_frame = tk.Frame(table, bg=bg)\n'
                     '        doc_frame.grid(row=row_idx, column=2, sticky="nsew", padx=1, pady=1)\n'
-                    '        if visible_subtasks:\n'
-                    '            tk.Label(doc_frame, text="", bg=bg).pack(padx=4, pady=3)\n'
-                    '        else:\n'
-                    '            self.create_documentation_button(doc_frame, task, task.get("title", '
+                    '        # v0.520: Dokumentations-Button auch bei Aufgabengruppen anzeigen.\n'
+                    '        self.create_documentation_button(doc_frame, task, task.get("title", '
                     '"Aufgabe")).pack(padx=5, pady=3)\n'
                     '\n'
                     '        owner_cell = tk.Frame(table, bg=bg)\n'
@@ -5781,7 +5777,7 @@ _EMBEDDED_SOURCES = {'monthly_close': '## FiBuMate_PATCH_MARKER: 20260609_PROTOC
                     '        for offset, val in enumerate(values):\n'
                     '            anchor, justify = aligns[offset]\n'
                     '            tk.Label(table, text=val, bg=bg, fg=COLORS["text"], font=zfont(self.app, 12), padx=6, '
-                    'pady=6, anchor=anchor, justify=justify).grid(row=row_idx, column=4 + offset, sticky="nsew", '
+                    'pady=4, anchor=anchor, justify=justify).grid(row=row_idx, column=4 + offset, sticky="nsew", '
                     'padx=1, pady=1)\n'
                     '        self.create_attachment_button(table, task, lambda t=task: '
                     'self.show_attachments(t)).grid(row=row_idx, column=8, sticky="nsew", padx=1, pady=1)\n'
@@ -8826,10 +8822,8 @@ _EMBEDDED_SOURCES = {'monthly_close': '## FiBuMate_PATCH_MARKER: 20260609_PROTOC
                  '\n'
                  '        doc_frame = tk.Frame(table, bg=bg)\n'
                  '        doc_frame.grid(row=row_idx, column=2, sticky="nsew", padx=1, pady=1)\n'
-                 '        if visible_subtasks:\n'
-                 '            tk.Label(doc_frame, text="", bg=bg).pack(padx=4, pady=3)\n'
-                 '        else:\n'
-                 '            self.create_documentation_button(doc_frame, task, task.get("title", '
+                 '        # v0.520: Dokumentations-Button auch bei Aufgabengruppen anzeigen.\n'
+                 '        self.create_documentation_button(doc_frame, task, task.get("title", '
                  '"Aufgabe")).pack(padx=5, pady=3)\n'
                  '\n'
                  '        owner_cell = tk.Frame(table, bg=bg)\n'
@@ -8845,7 +8839,7 @@ _EMBEDDED_SOURCES = {'monthly_close': '## FiBuMate_PATCH_MARKER: 20260609_PROTOC
                  '        for offset, val in enumerate(values):\n'
                  '            anchor, justify = aligns[offset]\n'
                  '            tk.Label(table, text=val, bg=bg, fg=COLORS["text"], font=("Segoe UI", 10), padx=6, '
-                 'pady=6, anchor=anchor, justify=justify).grid(row=row_idx, column=4 + offset, sticky="nsew", padx=1, '
+                 'pady=4, anchor=anchor, justify=justify).grid(row=row_idx, column=4 + offset, sticky="nsew", padx=1, '
                  'pady=1)\n'
                  '        self.create_attachment_button(table, task, lambda t=task: '
                  'self.show_attachments(t)).grid(row=row_idx, column=8, sticky="nsew", padx=1, pady=1)\n'
@@ -12440,7 +12434,7 @@ if __name__ == '__main__':
 # - Entfernen wirkt analog im aktuellen und in allen Folgezeitraeumen.
 # ------------------------------------------------------------------
 
-APP_VERSION = "0.520-multi-documentation-following-periods"
+APP_VERSION = "0.522-documentation-count-real-files"
 DOCUMENTATION_MULTI_VERSION = "0.520"
 
 
@@ -12468,7 +12462,10 @@ def _fm520_patch_class(mod, cls):
             return {"name": os.path.basename(path), "path": path, "source_path": path, "created_at": "", "created_by": "", "note": "", "doc_id": ""} if path else None
         if isinstance(raw, dict):
             path = str(raw.get("path", "") or "").strip()
-            name = str(raw.get("name", "") or "").strip() or (os.path.basename(path) if path else "Dokumentation")
+            # Leere Legacy-Dokumentationsobjekte oder reine Platzhalter-Namen dürfen nicht als Dokumentation zählen.
+            if not path:
+                return None
+            name = str(raw.get("name", "") or "").strip() or os.path.basename(path)
             out = dict(raw)
             out["name"] = name
             out["path"] = path
@@ -12516,7 +12513,7 @@ def _fm520_patch_class(mod, cls):
 
     def documentation_count(self, item):
         self.normalize_documentation_fields(item)
-        return len([d for d in item.get("documentations", []) if d.get("path") or d.get("name")])
+        return len([d for d in item.get("documentations", []) if isinstance(d, dict) and str(d.get("path", "") or "").strip()])
 
     def _task_key(self, task):
         try:
@@ -12620,17 +12617,50 @@ def _fm520_patch_class(mod, cls):
     def create_documentation_button(self, parent, item, title, parent_task=None):
         bg = parent.cget("bg")
         frame = mod.tk.Frame(parent, bg=bg)
+        frame.pack_propagate(True)
         inner = mod.tk.Frame(frame, bg=bg)
-        inner.place(relx=0.5, rely=0.5, anchor="center")
+        inner.pack(anchor="center", expand=True, pady=2)
+        count = self.documentation_count(item)
         try:
             photo = self.get_close_icon_photo("fileinterfacesymboloftextpapersheet_79740.ico", 18, 18)
         except Exception:
             photo = None
-        btn = mod.tk.Button(inner, text="" if photo else "Doku", image=photo, command=lambda: self.show_documentation_popup(item, title, parent_task), bg=bg, fg=mod.COLORS["blue"], bd=0, cursor="hand2", padx=0, pady=0)
         if photo:
+            btn = mod.tk.Button(
+                inner,
+                text=f"  {count}",
+                image=photo,
+                compound="left",
+                command=lambda: self.show_documentation_popup(item, title, parent_task),
+                bg=mod.COLORS.get("white", "#FFFFFF"),
+                fg=mod.COLORS["blue"],
+                activebackground=mod.COLORS.get("white", "#FFFFFF"),
+                activeforeground=mod.COLORS["blue"],
+                bd=1,
+                relief="solid",
+                cursor="hand2",
+                padx=5,
+                pady=3,
+                font=mod.zfont(self.app, 11, "bold"),
+            )
             btn.image = photo
-        btn.pack(side="left", padx=(0, 3))
-        mod.tk.Label(inner, text=str(self.documentation_count(item)), bg=bg, fg=mod.COLORS["blue"], font=mod.zfont(self.app, 12, "bold")).pack(side="left")
+        else:
+            btn = mod.tk.Button(
+                inner,
+                text=f"📄  {count}",
+                command=lambda: self.show_documentation_popup(item, title, parent_task),
+                bg=mod.COLORS.get("white", "#FFFFFF"),
+                fg=mod.COLORS["blue"],
+                activebackground=mod.COLORS.get("white", "#FFFFFF"),
+                activeforeground=mod.COLORS["blue"],
+                bd=1,
+                relief="solid",
+                cursor="hand2",
+                padx=5,
+                pady=3,
+                font=mod.zfont(self.app, 11, "bold"),
+            )
+        btn.pack(side="left")
         return frame
 
     def show_documentation_popup(self, item, title, parent_task=None):
@@ -12728,6 +12758,11 @@ def _fm520_patch_class(mod, cls):
     cls.sync_current_as_template_to_following_periods = sync_current_as_template_to_following_periods
     cls._fm520_multi_documentation = True
 
+
+# v0.520: Dokumentationssymbol in allen Abschlusskalendern wiederhergestellt.
+DOCUMENTATION_ICON_RESTORE_VERSION = "0.520-documentation-icon-restored"
+DOCUMENTATION_BUTTON_VISIBLE_VERSION = "0.521-documentation-button-visible"
+DOCUMENTATION_COUNT_REAL_FILES_VERSION = "0.522-documentation-count-real-files"
 
 def _fm520_patch_module(module_key, mod):
     for name in ("MonthlyCloseUI", "QuarterlyCloseUI", "YearlyCloseUI"):
