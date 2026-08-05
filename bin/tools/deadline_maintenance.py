@@ -48,6 +48,20 @@ def apply_readable_fonts(widget, app, base_size=12):
 
 MODULE_TITLE = "Stichtagspflege"
 
+# v0.541: Fachliche Geschäftsjahres- und Quartalslogik zentral in der Stichtagspflege.
+# Geschäftsjahr: 01.10. bis 30.09.; Q1=Okt-Dez, Q2=Jan-März, Q3=Apr-Juni, Q4=Juli-Sept.
+DEADLINE_FISCAL_QUARTER_CONFIG_VERSION = "0.541-fiscal-quarter-maintenance"
+FISCAL_YEAR_START_MONTH = 10
+FISCAL_YEAR_START_DAY = 1
+FISCAL_YEAR_END_MONTH = 9
+FISCAL_YEAR_END_DAY = 30
+FISCAL_QUARTER_META = [
+    ("Q1", 10, 12, "Oktober bis Dezember"),
+    ("Q2", 1, 3, "Januar bis März"),
+    ("Q3", 4, 6, "April bis Juni"),
+    ("Q4", 7, 9, "Juli bis September"),
+]
+
 
 def ensure_large_ui_styles(app):
     """Vergrößert Reiter und Tabellen-/Eingabeelemente für die Pflegeansichten."""
@@ -130,7 +144,13 @@ def fiscal_month_keys(start_year: int):
 
 
 def fiscal_quarter_keys(start_year: int):
-    return [f"{start_year:04d}-Q4", f"{start_year + 1:04d}-Q1", f"{start_year + 1:04d}-Q2", f"{start_year + 1:04d}-Q3"]
+    # Fachliche Quartale bezogen auf das Geschäftsjahr 01.10. bis 30.09.
+    return [
+        f"{start_year:04d}-Q1",       # Okt-Dez des Startjahres
+        f"{start_year + 1:04d}-Q2",   # Jan-März
+        f"{start_year + 1:04d}-Q3",   # Apr-Juni
+        f"{start_year + 1:04d}-Q4",   # Juli-Sept
+    ]
 
 
 def period_bounds(kind: str, key: str):
@@ -139,9 +159,10 @@ def period_bounds(kind: str, key: str):
         return date(y, m, 1), date(y, m, calendar.monthrange(y, m)[1])
     if kind == 'quarterly':
         y, q = key.split('-Q'); y = int(y); q = int(q)
-        m1 = (q - 1) * 3 + 1
+        # Fachliche Quartale: Q1=Okt-Dez, Q2=Jan-März, Q3=Apr-Juni, Q4=Juli-Sept.
+        q_months = {1: (10, 12), 2: (1, 3), 3: (4, 6), 4: (7, 9)}
+        m1, m3 = q_months.get(q, (1, 3))
         start = date(y, m1, 1)
-        m3 = m1 + 2
         end = date(y, m3, calendar.monthrange(y, m3)[1])
         return start, end
     if kind == 'yearly':
@@ -215,7 +236,44 @@ def default_year_data(year: int):
     months = {key: _default_record() for key in fiscal_month_keys(year)}
     quarters = {key: _default_record() for key in fiscal_quarter_keys(year)}
     years = {f"{year:04d}-{year+1:04d}": _default_record()}
-    return {"fiscal_year_start": year, "label": fiscal_year_label(year), "monthly": months, "quarterly": quarters, "yearly": years}
+    return {
+        "fiscal_year_start": year,
+        "label": fiscal_year_label(year),
+        "fiscal_config": default_fiscal_config(year),
+        "monthly": months,
+        "quarterly": quarters,
+        "yearly": years,
+    }
+
+
+def default_fiscal_config(year: int):
+    return {
+        "fiscal_year_start_date": f"01.10.{year:04d}",
+        "fiscal_year_end_date": f"30.09.{year + 1:04d}",
+        "quarter_rules": {
+            "Q1": "01.10. bis 31.12.",
+            "Q2": "01.01. bis 31.03.",
+            "Q3": "01.04. bis 30.06.",
+            "Q4": "01.07. bis 30.09.",
+        },
+    }
+
+
+def migrate_fiscal_quarter_keys(data, year: int):
+    # Migration alter Anzeige-/Key-Logik: Q4 Okt-Dez wird fachlich zu Q1 usw.
+    qmap = {
+        f"{year:04d}-Q4": f"{year:04d}-Q1",
+        f"{year + 1:04d}-Q1": f"{year + 1:04d}-Q2",
+        f"{year + 1:04d}-Q2": f"{year + 1:04d}-Q3",
+        f"{year + 1:04d}-Q3": f"{year + 1:04d}-Q4",
+    }
+    quarters = data.setdefault('quarterly', {})
+    for old_key, new_key in qmap.items():
+        if old_key in quarters and new_key not in quarters:
+            quarters[new_key] = quarters[old_key]
+    allowed = set(fiscal_quarter_keys(year))
+    data['quarterly'] = {k: v for k, v in quarters.items() if k in allowed}
+    return data
 
 
 def load_year(year: int):
@@ -236,6 +294,8 @@ def load_year(year: int):
         for k, v in default.get(section, {}).items():
             cur.setdefault(k, v)
     data['label'] = fiscal_year_label(year)
+    data.setdefault('fiscal_config', default_fiscal_config(year))
+    data = migrate_fiscal_quarter_keys(data, year)
     return data
 
 
@@ -404,6 +464,36 @@ class DeadlineMaintenanceUI:
         except Exception: pass
 
 
+    def _build_fiscal_config_tab(self, parent):
+        container = tk.Frame(parent, bg=cc.BG)
+        container.pack(fill="both", expand=True, padx=18, pady=18)
+        tk.Label(container, text="Geschäftsjahr und Quartalslogik", bg=cc.BG, fg=cc.TEXT, font=zfont(self.app, 18, "bold")).pack(anchor="w", pady=(0, 6))
+        tk.Label(container, text="Diese Pflegeansicht dokumentiert die fachliche Periodenlogik, die für Monats-, Quartals- und Jahresabschluss verwendet wird.", bg=cc.BG, fg=cc.TEXT2, font=zfont(self.app, 12), wraplength=980, justify="left").pack(anchor="w", pady=(0, 14))
+        cfg = self.data.setdefault('fiscal_config', default_fiscal_config(self.year))
+        card = tk.Frame(container, bg=cc.WHITE, highlightbackground=cc.LINE, highlightthickness=1)
+        card.pack(fill="x", anchor="w")
+        rows = [
+            ("Geschäftsjahr", f"{cfg.get('fiscal_year_start_date', '01.10.' + str(self.year))} bis {cfg.get('fiscal_year_end_date', '30.09.' + str(self.year + 1))}"),
+            ("Q1", "01.10. bis 31.12. (Oktober bis Dezember)"),
+            ("Q2", "01.01. bis 31.03. (Januar bis März)"),
+            ("Q3", "01.04. bis 30.06. (April bis Juni)"),
+            ("Q4", "01.07. bis 30.09. (Juli bis September)"),
+        ]
+        for r, (label, value) in enumerate(rows):
+            tk.Label(card, text=label, bg=cc.HEADER if r == 0 else cc.WHITE, fg=cc.TEXT, font=zfont(self.app, 12, "bold"), padx=12, pady=8, anchor="w").grid(row=r, column=0, sticky="nsew", padx=1, pady=1)
+            tk.Label(card, text=value, bg=cc.HEADER if r == 0 else cc.WHITE, fg=cc.TEXT, font=zfont(self.app, 12), padx=12, pady=8, anchor="w").grid(row=r, column=1, sticky="nsew", padx=1, pady=1)
+        card.grid_columnconfigure(1, weight=1)
+        tk.Label(container, text="Die konkreten Stichtage für Quartals- und Jahresabschlüsse werden in den Reitern 'Quartalsabschluss' und 'Jahresabschluss' gepflegt und beim Speichern in die Abschlussmodule synchronisiert.", bg=cc.BG, fg=cc.TEXT2, font=zfont(self.app, 11), wraplength=980, justify="left").pack(anchor="w", pady=(14, 0))
+        if self.can_edit():
+            def apply_standard():
+                self.data['fiscal_config'] = default_fiscal_config(self.year)
+                self.data.setdefault('quarterly', {})
+                for key, value in default_year_data(self.year).get('quarterly', {}).items():
+                    self.data['quarterly'].setdefault(key, value)
+                self.data = migrate_fiscal_quarter_keys(self.data, self.year)
+                self.render()
+            tk.Button(container, text="Geschäftsjahr-/Quartalsstruktur aktualisieren", command=apply_standard, bg=cc.BLUE, fg="white", bd=0, padx=14, pady=8, font=zfont(self.app, 12, "bold")).pack(anchor="w", pady=(14, 0))
+
     def _build_period_tab(self, parent, kind):
         data = self.data.get(kind, {})
         if hasattr(cc, 'allowed_periods_for_kind_v0432'):
@@ -447,8 +537,10 @@ class DeadlineMaintenanceUI:
 
     def _build_stichtagspflege_tab(self, parent):
         nb = ttk.Notebook(parent, style="DeadlineMaintenance.TNotebook"); nb.pack(fill="both", expand=True, padx=0, pady=0)
-        tab_m = tk.Frame(nb, bg=cc.BG); tab_q = tk.Frame(nb, bg=cc.BG); tab_y = tk.Frame(nb, bg=cc.BG)
+        tab_cfg = tk.Frame(nb, bg=cc.BG); tab_m = tk.Frame(nb, bg=cc.BG); tab_q = tk.Frame(nb, bg=cc.BG); tab_y = tk.Frame(nb, bg=cc.BG)
+        nb.add(tab_cfg, text="Geschäftsjahr / Quartale")
         nb.add(tab_m, text="Monatsabschluss"); nb.add(tab_q, text="Quartalsabschluss"); nb.add(tab_y, text="Jahresabschluss")
+        self._build_fiscal_config_tab(tab_cfg)
         self._build_period_tab(tab_m, 'monthly'); self._build_period_tab(tab_q, 'quarterly'); self._build_period_tab(tab_y, 'yearly')
 
     def _resp_rows_for_kind(self, kind):
@@ -822,7 +914,7 @@ class DeadlineMaintenanceUI:
                 cm  = parse_date(rec.get('close_month')) or dek
 
                 start, end = period_bounds(kind, period)
-                hol = holidays_for_period(start, end) if start and end else ""
+                hol = ", ".join(f"{fmt_date(d)} {n}" for d, n in holidays_for_period(start, end)) if start and end else ""
 
                 ws.append([
                     period,
