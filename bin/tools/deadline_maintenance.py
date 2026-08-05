@@ -48,6 +48,29 @@ def apply_readable_fonts(widget, app, base_size=12):
 
 MODULE_TITLE = "Stichtagspflege"
 
+# v0.542: Stichtagspflege nutzt zentrale Datenablage auf G: und robuste Farb-Fallbacks.
+DEADLINE_CENTRAL_STORAGE_VERSION = "0.542-central-g-path-line-fix"
+NETWORK_ROOT = Path(r"G:\BUC\FM Anwendung")
+CENTRAL_DATABASE_DIR = NETWORK_ROOT / "Fibu_Mate_Doc" / "Database"
+CENTRAL_DEADLINE_YEARS_DIR = CENTRAL_DATABASE_DIR / "Deadlines" / "years"
+CENTRAL_CLOSING_DIR = CENTRAL_DATABASE_DIR / "Closing"
+
+# Kompatibilität: ältere compliance_common-Stände haben ggf. nicht alle UI-Farbkonstanten.
+for _name, _value in {
+    "BG": "#E8EEF5",
+    "WHITE": "#FFFFFF",
+    "TEXT": "#182431",
+    "TEXT2": "#445364",
+    "HEADER": "#D3DEE9",
+    "BLUE": "#004B93",
+    "LINE": "#91A3B5",
+}.items():
+    if not hasattr(cc, _name):
+        try:
+            setattr(cc, _name, _value)
+        except Exception:
+            pass
+
 # v0.541: Fachliche Geschäftsjahres- und Quartalslogik zentral in der Stichtagspflege.
 # Geschäftsjahr: 01.10. bis 30.09.; Q1=Okt-Dez, Q2=Jan-März, Q3=Apr-Juni, Q4=Juli-Sept.
 DEADLINE_FISCAL_QUARTER_CONFIG_VERSION = "0.541-fiscal-quarter-maintenance"
@@ -204,16 +227,22 @@ def holidays_for_period(start: date, end: date):
 # ---- Storage ----
 
 def storage_dir():
-    base = cc.bin_dir() / "Deadlines" / "years"
+    # Zentrale produktive Datenablage: Entwicklung und Live lesen/schreiben dieselben Stichtagsdaten.
+    # Kein stiller lokaler Fallback, damit keine abweichenden Fristen entstehen.
+    base = CENTRAL_DEADLINE_YEARS_DIR
     base.mkdir(parents=True, exist_ok=True)
     return base
 
 
 def legacy_storage_dir_v0431():
+    # Nur Migrationsquelle für alte lokale Daten. Produktiv wird ausschließlich storage_dir() verwendet.
     try:
         return cc.legacy_bin_dir_v0431() / "Deadlines" / "years"
     except Exception:
-        return storage_dir()
+        try:
+            return cc.bin_dir() / "Deadlines" / "years"
+        except Exception:
+            return storage_dir()
 
 def year_file(year: int):
     return storage_dir() / f"deadlines_{year:04d}.json"
@@ -277,7 +306,10 @@ def migrate_fiscal_quarter_keys(data, year: int):
 
 
 def load_year(year: int):
-    path = year_file(year)
+    try:
+        path = year_file(year)
+    except Exception as exc:
+        raise RuntimeError("Zentrale Stichtagsdatenablage ist nicht erreichbar: " + str(CENTRAL_DEADLINE_YEARS_DIR) + "\n" + str(exc))
     legacy = legacy_year_file_v0431(year)
     if not path.exists() and legacy.exists():
         try:
@@ -300,13 +332,18 @@ def load_year(year: int):
 
 
 def save_year(year: int, data):
-    cc.json_save(year_file(year), data)
+    try:
+        cc.json_save(year_file(year), data)
+    except Exception as exc:
+        raise RuntimeError("Stichtage konnten nicht zentral auf G: gespeichert werden: " + str(CENTRAL_DEADLINE_YEARS_DIR) + "\n" + str(exc))
 
 
 # ---- Propagation in Close-Period-Files ----
 
 def closing_base_dir():
-    return cc.bin_dir() / "Closing"
+    # Zentrale Abschlussdaten passend zur zentralen Stichtagspflege.
+    CENTRAL_CLOSING_DIR.mkdir(parents=True, exist_ok=True)
+    return CENTRAL_CLOSING_DIR
 
 
 def period_file(module_dir: str, period: str):
