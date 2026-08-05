@@ -3401,7 +3401,7 @@ class FiBuMateApp:
         self.draw_bottom_logo()
 
     def render_closing_calendar_menu(self):
-        modules = [("Monatsabschluss", "monthly_close"), ("Quartalsabschluss", "quarterly_close"), ("Jahresabschluss", "yearly_close"), ("Stichtagspflege", "deadline_maintenance")]
+        modules = [("Monatsabschluss", "monthly_close"), ("Stichtagspflege", "deadline_maintenance")]
         self.render_module_menu(modules, show_descriptions=True)
         if self.my_role() == ROLE_E4:
             text = "Auto-Mail: Ein" if self.auto_close_mail_enabled() else "Auto-Mail: Aus"
@@ -19967,7 +19967,7 @@ FM_DEFAULT_MENU_MODULES = {
     "nike_tools": [("Nike - PDF zu Excel", "nike_pdf_to_excel"), ("Nike - OP-Liste: Vollständigkeit PDF-Rechnungen prüfen", "nike_op_liste_pdf_check"), ("Nike - Rechnungs-PDFs in Sammelordner", "invoice_pdf_collector")],
     "afi_uploads": [("AFI-Kontierungs-Assistent", "afi_copilot_auto")],
     "debitoren_tools": [("Debitoren-Serienbrief", "debitoren_serienbrief")],
-    "closing_calendar": [("Monatsabschluss", "monthly_close"), ("Quartalsabschluss", "quarterly_close"), ("Jahresabschluss", "yearly_close"), ("Stichtagspflege", "deadline_maintenance")],
+    "closing_calendar": [("Monatsabschluss", "monthly_close"), ("Stichtagspflege", "deadline_maintenance")],
     "compliance_audit": [("Steuermeldungs-Cockpit", "tax_reporting"), ("Audit-Cockpit", "audit_cockpit"), ("Dokumentationszentrale", "documentation_center")],
     "in_dev": [("Compliance & Audit", "page:compliance_audit"), ("X001 SAP - Test", "x001_sap_test"), ("AFI-Upload (lokale KI)", "supplier_invoice_afi_upload"), ("AFI-Kontierungs-Assistent (stabil)", "afi_copilot_stable")],
 }
@@ -23082,6 +23082,83 @@ try:
         _fm535_install_combobox_spinbox_patch()
         _fm535_install_global_scroll_bindings(self)
     FiBuMateApp.__init__ = _fm535_app_init
+except Exception:
+    pass
+
+
+# ---------------------------------------------------------------------------
+# FM536 - Abschlusskalender auf Monatsabschluss + separate Stichtagspflege reduzieren
+# Datum: 2026-07-20
+# Zweck:
+# - Quartals- und Jahresabschluss sind fachlich durch die Turnuslogik im Monatsabschluss obsolet.
+# - Die separate Stichtagspflege bleibt weiterhin ein eigenständiges Tool.
+# - Alte Quartals-/Jahresabschluss-Einstiege werden nicht mehr geöffnet und aus der Zurück-Historie entfernt.
+# ---------------------------------------------------------------------------
+FM536_VERSION = "0.536"
+FM536_OBSOLETE_CLOSE_TOOLS = {"quarterly_close", "yearly_close"}
+
+try:
+    HIDDEN_TOOL_IDS.update(FM536_OBSOLETE_CLOSE_TOOLS)
+except Exception:
+    try:
+        HIDDEN_TOOL_IDS = set(HIDDEN_TOOL_IDS) | FM536_OBSOLETE_CLOSE_TOOLS
+    except Exception:
+        pass
+
+try:
+    FM_DEFAULT_MENU_MODULES["closing_calendar"] = [("Monatsabschluss", "monthly_close"), ("Stichtagspflege", "deadline_maintenance")]
+except Exception:
+    pass
+
+try:
+    _FM536_ORIG_RENDER_CLOSING_CALENDAR_MENU = FiBuMateApp.render_closing_calendar_menu
+    def _fm536_render_closing_calendar_menu(self):
+        modules = [("Monatsabschluss", "monthly_close"), ("Stichtagspflege", "deadline_maintenance")]
+        self.render_module_menu(modules, show_descriptions=True)
+        try:
+            if self.my_role() == ROLE_E4:
+                text = "Auto-Mail: Ein" if self.auto_close_mail_enabled() else "Auto-Mail: Aus"
+                btn = tk.Button(self.root, text=text, command=self.toggle_auto_close_mail,
+                                bg=WHITE, fg=BLUE, bd=1, font=body_font(10, "bold"), padx=12, pady=6)
+                self.widget_items.append(btn)
+                self.canvas.create_window(self.canvas.winfo_width()-160, 112, window=btn, anchor="ne")
+        except Exception:
+            pass
+        self.draw_bottom_logo()
+    FiBuMateApp.render_closing_calendar_menu = _fm536_render_closing_calendar_menu
+except Exception:
+    pass
+
+try:
+    _FM536_ORIG_OPEN_TOOL = FiBuMateApp.open_tool
+    def _fm536_open_tool(self, tool_id):
+        if str(tool_id) in FM536_OBSOLETE_CLOSE_TOOLS:
+            try:
+                messagebox.showinfo("FiBu Mate", "Der separate Quartals-/Jahresabschluss wurde durch den Fälligkeitsturnus im Monatsabschluss ersetzt.")
+            except Exception:
+                pass
+            return
+        return _FM536_ORIG_OPEN_TOOL(self, tool_id)
+    FiBuMateApp.open_tool = _fm536_open_tool
+except Exception:
+    pass
+
+try:
+    _FM536_ORIG_SHOW_PAGE = FiBuMateApp.show_page
+    def _fm536_show_page(self, page_id, *args, **kwargs):
+        if str(page_id) in ("tool:quarterly_close", "tool:yearly_close"):
+            page_id = "closing_calendar"
+            if args:
+                args = ("Abschlusskalender",) + tuple(args[1:])
+            else:
+                args = ("Abschlusskalender", True)
+        try:
+            hist = getattr(self, "history", []) or []
+            self.history = [h for h in hist if str(h).replace("tool:", "") not in FM536_OBSOLETE_CLOSE_TOOLS]
+        except Exception:
+            pass
+        return _FM536_ORIG_SHOW_PAGE(self, page_id, *args, **kwargs)
+    FiBuMateApp.show_page = _fm536_show_page
 except Exception:
     pass
 

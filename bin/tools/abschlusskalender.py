@@ -2638,7 +2638,7 @@ _EMBEDDED_SOURCES = {'monthly_close': '## FiBuMate_PATCH_MARKER: 20260609_PROTOC
                   '        for offset, val in enumerate(values):\n'
                   '            anchor, justify = aligns[offset]\n'
                   '            tk.Label(table, text=val, bg=bg, fg=COLORS["text"], font=zfont(self.app, 12), padx=6, '
-                  'pady=4, anchor=anchor, justify=justify).grid(row=row_idx, column=4 + offset, sticky="nsew", padx=1, '
+                  'pady=6, anchor=anchor, justify=justify).grid(row=row_idx, column=4 + offset, sticky="nsew", padx=1, '
                   'pady=1)\n'
                   '        self.create_attachment_button(table, task, lambda t=task: '
                   'self.show_attachments(t)).grid(row=row_idx, column=8, sticky="nsew", padx=1, pady=1)\n'
@@ -2802,6 +2802,8 @@ _EMBEDDED_SOURCES = {'monthly_close': '## FiBuMate_PATCH_MARKER: 20260609_PROTOC
                   'tk.StringVar(value=data.get("deadline_type", "intern") if data.get("deadline_type") in '
                   'DEADLINE_TYPES else "intern"); priority_var = tk.StringVar(value=data.get("priority", "normal")); '
                   'recurring_var = tk.BooleanVar(value=bool(data.get("recurring")))\n'
+                  '        due_frequency_var = tk.StringVar(value=str(data.get("due_frequency") or ("Monat" if '
+                  'CLOSING_SCOPE == "M" else "Quartal" if CLOSING_SCOPE == "Q" else "Jahr")))\n'
                   '        due_mode_var = tk.StringVar(value=DUE_VALUE_TO_LABEL.get(data.get("due_mode", DUE_CUTOFF), '
                   '"Abschluss-Stichtag")); due_day_var = tk.StringVar(value=str(data.get("due_day") or 1)); '
                   'due_workday_var = tk.StringVar(value=str(data.get("due_workday") or 1)); due_fixed_var = '
@@ -2840,6 +2842,10 @@ _EMBEDDED_SOURCES = {'monthly_close': '## FiBuMate_PATCH_MARKER: 20260609_PROTOC
                   '        tk.Checkbutton(form, text="Wiederkehrend", variable=recurring_var, bg=COLORS["bg"], '
                   'fg=COLORS["text"], font=zfont(self.app, 12, "bold"), activebackground=COLORS["bg"]).grid(row=9, '
                   'column=1, sticky="w", pady=7)\n'
+                  '        tk.Label(form, text="Fälligkeitsturnus", bg=COLORS["bg"], fg=COLORS["text"], '
+                  'font=zfont(self.app, 12, "bold")).grid(row=10, column=0, sticky="w", pady=7, padx=8)\n'
+                  '        tk.OptionMenu(form, due_frequency_var, "Monat", "Quartal", "Jahr").grid(row=10, column=1, '
+                  'sticky="w", pady=7)\n'
                   '        tk.Label(form, textvariable=calculated_var, bg=COLORS["bg"], fg=COLORS["text2"], '
                   'font=zfont(self.app, 12, "bold")).grid(row=10, column=1, sticky="w", pady=(4, 10))\n'
                   '        def refresh_due_input_visibility(*_):\n'
@@ -2862,26 +2868,71 @@ _EMBEDDED_SOURCES = {'monthly_close': '## FiBuMate_PATCH_MARKER: 20260609_PROTOC
                   'padx=10, pady=10); new_sub_var = tk.StringVar()\n'
                   '        def render_subtasks_editor():\n'
                   '            for child in sub_list.winfo_children(): child.destroy()\n'
-                  '            tk.Label(sub_list, text="Unteraufgaben", bg=COLORS["bg"], fg=COLORS["text"], '
-                  'font=zfont(self.app, 14, "bold")).grid(row=0, column=0, columnspan=3, sticky="w", pady=(0, 8))\n'
-                  '            for idx, sub in enumerate(subtasks_work, start=1):\n'
+                  '            tk.Label(sub_list, text="Unteraufgaben / Unter-Unteraufgaben", bg=COLORS["bg"], '
+                  'fg=COLORS["text"], font=zfont(self.app, 14, "bold")).grid(row=0, column=0, columnspan=5, '
+                  'sticky="w", pady=(0, 8))\n'
+                  '\n'
+                  '            def add_sub_subtask(parent_index, title_var):\n'
+                  '                title = title_var.get().strip()\n'
+                  '                if not title: return\n'
+                  '                parent = subtasks_work[parent_index]\n'
+                  '                parent.setdefault("subtasks", [])\n'
+                  '                parent["subtasks"].append({"id": f"subsub_{len(parent.get(\'subtasks\', '
+                  '[]))+1:02d}_{datetime.now().strftime(\'%H%M%S%f\')}", "title": title, "status": STATUS_OPEN})\n'
+                  '                title_var.set(""); render_subtasks_editor()\n'
+                  '\n'
+                  '            def delete_sub_subtask(parent_index, child_index):\n'
+                  '                try:\n'
+                  '                    subtasks_work[parent_index].setdefault("subtasks", []).pop(child_index)\n'
+                  '                except Exception:\n'
+                  '                    pass\n'
+                  '                render_subtasks_editor()\n'
+                  '\n'
+                  '            row = 1\n'
+                  '            for idx, sub in enumerate(subtasks_work):\n'
+                  '                sub.setdefault("subtasks", [])\n'
                   '                var = tk.StringVar(value=sub.get("title", "")); status_var = '
                   'tk.BooleanVar(value=sub.get("status") == STATUS_DONE)\n'
-                  '                var.trace_add("write", lambda *_args, i=idx-1, v=var: '
+                  '                var.trace_add("write", lambda *_args, i=idx, v=var: '
                   'subtasks_work[i].update({"title": v.get()}))\n'
-                  '                tk.Checkbutton(sub_list, variable=status_var, command=lambda i=idx-1, v=status_var: '
+                  '                tk.Checkbutton(sub_list, variable=status_var, command=lambda i=idx, v=status_var: '
                   'subtasks_work[i].update({"status": STATUS_DONE if v.get() else STATUS_OPEN}), bg=COLORS["bg"], '
-                  'activebackground=COLORS["bg"]).grid(row=idx, column=0, sticky="w", pady=3)\n'
-                  '                tk.Entry(sub_list, textvariable=var, width=52, bg="white", fg=COLORS["text"], '
-                  'relief="solid", bd=1).grid(row=idx, column=1, sticky="w", pady=3, padx=6)\n'
-                  '                tk.Button(sub_list, text="Löschen", command=lambda i=idx-1: delete_subtask(i), '
-                  'bg=COLORS["red"], fg="white", bd=0, padx=8).grid(row=idx, column=2, sticky="w", pady=3)\n'
-                  '            row = len(subtasks_work) + 2\n'
+                  'activebackground=COLORS["bg"]).grid(row=row, column=0, sticky="w", pady=3)\n'
+                  '                tk.Entry(sub_list, textvariable=var, width=46, bg="white", fg=COLORS["text"], '
+                  'relief="solid", bd=1).grid(row=row, column=1, sticky="w", pady=3, padx=6)\n'
+                  '                tk.Button(sub_list, text="Löschen", command=lambda i=idx: delete_subtask(i), '
+                  'bg=COLORS["red"], fg="white", bd=0, padx=8).grid(row=row, column=2, sticky="w", pady=3)\n'
+                  '                new_child_var = tk.StringVar()\n'
+                  '                tk.Entry(sub_list, textvariable=new_child_var, width=30, bg="white", '
+                  'fg=COLORS["text"], relief="solid", bd=1).grid(row=row, column=3, sticky="w", pady=3, padx=(16, 4))\n'
+                  '                tk.Button(sub_list, text="Unter-Unteraufgabe +", command=lambda i=idx, '
+                  'v=new_child_var: add_sub_subtask(i, v), bg=COLORS["blue"], fg="white", bd=0, padx=8).grid(row=row, '
+                  'column=4, sticky="w", pady=3)\n'
+                  '                row += 1\n'
+                  '                for cidx, child in enumerate(sub.get("subtasks", []) or []):\n'
+                  '                    cvar = tk.StringVar(value=child.get("title", "")); cstatus = '
+                  'tk.BooleanVar(value=child.get("status") == STATUS_DONE)\n'
+                  '                    cvar.trace_add("write", lambda *_args, i=idx, j=cidx, v=cvar: '
+                  'subtasks_work[i].setdefault("subtasks", [])[j].update({"title": v.get()}))\n'
+                  '                    tk.Checkbutton(sub_list, variable=cstatus, command=lambda i=idx, j=cidx, '
+                  'v=cstatus: subtasks_work[i].setdefault("subtasks", [])[j].update({"status": STATUS_DONE if v.get() '
+                  'else STATUS_OPEN}), bg=COLORS["bg"], activebackground=COLORS["bg"]).grid(row=row, column=0, '
+                  'sticky="e", pady=2, padx=(24, 0))\n'
+                  '                    tk.Label(sub_list, text="↳", bg=COLORS["bg"], fg=COLORS["text2"]).grid(row=row, '
+                  'column=1, sticky="w", padx=(8, 0))\n'
+                  '                    tk.Entry(sub_list, textvariable=cvar, width=42, bg="white", fg=COLORS["text"], '
+                  'relief="solid", bd=1).grid(row=row, column=1, sticky="e", pady=2, padx=(36, 6))\n'
+                  '                    tk.Button(sub_list, text="Löschen", command=lambda i=idx, j=cidx: '
+                  'delete_sub_subtask(i, j), bg="#F97316", fg="white", bd=0, padx=8).grid(row=row, column=2, '
+                  'sticky="w", pady=2)\n'
+                  '                    row += 1\n'
+                  '            add_row = row + 1\n'
                   '            tk.Entry(sub_list, textvariable=new_sub_var, width=52, bg="white", fg=COLORS["text"], '
-                  'relief="solid", bd=1).grid(row=row, column=1, sticky="w", pady=(12, 3), padx=6)\n'
+                  'relief="solid", bd=1).grid(row=add_row, column=1, sticky="w", pady=(12, 3), padx=6)\n'
                   '            tk.Button(sub_list, text="Unteraufgabe hinzufügen", command=add_subtask, '
-                  'bg=COLORS["blue"], fg="white", bd=0, padx=10, pady=5).grid(row=row, column=2, sticky="w", pady=(12, '
-                  '3))\n'
+                  'bg=COLORS["blue"], fg="white", bd=0, padx=10, pady=5).grid(row=add_row, column=2, sticky="w", '
+                  'pady=(12, 3))\n'
+                  '\n'
                   '        def add_subtask():\n'
                   '            title = new_sub_var.get().strip()\n'
                   '            if title: subtasks_work.append({"id": '
@@ -2890,7 +2941,7 @@ _EMBEDDED_SOURCES = {'monthly_close': '## FiBuMate_PATCH_MARKER: 20260609_PROTOC
                   '        def delete_subtask(idx):\n'
                   '            if 0 <= idx < len(subtasks_work): subtasks_work.pop(idx); render_subtasks_editor()\n'
                   '        render_subtasks_editor()\n'
-                  '        if not is_new:\n'
+                  '        if False and not is_new:\n'
                   '            tk.Button(form, text="Aufgabe mit Unteraufgaben in Quartalsabschluss übernehmen", '
                   'command=lambda: self.open_transfer_dialog(task), bg=COLORS["blue"], fg="white", bd=0, padx=12, '
                   'pady=7).grid(row=10, column=1, sticky="w", pady=(10, 4))\n'
@@ -2916,8 +2967,8 @@ _EMBEDDED_SOURCES = {'monthly_close': '## FiBuMate_PATCH_MARKER: 20260609_PROTOC
                   '            payload = {"title": title_value, "booking_circle": booking_circle_var.get(), "owner": '
                   'owner_text, "owner_user_key": owner_key, "due_mode": mode, "due_day": due_day, "due_workday": '
                   'due_workday, "due_fixed_date": due_fixed, "deadline_type": deadline_var.get(), "priority": '
-                  'priority_var.get(), "recurring": bool(recurring_var.get()), "subtasks": [s for s in subtasks_work '
-                  'if s.get("title", "").strip()]}\n'
+                  'priority_var.get(), "recurring": bool(recurring_var.get()), "due_frequency": '
+                  'due_frequency_var.get(), "subtasks": [s for s in subtasks_work if s.get("title", "").strip()]}\n'
                   '            payload["due_date"] = resolve_due_date(payload, self.data, self.period)\n'
                   '            if is_new:\n'
                   '                real = {"id": make_task_id(team, self.next_task_index(team)), "team": team, '
@@ -5777,7 +5828,7 @@ _EMBEDDED_SOURCES = {'monthly_close': '## FiBuMate_PATCH_MARKER: 20260609_PROTOC
                     '        for offset, val in enumerate(values):\n'
                     '            anchor, justify = aligns[offset]\n'
                     '            tk.Label(table, text=val, bg=bg, fg=COLORS["text"], font=zfont(self.app, 12), padx=6, '
-                    'pady=4, anchor=anchor, justify=justify).grid(row=row_idx, column=4 + offset, sticky="nsew", '
+                    'pady=6, anchor=anchor, justify=justify).grid(row=row_idx, column=4 + offset, sticky="nsew", '
                     'padx=1, pady=1)\n'
                     '        self.create_attachment_button(table, task, lambda t=task: '
                     'self.show_attachments(t)).grid(row=row_idx, column=8, sticky="nsew", padx=1, pady=1)\n'
@@ -5943,6 +5994,8 @@ _EMBEDDED_SOURCES = {'monthly_close': '## FiBuMate_PATCH_MARKER: 20260609_PROTOC
                     'tk.StringVar(value=data.get("deadline_type", "intern") if data.get("deadline_type") in '
                     'DEADLINE_TYPES else "intern"); priority_var = tk.StringVar(value=data.get("priority", "normal")); '
                     'recurring_var = tk.BooleanVar(value=bool(data.get("recurring")))\n'
+                    '        due_frequency_var = tk.StringVar(value=str(data.get("due_frequency") or ("Monat" if '
+                    'CLOSING_SCOPE == "M" else "Quartal" if CLOSING_SCOPE == "Q" else "Jahr")))\n'
                     '        due_mode_var = tk.StringVar(value=DUE_VALUE_TO_LABEL.get(data.get("due_mode", '
                     'DUE_CUTOFF), "Abschluss-Stichtag")); due_day_var = tk.StringVar(value=str(data.get("due_day") or '
                     '1)); due_workday_var = tk.StringVar(value=str(data.get("due_workday") or 1)); due_fixed_var = '
@@ -5981,6 +6034,10 @@ _EMBEDDED_SOURCES = {'monthly_close': '## FiBuMate_PATCH_MARKER: 20260609_PROTOC
                     '        tk.Checkbutton(form, text="Wiederkehrend", variable=recurring_var, bg=COLORS["bg"], '
                     'fg=COLORS["text"], font=zfont(self.app, 12, "bold"), activebackground=COLORS["bg"]).grid(row=9, '
                     'column=1, sticky="w", pady=7)\n'
+                    '        tk.Label(form, text="Fälligkeitsturnus", bg=COLORS["bg"], fg=COLORS["text"], '
+                    'font=zfont(self.app, 12, "bold")).grid(row=10, column=0, sticky="w", pady=7, padx=8)\n'
+                    '        tk.OptionMenu(form, due_frequency_var, "Monat", "Quartal", "Jahr").grid(row=10, column=1, '
+                    'sticky="w", pady=7)\n'
                     '        tk.Label(form, textvariable=calculated_var, bg=COLORS["bg"], fg=COLORS["text2"], '
                     'font=zfont(self.app, 12, "bold")).grid(row=10, column=1, sticky="w", pady=(4, 10))\n'
                     '        def refresh_due_input_visibility(*_):\n'
@@ -6004,26 +6061,73 @@ _EMBEDDED_SOURCES = {'monthly_close': '## FiBuMate_PATCH_MARKER: 20260609_PROTOC
                     'padx=10, pady=10); new_sub_var = tk.StringVar()\n'
                     '        def render_subtasks_editor():\n'
                     '            for child in sub_list.winfo_children(): child.destroy()\n'
-                    '            tk.Label(sub_list, text="Unteraufgaben", bg=COLORS["bg"], fg=COLORS["text"], '
-                    'font=zfont(self.app, 14, "bold")).grid(row=0, column=0, columnspan=3, sticky="w", pady=(0, 8))\n'
-                    '            for idx, sub in enumerate(subtasks_work, start=1):\n'
+                    '            tk.Label(sub_list, text="Unteraufgaben / Unter-Unteraufgaben", bg=COLORS["bg"], '
+                    'fg=COLORS["text"], font=zfont(self.app, 14, "bold")).grid(row=0, column=0, columnspan=5, '
+                    'sticky="w", pady=(0, 8))\n'
+                    '\n'
+                    '            def add_sub_subtask(parent_index, title_var):\n'
+                    '                title = title_var.get().strip()\n'
+                    '                if not title: return\n'
+                    '                parent = subtasks_work[parent_index]\n'
+                    '                parent.setdefault("subtasks", [])\n'
+                    '                parent["subtasks"].append({"id": f"subsub_{len(parent.get(\'subtasks\', '
+                    '[]))+1:02d}_{datetime.now().strftime(\'%H%M%S%f\')}", "title": title, "status": STATUS_OPEN})\n'
+                    '                title_var.set(""); render_subtasks_editor()\n'
+                    '\n'
+                    '            def delete_sub_subtask(parent_index, child_index):\n'
+                    '                try:\n'
+                    '                    subtasks_work[parent_index].setdefault("subtasks", []).pop(child_index)\n'
+                    '                except Exception:\n'
+                    '                    pass\n'
+                    '                render_subtasks_editor()\n'
+                    '\n'
+                    '            row = 1\n'
+                    '            for idx, sub in enumerate(subtasks_work):\n'
+                    '                sub.setdefault("subtasks", [])\n'
                     '                var = tk.StringVar(value=sub.get("title", "")); status_var = '
                     'tk.BooleanVar(value=sub.get("status") == STATUS_DONE)\n'
-                    '                var.trace_add("write", lambda *_args, i=idx-1, v=var: '
+                    '                var.trace_add("write", lambda *_args, i=idx, v=var: '
                     'subtasks_work[i].update({"title": v.get()}))\n'
-                    '                tk.Checkbutton(sub_list, variable=status_var, command=lambda i=idx-1, '
-                    'v=status_var: subtasks_work[i].update({"status": STATUS_DONE if v.get() else STATUS_OPEN}), '
-                    'bg=COLORS["bg"], activebackground=COLORS["bg"]).grid(row=idx, column=0, sticky="w", pady=3)\n'
-                    '                tk.Entry(sub_list, textvariable=var, width=52, bg="white", fg=COLORS["text"], '
-                    'relief="solid", bd=1).grid(row=idx, column=1, sticky="w", pady=3, padx=6)\n'
-                    '                tk.Button(sub_list, text="Löschen", command=lambda i=idx-1: delete_subtask(i), '
-                    'bg=COLORS["red"], fg="white", bd=0, padx=8).grid(row=idx, column=2, sticky="w", pady=3)\n'
-                    '            row = len(subtasks_work) + 2\n'
+                    '                tk.Checkbutton(sub_list, variable=status_var, command=lambda i=idx, v=status_var: '
+                    'subtasks_work[i].update({"status": STATUS_DONE if v.get() else STATUS_OPEN}), bg=COLORS["bg"], '
+                    'activebackground=COLORS["bg"]).grid(row=row, column=0, sticky="w", pady=3)\n'
+                    '                tk.Entry(sub_list, textvariable=var, width=46, bg="white", fg=COLORS["text"], '
+                    'relief="solid", bd=1).grid(row=row, column=1, sticky="w", pady=3, padx=6)\n'
+                    '                tk.Button(sub_list, text="Löschen", command=lambda i=idx: delete_subtask(i), '
+                    'bg=COLORS["red"], fg="white", bd=0, padx=8).grid(row=row, column=2, sticky="w", pady=3)\n'
+                    '                new_child_var = tk.StringVar()\n'
+                    '                tk.Entry(sub_list, textvariable=new_child_var, width=30, bg="white", '
+                    'fg=COLORS["text"], relief="solid", bd=1).grid(row=row, column=3, sticky="w", pady=3, padx=(16, '
+                    '4))\n'
+                    '                tk.Button(sub_list, text="Unter-Unteraufgabe +", command=lambda i=idx, '
+                    'v=new_child_var: add_sub_subtask(i, v), bg=COLORS["blue"], fg="white", bd=0, '
+                    'padx=8).grid(row=row, column=4, sticky="w", pady=3)\n'
+                    '                row += 1\n'
+                    '                for cidx, child in enumerate(sub.get("subtasks", []) or []):\n'
+                    '                    cvar = tk.StringVar(value=child.get("title", "")); cstatus = '
+                    'tk.BooleanVar(value=child.get("status") == STATUS_DONE)\n'
+                    '                    cvar.trace_add("write", lambda *_args, i=idx, j=cidx, v=cvar: '
+                    'subtasks_work[i].setdefault("subtasks", [])[j].update({"title": v.get()}))\n'
+                    '                    tk.Checkbutton(sub_list, variable=cstatus, command=lambda i=idx, j=cidx, '
+                    'v=cstatus: subtasks_work[i].setdefault("subtasks", [])[j].update({"status": STATUS_DONE if '
+                    'v.get() else STATUS_OPEN}), bg=COLORS["bg"], activebackground=COLORS["bg"]).grid(row=row, '
+                    'column=0, sticky="e", pady=2, padx=(24, 0))\n'
+                    '                    tk.Label(sub_list, text="↳", bg=COLORS["bg"], '
+                    'fg=COLORS["text2"]).grid(row=row, column=1, sticky="w", padx=(8, 0))\n'
+                    '                    tk.Entry(sub_list, textvariable=cvar, width=42, bg="white", '
+                    'fg=COLORS["text"], relief="solid", bd=1).grid(row=row, column=1, sticky="e", pady=2, padx=(36, '
+                    '6))\n'
+                    '                    tk.Button(sub_list, text="Löschen", command=lambda i=idx, j=cidx: '
+                    'delete_sub_subtask(i, j), bg="#F97316", fg="white", bd=0, padx=8).grid(row=row, column=2, '
+                    'sticky="w", pady=2)\n'
+                    '                    row += 1\n'
+                    '            add_row = row + 1\n'
                     '            tk.Entry(sub_list, textvariable=new_sub_var, width=52, bg="white", fg=COLORS["text"], '
-                    'relief="solid", bd=1).grid(row=row, column=1, sticky="w", pady=(12, 3), padx=6)\n'
+                    'relief="solid", bd=1).grid(row=add_row, column=1, sticky="w", pady=(12, 3), padx=6)\n'
                     '            tk.Button(sub_list, text="Unteraufgabe hinzufügen", command=add_subtask, '
-                    'bg=COLORS["blue"], fg="white", bd=0, padx=10, pady=5).grid(row=row, column=2, sticky="w", '
+                    'bg=COLORS["blue"], fg="white", bd=0, padx=10, pady=5).grid(row=add_row, column=2, sticky="w", '
                     'pady=(12, 3))\n'
+                    '\n'
                     '        def add_subtask():\n'
                     '            title = new_sub_var.get().strip()\n'
                     '            if title: subtasks_work.append({"id": '
@@ -6058,8 +6162,8 @@ _EMBEDDED_SOURCES = {'monthly_close': '## FiBuMate_PATCH_MARKER: 20260609_PROTOC
                     '            payload = {"title": title_value, "booking_circle": booking_circle_var.get(), "owner": '
                     'owner_text, "owner_user_key": owner_key, "due_mode": mode, "due_day": due_day, "due_workday": '
                     'due_workday, "due_fixed_date": due_fixed, "deadline_type": deadline_var.get(), "priority": '
-                    'priority_var.get(), "recurring": bool(recurring_var.get()), "subtasks": [s for s in subtasks_work '
-                    'if s.get("title", "").strip()]}\n'
+                    'priority_var.get(), "recurring": bool(recurring_var.get()), "due_frequency": '
+                    'due_frequency_var.get(), "subtasks": [s for s in subtasks_work if s.get("title", "").strip()]}\n'
                     '            payload["due_date"] = resolve_due_date(payload, self.data, self.period)\n'
                     '            if is_new:\n'
                     '                real = {"id": make_task_id(team, self.next_task_index(team)), "team": team, '
@@ -8823,8 +8927,8 @@ _EMBEDDED_SOURCES = {'monthly_close': '## FiBuMate_PATCH_MARKER: 20260609_PROTOC
                  '        doc_frame = tk.Frame(table, bg=bg)\n'
                  '        doc_frame.grid(row=row_idx, column=2, sticky="nsew", padx=1, pady=1)\n'
                  '        # v0.520: Dokumentations-Button auch bei Aufgabengruppen anzeigen.\n'
-                 '        self.create_documentation_button(doc_frame, task, task.get("title", '
-                 '"Aufgabe")).pack(padx=5, pady=3)\n'
+                 '        self.create_documentation_button(doc_frame, task, task.get("title", "Aufgabe")).pack(padx=5, '
+                 'pady=3)\n'
                  '\n'
                  '        owner_cell = tk.Frame(table, bg=bg)\n'
                  '        owner_cell.grid(row=row_idx, column=3, sticky="nsew", padx=1, pady=1)\n'
@@ -8839,7 +8943,7 @@ _EMBEDDED_SOURCES = {'monthly_close': '## FiBuMate_PATCH_MARKER: 20260609_PROTOC
                  '        for offset, val in enumerate(values):\n'
                  '            anchor, justify = aligns[offset]\n'
                  '            tk.Label(table, text=val, bg=bg, fg=COLORS["text"], font=("Segoe UI", 10), padx=6, '
-                 'pady=4, anchor=anchor, justify=justify).grid(row=row_idx, column=4 + offset, sticky="nsew", padx=1, '
+                 'pady=6, anchor=anchor, justify=justify).grid(row=row_idx, column=4 + offset, sticky="nsew", padx=1, '
                  'pady=1)\n'
                  '        self.create_attachment_button(table, task, lambda t=task: '
                  'self.show_attachments(t)).grid(row=row_idx, column=8, sticky="nsew", padx=1, pady=1)\n'
@@ -9002,6 +9106,8 @@ _EMBEDDED_SOURCES = {'monthly_close': '## FiBuMate_PATCH_MARKER: 20260609_PROTOC
                  'tk.StringVar(value=data.get("deadline_type", "intern") if data.get("deadline_type") in '
                  'DEADLINE_TYPES else "intern"); priority_var = tk.StringVar(value=data.get("priority", "normal")); '
                  'recurring_var = tk.BooleanVar(value=bool(data.get("recurring")))\n'
+                 '        due_frequency_var = tk.StringVar(value=str(data.get("due_frequency") or ("Monat" if '
+                 'CLOSING_SCOPE == "M" else "Quartal" if CLOSING_SCOPE == "Q" else "Jahr")))\n'
                  '        due_mode_var = tk.StringVar(value=DUE_VALUE_TO_LABEL.get(data.get("due_mode", DUE_CUTOFF), '
                  '"Abschluss-Stichtag")); due_day_var = tk.StringVar(value=str(data.get("due_day") or 1)); '
                  'due_workday_var = tk.StringVar(value=str(data.get("due_workday") or 1)); due_fixed_var = '
@@ -9039,6 +9145,10 @@ _EMBEDDED_SOURCES = {'monthly_close': '## FiBuMate_PATCH_MARKER: 20260609_PROTOC
                  '        tk.Checkbutton(form, text="Wiederkehrend", variable=recurring_var, bg=COLORS["bg"], '
                  'fg=COLORS["text"], font=("Segoe UI", 10, "bold"), activebackground=COLORS["bg"]).grid(row=9, '
                  'column=1, sticky="w", pady=7)\n'
+                 '        tk.Label(form, text="Fälligkeitsturnus", bg=COLORS["bg"], fg=COLORS["text"], '
+                 'font=zfont(self.app, 12, "bold")).grid(row=10, column=0, sticky="w", pady=7, padx=8)\n'
+                 '        tk.OptionMenu(form, due_frequency_var, "Monat", "Quartal", "Jahr").grid(row=10, column=1, '
+                 'sticky="w", pady=7)\n'
                  '        tk.Label(form, textvariable=calculated_var, bg=COLORS["bg"], fg=COLORS["text2"], '
                  'font=("Segoe UI", 10, "bold")).grid(row=10, column=1, sticky="w", pady=(4, 10))\n'
                  '        def refresh_due_input_visibility(*_):\n'
@@ -9061,26 +9171,71 @@ _EMBEDDED_SOURCES = {'monthly_close': '## FiBuMate_PATCH_MARKER: 20260609_PROTOC
                  'padx=10, pady=10); new_sub_var = tk.StringVar()\n'
                  '        def render_subtasks_editor():\n'
                  '            for child in sub_list.winfo_children(): child.destroy()\n'
-                 '            tk.Label(sub_list, text="Unteraufgaben", bg=COLORS["bg"], fg=COLORS["text"], '
-                 'font=("Segoe UI", 12, "bold")).grid(row=0, column=0, columnspan=3, sticky="w", pady=(0, 8))\n'
-                 '            for idx, sub in enumerate(subtasks_work, start=1):\n'
+                 '            tk.Label(sub_list, text="Unteraufgaben / Unter-Unteraufgaben", bg=COLORS["bg"], '
+                 'fg=COLORS["text"], font=zfont(self.app, 14, "bold")).grid(row=0, column=0, columnspan=5, sticky="w", '
+                 'pady=(0, 8))\n'
+                 '\n'
+                 '            def add_sub_subtask(parent_index, title_var):\n'
+                 '                title = title_var.get().strip()\n'
+                 '                if not title: return\n'
+                 '                parent = subtasks_work[parent_index]\n'
+                 '                parent.setdefault("subtasks", [])\n'
+                 '                parent["subtasks"].append({"id": f"subsub_{len(parent.get(\'subtasks\', '
+                 '[]))+1:02d}_{datetime.now().strftime(\'%H%M%S%f\')}", "title": title, "status": STATUS_OPEN})\n'
+                 '                title_var.set(""); render_subtasks_editor()\n'
+                 '\n'
+                 '            def delete_sub_subtask(parent_index, child_index):\n'
+                 '                try:\n'
+                 '                    subtasks_work[parent_index].setdefault("subtasks", []).pop(child_index)\n'
+                 '                except Exception:\n'
+                 '                    pass\n'
+                 '                render_subtasks_editor()\n'
+                 '\n'
+                 '            row = 1\n'
+                 '            for idx, sub in enumerate(subtasks_work):\n'
+                 '                sub.setdefault("subtasks", [])\n'
                  '                var = tk.StringVar(value=sub.get("title", "")); status_var = '
                  'tk.BooleanVar(value=sub.get("status") == STATUS_DONE)\n'
-                 '                var.trace_add("write", lambda *_args, i=idx-1, v=var: '
+                 '                var.trace_add("write", lambda *_args, i=idx, v=var: '
                  'subtasks_work[i].update({"title": v.get()}))\n'
-                 '                tk.Checkbutton(sub_list, variable=status_var, command=lambda i=idx-1, v=status_var: '
+                 '                tk.Checkbutton(sub_list, variable=status_var, command=lambda i=idx, v=status_var: '
                  'subtasks_work[i].update({"status": STATUS_DONE if v.get() else STATUS_OPEN}), bg=COLORS["bg"], '
-                 'activebackground=COLORS["bg"]).grid(row=idx, column=0, sticky="w", pady=3)\n'
-                 '                tk.Entry(sub_list, textvariable=var, width=52, bg="white", fg=COLORS["text"], '
-                 'relief="solid", bd=1).grid(row=idx, column=1, sticky="w", pady=3, padx=6)\n'
-                 '                tk.Button(sub_list, text="Löschen", command=lambda i=idx-1: delete_subtask(i), '
-                 'bg=COLORS["red"], fg="white", bd=0, padx=8).grid(row=idx, column=2, sticky="w", pady=3)\n'
-                 '            row = len(subtasks_work) + 2\n'
+                 'activebackground=COLORS["bg"]).grid(row=row, column=0, sticky="w", pady=3)\n'
+                 '                tk.Entry(sub_list, textvariable=var, width=46, bg="white", fg=COLORS["text"], '
+                 'relief="solid", bd=1).grid(row=row, column=1, sticky="w", pady=3, padx=6)\n'
+                 '                tk.Button(sub_list, text="Löschen", command=lambda i=idx: delete_subtask(i), '
+                 'bg=COLORS["red"], fg="white", bd=0, padx=8).grid(row=row, column=2, sticky="w", pady=3)\n'
+                 '                new_child_var = tk.StringVar()\n'
+                 '                tk.Entry(sub_list, textvariable=new_child_var, width=30, bg="white", '
+                 'fg=COLORS["text"], relief="solid", bd=1).grid(row=row, column=3, sticky="w", pady=3, padx=(16, 4))\n'
+                 '                tk.Button(sub_list, text="Unter-Unteraufgabe +", command=lambda i=idx, '
+                 'v=new_child_var: add_sub_subtask(i, v), bg=COLORS["blue"], fg="white", bd=0, padx=8).grid(row=row, '
+                 'column=4, sticky="w", pady=3)\n'
+                 '                row += 1\n'
+                 '                for cidx, child in enumerate(sub.get("subtasks", []) or []):\n'
+                 '                    cvar = tk.StringVar(value=child.get("title", "")); cstatus = '
+                 'tk.BooleanVar(value=child.get("status") == STATUS_DONE)\n'
+                 '                    cvar.trace_add("write", lambda *_args, i=idx, j=cidx, v=cvar: '
+                 'subtasks_work[i].setdefault("subtasks", [])[j].update({"title": v.get()}))\n'
+                 '                    tk.Checkbutton(sub_list, variable=cstatus, command=lambda i=idx, j=cidx, '
+                 'v=cstatus: subtasks_work[i].setdefault("subtasks", [])[j].update({"status": STATUS_DONE if v.get() '
+                 'else STATUS_OPEN}), bg=COLORS["bg"], activebackground=COLORS["bg"]).grid(row=row, column=0, '
+                 'sticky="e", pady=2, padx=(24, 0))\n'
+                 '                    tk.Label(sub_list, text="↳", bg=COLORS["bg"], fg=COLORS["text2"]).grid(row=row, '
+                 'column=1, sticky="w", padx=(8, 0))\n'
+                 '                    tk.Entry(sub_list, textvariable=cvar, width=42, bg="white", fg=COLORS["text"], '
+                 'relief="solid", bd=1).grid(row=row, column=1, sticky="e", pady=2, padx=(36, 6))\n'
+                 '                    tk.Button(sub_list, text="Löschen", command=lambda i=idx, j=cidx: '
+                 'delete_sub_subtask(i, j), bg="#F97316", fg="white", bd=0, padx=8).grid(row=row, column=2, '
+                 'sticky="w", pady=2)\n'
+                 '                    row += 1\n'
+                 '            add_row = row + 1\n'
                  '            tk.Entry(sub_list, textvariable=new_sub_var, width=52, bg="white", fg=COLORS["text"], '
-                 'relief="solid", bd=1).grid(row=row, column=1, sticky="w", pady=(12, 3), padx=6)\n'
+                 'relief="solid", bd=1).grid(row=add_row, column=1, sticky="w", pady=(12, 3), padx=6)\n'
                  '            tk.Button(sub_list, text="Unteraufgabe hinzufügen", command=add_subtask, '
-                 'bg=COLORS["blue"], fg="white", bd=0, padx=10, pady=5).grid(row=row, column=2, sticky="w", pady=(12, '
-                 '3))\n'
+                 'bg=COLORS["blue"], fg="white", bd=0, padx=10, pady=5).grid(row=add_row, column=2, sticky="w", '
+                 'pady=(12, 3))\n'
+                 '\n'
                  '        def add_subtask():\n'
                  '            title = new_sub_var.get().strip()\n'
                  '            if title: subtasks_work.append({"id": '
@@ -9089,7 +9244,7 @@ _EMBEDDED_SOURCES = {'monthly_close': '## FiBuMate_PATCH_MARKER: 20260609_PROTOC
                  '        def delete_subtask(idx):\n'
                  '            if 0 <= idx < len(subtasks_work): subtasks_work.pop(idx); render_subtasks_editor()\n'
                  '        render_subtasks_editor()\n'
-                 '        if not is_new:\n'
+                 '        if False and not is_new:\n'
                  '            tk.Button(form, text="Aufgabe mit Unteraufgaben in Quartalsabschluss übernehmen", '
                  'command=lambda: self.open_transfer_dialog(task), bg=COLORS["blue"], fg="white", bd=0, padx=12, '
                  'pady=7).grid(row=10, column=1, sticky="w", pady=(10, 4))\n'
@@ -9115,8 +9270,8 @@ _EMBEDDED_SOURCES = {'monthly_close': '## FiBuMate_PATCH_MARKER: 20260609_PROTOC
                  '            payload = {"title": title_value, "booking_circle": booking_circle_var.get(), "owner": '
                  'owner_text, "owner_user_key": owner_key, "due_mode": mode, "due_day": due_day, "due_workday": '
                  'due_workday, "due_fixed_date": due_fixed, "deadline_type": deadline_var.get(), "priority": '
-                 'priority_var.get(), "recurring": bool(recurring_var.get()), "subtasks": [s for s in subtasks_work if '
-                 's.get("title", "").strip()]}\n'
+                 'priority_var.get(), "recurring": bool(recurring_var.get()), "due_frequency": '
+                 'due_frequency_var.get(), "subtasks": [s for s in subtasks_work if s.get("title", "").strip()]}\n'
                  '            payload["due_date"] = resolve_due_date(payload, self.data, self.period)\n'
                  '            if is_new:\n'
                  '                real = {"id": make_task_id(team, self.next_task_index(team)), "team": team, '
@@ -12777,3 +12932,176 @@ def _load_embedded_module(module_key: str):
     mod = _fm520_patch_module(module_key, mod)
     _MODULE_CACHE[module_key] = mod
     return mod
+
+
+# ------------------------------------------------------------------
+# Abschlusskalender - Fälligkeitsturnus + robuste Scrollposition FINAL 2026-07-20
+# Version 0.524
+# ------------------------------------------------------------------
+CALENDAR_FREQUENCY_SCROLL_RETENTION_VERSION = "0.524-frequency-scroll-retention"
+
+def _fm524_default_due_frequency(mod):
+    scope = str(getattr(mod, "CLOSING_SCOPE", "M") or "M")
+    return "Monat" if scope == "M" else "Quartal" if scope == "Q" else "Jahr"
+
+def _fm524_norm_due_frequency(value, mod):
+    raw = str(value or "").strip().casefold()
+    mp = {"m":"Monat","monat":"Monat","monatlich":"Monat","q":"Quartal","quartal":"Quartal","quartalsweise":"Quartal","quartalsabschluss":"Quartal","j":"Jahr","jahr":"Jahr","jährlich":"Jahr","jaehrlich":"Jahr","jahresabschluss":"Jahr"}
+    return mp.get(raw, _fm524_default_due_frequency(mod))
+
+def _fm524_period_parts(period):
+    s = str(period or "")
+    try:
+        if "-Q" in s:
+            y, q = s.split("-Q", 1); return int(y), int(q), None
+        if "-" in s:
+            y, m = s.split("-", 1); return int(y), None, int(m)
+    except Exception:
+        pass
+    return 0, None, None
+
+def _fm524_is_task_relevant(mod, ui, task):
+    freq = _fm524_norm_due_frequency(task.get("due_frequency"), mod)
+    scope = str(getattr(mod, "CLOSING_SCOPE", "M") or "M")
+    _y, q, m = _fm524_period_parts(getattr(ui, "period", ""))
+    fy_end_month = int(getattr(mod, "FISCAL_YEAR_START_MONTH", 10) or 10) - 1
+    if fy_end_month <= 0: fy_end_month = 12
+    fy_end_quarter = ((fy_end_month - 1) // 3) + 1
+    if freq == "Monat": return scope == "M"
+    if freq == "Quartal": return (m in (3,6,9,12)) if scope == "M" else scope == "Q"
+    if freq == "Jahr": return (m == fy_end_month) if scope == "M" else ((q == fy_end_quarter) if scope == "Q" else scope == "J")
+    return True
+
+def _fm524_find_scroll_canvas(ui):
+    candidates=[]
+    try:
+        c=getattr(getattr(ui,"app",None),"active_scroll_canvas",None)
+        if c is not None: candidates.append(c)
+    except Exception: pass
+    def walk(w):
+        try:
+            for ch in w.winfo_children():
+                try:
+                    if ch.winfo_class().lower()=="canvas" and hasattr(ch,"yview"):
+                        candidates.append(ch)
+                except Exception: pass
+                walk(ch)
+        except Exception: pass
+    try: walk(getattr(ui,"frame",None))
+    except Exception: pass
+    for c in candidates:
+        try:
+            if c.winfo_exists():
+                first,last=c.yview()
+                if float(last)-float(first)<0.999: return c
+        except Exception: pass
+    return candidates[0] if candidates else None
+
+def _fm524_scroll_fraction(ui):
+    try:
+        c=_fm524_find_scroll_canvas(ui)
+        return c.yview()[0] if c is not None else None
+    except Exception:
+        return None
+
+def _fm524_restore_scroll_fraction(ui, fraction):
+    if fraction is None: return
+    def run():
+        try:
+            c=_fm524_find_scroll_canvas(ui)
+            if c is not None and c.winfo_exists():
+                c.update_idletasks(); c.yview_moveto(float(fraction))
+        except Exception: pass
+    try:
+        ui.root.after_idle(run); ui.root.after(25, run); ui.root.after(100, run); ui.root.after(250, run)
+    except Exception: run()
+
+def _fm524_patch_module(module_key, mod):
+    if getattr(mod, "_fm524_frequency_scroll_patched", False): return mod
+    old_normalize=getattr(mod,"normalize_task",None)
+    if old_normalize:
+        def normalize_task(task,data,period):
+            result=old_normalize(task,data,period)
+            try: result["due_frequency"]=_fm524_norm_due_frequency(result.get("due_frequency"),mod)
+            except Exception: pass
+            return result
+        mod.normalize_task=normalize_task
+    old_catalog=getattr(mod,"catalog_entry_to_task",None)
+    if old_catalog:
+        def catalog_entry_to_task(entry,period,index):
+            task=old_catalog(entry,period,index)
+            try: task["due_frequency"]=_fm524_norm_due_frequency(entry.get("due_frequency"),mod)
+            except Exception: pass
+            return task
+        mod.catalog_entry_to_task=catalog_entry_to_task
+    for name in ("MonthlyCloseUI","QuarterlyCloseUI","YearlyCloseUI"):
+        cls=getattr(mod,name,None)
+        if cls is None or getattr(cls,"_fm524_frequency_scroll_patched",False): continue
+        old_tasks=getattr(cls,"tasks",None)
+        if old_tasks:
+            def tasks(self,_old=old_tasks,_mod=mod):
+                result=[]
+                for t in _old(self):
+                    try:
+                        t["due_frequency"]=_fm524_norm_due_frequency(t.get("due_frequency"),_mod)
+                        if _fm524_is_task_relevant(_mod,self,t): result.append(t)
+                    except Exception:
+                        result.append(t)
+                return result
+            cls.tasks=tasks
+        def toggle_subtasks_visibility(self, task_id):
+            fraction=_fm524_scroll_fraction(self)
+            if task_id in self.expanded_tasks: self.expanded_tasks.remove(task_id)
+            else: self.expanded_tasks.add(task_id)
+            self.render_team_detail(self.selected_team)
+            _fm524_restore_scroll_fraction(self, fraction)
+        cls.toggle_subtasks_visibility=toggle_subtasks_visibility
+        old_ttc=getattr(cls,"task_to_catalog_entry",None)
+        if old_ttc:
+            def task_to_catalog_entry(self,task,_old=old_ttc,_mod=mod):
+                out=_old(self,task)
+                try: out["due_frequency"]=_fm524_norm_due_frequency(task.get("due_frequency"),_mod)
+                except Exception: pass
+                return out
+            cls.task_to_catalog_entry=task_to_catalog_entry
+        old_clone=getattr(cls,"clone_task_for_period",None)
+        if old_clone:
+            def clone_task_for_period(self,task,target_period,index,_old=old_clone,_mod=mod):
+                clone=_old(self,task,target_period,index)
+                try: clone["due_frequency"]=_fm524_norm_due_frequency(task.get("due_frequency"),_mod)
+                except Exception: pass
+                return clone
+            cls.clone_task_for_period=clone_task_for_period
+        cls._fm524_frequency_scroll_patched=True
+    mod._fm524_frequency_scroll_patched=True
+    return mod
+
+_FM524_PREV_LOAD_EMBEDDED_MODULE = _load_embedded_module
+
+def _load_embedded_module(module_key: str):
+    mod=_FM524_PREV_LOAD_EMBEDDED_MODULE(module_key)
+    mod=_fm524_patch_module(module_key,mod)
+    _MODULE_CACHE[module_key]=mod
+    return mod
+
+
+# ---------------------------------------------------------------------------
+# FM536 - Monatsabschluss als einziger Abschlusskalender, Unter-Unteraufgaben
+# Datum: 2026-07-20
+# Zweck: Quartals-/Jahresabschluss-Einstiege werden auf den Monatsabschluss umgeleitet.
+# ---------------------------------------------------------------------------
+APP_VERSION = "0.536-monthly-turnus-subsubtasks"
+_FM536_PREV_LOAD_EMBEDDED_MODULE = _load_embedded_module
+
+def _load_embedded_module(module_key: str):
+    if module_key in ('quarterly_close', 'yearly_close'):
+        module_key = 'monthly_close'
+    mod = _FM536_PREV_LOAD_EMBEDDED_MODULE(module_key)
+    _MODULE_CACHE[module_key] = mod
+    return mod
+
+def render_quarterly(app):
+    return render_monthly(app)
+
+def render_yearly(app):
+    return render_monthly(app)
