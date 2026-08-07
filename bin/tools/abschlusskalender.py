@@ -13700,20 +13700,122 @@ READABLE_CALENDAR_BUTTONS_VERSION = "0.540-readable-calendar-buttons"
 TASK_POPUP_DUE_FREQUENCY_LAYOUT_VERSION = "0.541-task-popup-due-frequency-layout"
 APP_VERSION = "0.541-task-popup-due-frequency-layout"
 
+
 # ------------------------------------------------------------------
-# v0.543 - Abschlusskalender Performance: Runtime-Korrektur Modulkontext
+# v0.544 - Abschlusskalender Performance + Mehrfach-Erledigung
 # ------------------------------------------------------------------
-# Korrigiert v0.542: Der Hintergrundthread nutzt explizit das jeweils eingebettete Modul,
-# damit load_period/save_period/revision sauber aus dem Modulkontext kommen.
-PERFORMANCE_LIVE_REFRESH_CONTEXT_FIX_VERSION = "0.543-async-live-refresh-module-context"
-APP_VERSION = "0.543-async-live-refresh-module-context"
+# - Live-Refresh bleibt asynchron und blockiert Scrollen/Ansicht nicht.
+# - Aufgaben koennen per Strg+Klick markiert werden.
+# - Klick auf Erledigt bei einer Aufgabe erledigt alle markierten Aufgaben gesammelt.
+# - Nach dem Abhaken springt die Teamansicht nach oben.
+# - Zeitraumwechsel wird protokolliert und Scrollposition gezielt oben gesetzt.
+BATCH_DONE_PERFORMANCE_VERSION = "0.544-batch-done-scroll-performance"
+APP_VERSION = "0.544-batch-done-scroll-performance"
+
+import threading as _fm544_threading
+import time as _fm544_time
+import os as _fm544_os
+
+_FM544_PERF_LOG_DIR = _fm544_os.path.join(_fm544_os.environ.get("LOCALAPPDATA", _fm544_os.path.expanduser("~")), "FiBuMate", "Logs")
+_FM544_PERF_LOG_FILE = _fm544_os.path.join(_FM544_PERF_LOG_DIR, "abschlusskalender_perf.log")
 
 
-def _fm543_patch_performance_class(cls, mod):
-    if cls is None or getattr(cls, "_fm543_async_live_refresh_context_patched", False):
+def _fm544_log(event, **data):
+    try:
+        _fm544_os.makedirs(_FM544_PERF_LOG_DIR, exist_ok=True)
+        ts = datetime.now().isoformat(timespec="seconds") if "datetime" in globals() else ""
+        parts = [ts, str(event)] + [f"{k}={v}" for k, v in sorted(data.items())]
+        with open(_FM544_PERF_LOG_FILE, "a", encoding="utf-8") as f:
+            f.write(" | ".join(parts) + "\n")
+    except Exception:
+        pass
+
+
+def _fm544_count_units(data):
+    tasks = data.get("tasks", []) if isinstance(data, dict) else []
+    t = s = c = 0
+    try:
+        for task in tasks or []:
+            if not isinstance(task, dict) or task.get("deleted"):
+                continue
+            t += 1
+            for sub in task.get("subtasks", []) or []:
+                if not isinstance(sub, dict) or sub.get("deleted"):
+                    continue
+                s += 1
+                for child in sub.get("subtasks", []) or []:
+                    if isinstance(child, dict) and not child.get("deleted"):
+                        c += 1
+    except Exception:
+        pass
+    return t, s, c
+
+
+def _fm544_task_key(ui, task):
+    try:
+        return str(task.get("id") or "") or "|".join(str(x) for x in ui.task_match_key(task))
+    except Exception:
+        return str(task.get("id") or task.get("title") or id(task))
+
+
+def _fm544_descendants(widget):
+    yield widget
+    try:
+        children = widget.winfo_children()
+    except Exception:
+        children = []
+    for child in children:
+        yield from _fm544_descendants(child)
+
+
+def _fm544_find_scroll_canvas(ui):
+    try:
+        c = getattr(getattr(ui, "app", None), "active_scroll_canvas", None)
+        if c is not None and c.winfo_exists():
+            return c
+    except Exception:
+        pass
+    candidates = []
+    def walk(w):
+        try:
+            for child in w.winfo_children():
+                try:
+                    if child.winfo_class().lower() == "canvas" and hasattr(child, "yview"):
+                        candidates.append(child)
+                except Exception:
+                    pass
+                walk(child)
+        except Exception:
+            pass
+    try:
+        walk(getattr(ui, "frame", None))
+    except Exception:
+        pass
+    return candidates[0] if candidates else None
+
+
+def _fm544_scroll_top(ui):
+    def run():
+        try:
+            c = _fm544_find_scroll_canvas(ui)
+            if c is not None and c.winfo_exists():
+                c.update_idletasks()
+                c.yview_moveto(0.0)
+        except Exception:
+            pass
+    try:
+        ui.root.after_idle(run)
+        ui.root.after(25, run)
+        ui.root.after(100, run)
+    except Exception:
+        run()
+
+
+def _fm544_patch_live_refresh(cls, mod):
+    if cls is None or getattr(cls, "_fm544_async_live_patched", False):
         return
 
-    def _fm543_schedule(self, delay_ms=3000):
+    def schedule(self, delay_ms=3000):
         try:
             self.root.after(int(delay_ms), self._check_live_period_refresh)
         except Exception:
@@ -13723,53 +13825,52 @@ def _fm543_patch_performance_class(cls, mod):
         if getattr(self, "_live_period_refresh_started", False):
             return
         self._live_period_refresh_started = True
-        self._fm542_live_poll_running = False
-        self._fm542_live_poll_seq = 0
-        _fm543_schedule(self, 3000)
+        self._fm544_live_poll_running = False
+        self._fm544_live_poll_seq = 0
+        schedule(self, 3000)
 
     def _check_live_period_refresh(self):
         try:
-            if getattr(self, "_fm542_live_poll_running", False):
-                _fm542_perf_log("live_poll_skipped", reason="previous_running", period=getattr(self, "period", ""))
-                _fm543_schedule(self, 3000)
+            if getattr(self, "_fm544_live_poll_running", False):
+                _fm544_log("live_poll_skipped", reason="previous_running", period=getattr(self, "period", ""))
+                schedule(self, 3000)
                 return
             if getattr(self, "_live_period_popup_open", False):
-                _fm543_schedule(self, 3000)
+                schedule(self, 3000)
                 return
             period = str(getattr(self, "period", "") or "")
-            known_revision = getattr(self, "_live_period_mtime", 0) or 0
+            known = getattr(self, "_live_period_mtime", 0) or 0
             selected_team = getattr(self, "selected_team", None)
-            self._fm542_live_poll_running = True
-            self._fm542_live_poll_seq = int(getattr(self, "_fm542_live_poll_seq", 0) or 0) + 1
-            seq = self._fm542_live_poll_seq
+            self._fm544_live_poll_running = True
+            self._fm544_live_poll_seq = int(getattr(self, "_fm544_live_poll_seq", 0) or 0) + 1
+            seq = self._fm544_live_poll_seq
 
             def worker():
-                started = _fm542_time.perf_counter()
-                error = None
+                started = _fm544_time.perf_counter()
                 revision = 0
                 new_data = None
                 changed = False
+                error = None
                 try:
                     revision = self._period_file_mtime()
-                    # Revision 0 steht für "nicht lesbar/locked/timeout" und darf keinen Render auslösen.
-                    if revision and known_revision and revision != known_revision:
+                    if revision and known and revision != known:
                         changed = True
-                        load_started = _fm542_time.perf_counter()
+                        load_started = _fm544_time.perf_counter()
                         new_data = mod.load_period(period)
-                        task_count, sub_count, subsub_count = _fm542_count_task_units(new_data or {})
-                        _fm542_perf_log("live_load_period", ms=round((_fm542_time.perf_counter() - load_started) * 1000, 1), period=period, tasks=task_count, subtasks=sub_count, subsubtasks=subsub_count)
+                        tu, su, cu = _fm544_count_units(new_data or {})
+                        _fm544_log("live_load_period", ms=round((_fm544_time.perf_counter() - load_started) * 1000, 1), period=period, tasks=tu, subtasks=su, subsubtasks=cu)
                 except Exception as exc:
                     error = str(exc)
-                poll_ms = round((_fm542_time.perf_counter() - started) * 1000, 1)
+                ms = round((_fm544_time.perf_counter() - started) * 1000, 1)
 
                 def apply_result():
                     try:
-                        if seq != getattr(self, "_fm542_live_poll_seq", seq):
+                        if seq != getattr(self, "_fm544_live_poll_seq", seq):
                             return
                         if str(getattr(self, "period", "") or "") != period:
                             return
                         if error:
-                            _fm542_perf_log("live_poll_error", ms=poll_ms, period=period, error=error[:240])
+                            _fm544_log("live_poll_error", ms=ms, period=period, error=error[:200])
                             return
                         if revision:
                             self._live_period_mtime = revision
@@ -13784,70 +13885,696 @@ def _fm543_patch_performance_class(cls, mod):
                                 old_structure = object(); new_structure = None; old_status = object(); new_status = None
                             if old_structure == new_structure and old_status != new_status and getattr(self, "selected_team", None):
                                 self._apply_smooth_status_update(new_data)
-                                _fm542_perf_log("live_apply_status_only", ms=poll_ms, period=period)
+                                _fm544_log("live_apply_status_only", ms=ms, period=period)
                             elif old_structure == new_structure and old_status == new_status:
                                 self.data = new_data
-                                _fm542_perf_log("live_apply_no_visual_change", ms=poll_ms, period=period)
+                                _fm544_log("live_apply_no_visual_change", ms=ms, period=period)
                             else:
-                                try:
-                                    scroll_fraction = self._current_scroll_fraction()
-                                except Exception:
-                                    scroll_fraction = None
-                                expanded = set(getattr(self, "expanded_tasks", set()))
                                 self.data = new_data
-                                self.expanded_tasks = expanded
                                 if selected_team:
                                     self.selected_team = selected_team
                                     self.render_team_detail(selected_team)
                                 else:
                                     self.render_dashboard()
-                                try:
-                                    self._restore_scroll_after_render(scroll_fraction)
-                                except Exception:
-                                    pass
-                                _fm542_perf_log("live_apply_structure_render", ms=poll_ms, period=period, team=selected_team or "")
+                                _fm544_log("live_apply_structure_render", ms=ms, period=period, team=selected_team or "")
                         else:
-                            _fm542_perf_log("live_poll_ok_no_change", ms=poll_ms, period=period)
+                            _fm544_log("live_poll_ok_no_change", ms=ms, period=period)
                     finally:
-                        self._fm542_live_poll_running = False
-                        _fm543_schedule(self, 3000)
-
+                        self._fm544_live_poll_running = False
+                        schedule(self, 3000)
                 try:
                     self.root.after(0, apply_result)
                 except Exception:
                     try:
-                        self._fm542_live_poll_running = False
+                        self._fm544_live_poll_running = False
                     except Exception:
                         pass
-
-            t = _fm542_threading.Thread(target=worker, name="FiBuMate-Abschlusskalender-LivePoll", daemon=True)
-            t.start()
+            _fm544_threading.Thread(target=worker, daemon=True, name="FiBuMate-Abschlusskalender-LivePoll").start()
         except Exception as exc:
             try:
-                self._fm542_live_poll_running = False
+                self._fm544_live_poll_running = False
             except Exception:
                 pass
-            _fm542_perf_log("live_poll_outer_error", period=getattr(self, "period", ""), error=str(exc)[:240])
-            _fm543_schedule(self, 3000)
+            _fm544_log("live_poll_outer_error", period=getattr(self, "period", ""), error=str(exc)[:200])
+            schedule(self, 3000)
 
     cls._start_live_period_refresh = _start_live_period_refresh
     cls._check_live_period_refresh = _check_live_period_refresh
-    cls._fm543_async_live_refresh_context_patched = True
+    cls._fm544_async_live_patched = True
 
 
-def _fm543_patch_module(module_key, mod):
+def _fm544_patch_batch_done_class(cls, mod):
+    if cls is None or getattr(cls, "_fm544_batch_done_patched", False):
+        return
+
+    old_render_task_row = getattr(cls, "render_task_row", None)
+    old_toggle_done = getattr(cls, "toggle_done", None)
+    old_change_period = getattr(cls, "change_period", None)
+    old_render_team_detail = getattr(cls, "render_team_detail", None)
+    old_render_dashboard = getattr(cls, "render_dashboard", None)
+    old_save = getattr(cls, "save", None)
+
+    def _selected_set(self):
+        if not hasattr(self, "_fm544_selected_task_ids"):
+            self._fm544_selected_task_ids = set()
+        return self._fm544_selected_task_ids
+
+    def clear_task_selection(self):
+        _selected_set(self).clear()
+
+    def toggle_task_selection(self, task, event=None):
+        key = _fm544_task_key(self, task)
+        selected = _selected_set(self)
+        if key in selected:
+            selected.remove(key)
+        else:
+            selected.add(key)
+        try:
+            self.render_team_detail(self.selected_team or task.get("team"))
+        except Exception:
+            pass
+        return "break"
+
+    def _bind_ctrl_recursive(self, widget, task):
+        def handler(event, t=task):
+            return self.toggle_task_selection(t, event)
+        for item in _fm544_descendants(widget):
+            try:
+                item.bind("<Control-Button-1>", handler, add="+")
+            except Exception:
+                pass
+
+    def _paint_selected_widgets(self, widgets):
+        for widget in widgets or []:
+            for item in _fm544_descendants(widget):
+                try:
+                    cls_name = item.winfo_class()
+                    if cls_name in ("Frame", "Label", "Button", "Menubutton"):
+                        item.configure(bg="#DBEAFE")
+                except Exception:
+                    pass
+
+    if old_render_task_row:
+        def render_task_row(self, table, row_idx, task, headers, _old=old_render_task_row):
+            start_row = row_idx
+            result = _old(self, table, row_idx, task, headers)
+            try:
+                widgets = []
+                for r in range(start_row, result):
+                    widgets.extend(table.grid_slaves(row=r))
+                self._bind_ctrl_recursive(table, task) if False else None
+                for widget in widgets:
+                    self._bind_ctrl_recursive(widget, task)
+                if _fm544_task_key(self, task) in _selected_set(self):
+                    _paint_selected_widgets(self, widgets)
+                    try:
+                        marker = mod.tk.Label(table, text="✓ markiert", bg="#DBEAFE", fg="#1D4ED8", font=mod.zfont(self.app, 9, "bold"), padx=4, pady=2)
+                        marker.grid(row=start_row, column=1, sticky="ne", padx=4, pady=4)
+                    except Exception:
+                        pass
+            except Exception:
+                pass
+            return result
+        cls.render_task_row = render_task_row
+
+    def _eligible_for_done(self, task):
+        try:
+            if not self.can_complete_task(task):
+                return False, "keine_berechtigung"
+            if task.get("subtasks") and not mod.all_subtasks_done(task):
+                return False, "unteraufgaben_offen"
+            return True, ""
+        except Exception:
+            return False, "fehler"
+
+    def _batch_selected_tasks(self, clicked_task):
+        selected = set(_selected_set(self))
+        clicked_real = self.find_task(clicked_task.get("id")) if hasattr(self, "find_task") else clicked_task
+        if clicked_real is not None:
+            clicked_key = _fm544_task_key(self, clicked_real)
+        else:
+            clicked_key = _fm544_task_key(self, clicked_task)
+        if not selected:
+            return []
+        selected.add(clicked_key)
+        out = []
+        for task in self.data.get("tasks", []) or []:
+            if not isinstance(task, dict) or task.get("deleted"):
+                continue
+            if _fm544_task_key(self, task) in selected:
+                out.append(task)
+        return out
+
+    if old_toggle_done:
+        def toggle_done(self, task, _old=old_toggle_done):
+            if not self.require_unlocked("Diese Änderung"):
+                return
+            real = self.find_task(task.get("id")) if hasattr(self, "find_task") else task
+            if not real:
+                return
+            selected_tasks = _batch_selected_tasks(self, real)
+            # Wenn mindestens zwei Aufgaben markiert sind: Sammel-Erledigung statt Einzel-Toggle.
+            if len(selected_tasks) >= 2 and real.get("status") != mod.STATUS_DONE:
+                blocked = []
+                legal = []
+                to_update = []
+                for candidate in selected_tasks:
+                    ok, reason = _eligible_for_done(self, candidate)
+                    if not ok:
+                        blocked.append((candidate, reason)); continue
+                    if candidate.get("status") != mod.STATUS_DONE:
+                        to_update.append(candidate)
+                        if candidate.get("deadline_type") == "gesetzlich":
+                            legal.append(candidate)
+                if not to_update:
+                    try:
+                        mod.messagebox.showinfo("Abschlusskalender", "Keine der markierten Aufgaben konnte als erledigt markiert werden.")
+                    except Exception:
+                        pass
+                    return
+                if legal:
+                    try:
+                        if not mod.messagebox.askyesno("Abschlusskalender", f"Unter den markierten Aufgaben sind {len(legal)} gesetzliche Fristen. Alle zulässigen markierten Aufgaben wirklich als erledigt markieren?"):
+                            return
+                    except Exception:
+                        pass
+                now = mod.datetime.now().isoformat(timespec="seconds")
+                done_by = getattr(self.app, "current_user_display", "") or ""
+                for candidate in to_update:
+                    candidate.update({"status": mod.STATUS_DONE, "done_at": now, "done_by": done_by})
+                started = _fm544_time.perf_counter()
+                self.save()
+                _fm544_log("batch_done_save", ms=round((_fm544_time.perf_counter() - started) * 1000, 1), count=len(to_update), blocked=len(blocked), period=getattr(self, "period", ""))
+                clear_task_selection(self)
+                self.render_team_detail(real.get("team"))
+                _fm544_scroll_top(self)
+                if blocked:
+                    try:
+                        mod.messagebox.showinfo("Abschlusskalender", f"{len(to_update)} Aufgabe(n) wurden erledigt. {len(blocked)} markierte Aufgabe(n) wurden übersprungen, z. B. wegen offener Unteraufgaben oder fehlender Berechtigung.")
+                    except Exception:
+                        pass
+                return
+            # Einzel-Logik: alte fachliche Prüfung nutzen, danach gezielt nach oben scrollen.
+            started = _fm544_time.perf_counter()
+            result = _old(self, task)
+            _fm544_log("single_toggle_done", ms=round((_fm544_time.perf_counter() - started) * 1000, 1), period=getattr(self, "period", ""))
+            _fm544_scroll_top(self)
+            return result
+        cls.toggle_done = toggle_done
+
+    if old_change_period:
+        def change_period(self, period, _old=old_change_period):
+            started = _fm544_time.perf_counter()
+            try:
+                clear_task_selection(self)
+            except Exception:
+                pass
+            try:
+                self.root.configure(cursor="watch")
+                self.root.update_idletasks()
+            except Exception:
+                pass
+            try:
+                result = _old(self, period)
+                _fm544_scroll_top(self)
+                return result
+            finally:
+                try:
+                    self.root.configure(cursor="")
+                except Exception:
+                    pass
+                _fm544_log("change_period", ms=round((_fm544_time.perf_counter() - started) * 1000, 1), period=period)
+        cls.change_period = change_period
+
+    if old_render_team_detail:
+        def render_team_detail(self, team, _old=old_render_team_detail):
+            started = _fm544_time.perf_counter()
+            result = _old(self, team)
+            tu, su, cu = _fm544_count_units(getattr(self, "data", {}) or {})
+            _fm544_log("render_team_detail", ms=round((_fm544_time.perf_counter() - started) * 1000, 1), team=team, tasks=tu, subtasks=su, subsubtasks=cu)
+            return result
+        cls.render_team_detail = render_team_detail
+
+    if old_render_dashboard:
+        def render_dashboard(self, _old=old_render_dashboard):
+            started = _fm544_time.perf_counter()
+            result = _old(self)
+            tu, su, cu = _fm544_count_units(getattr(self, "data", {}) or {})
+            _fm544_log("render_dashboard", ms=round((_fm544_time.perf_counter() - started) * 1000, 1), tasks=tu, subtasks=su, subsubtasks=cu)
+            return result
+        cls.render_dashboard = render_dashboard
+
+    if old_save:
+        def save(self, _old=old_save):
+            started = _fm544_time.perf_counter()
+            result = _old(self)
+            _fm544_log("save_period", ms=round((_fm544_time.perf_counter() - started) * 1000, 1), period=getattr(self, "period", ""))
+            return result
+        cls.save = save
+
+    cls.clear_task_selection = clear_task_selection
+    cls.toggle_task_selection = toggle_task_selection
+    cls._fm544_batch_done_patched = True
+
+
+def _fm544_patch_module(module_key, mod):
     try:
         for _cls_name in ("MonthlyCloseUI", "QuarterlyCloseUI", "YearlyCloseUI"):
-            _fm543_patch_performance_class(getattr(mod, _cls_name, None), mod)
-        mod.PERFORMANCE_LIVE_REFRESH_CONTEXT_FIX_VERSION = PERFORMANCE_LIVE_REFRESH_CONTEXT_FIX_VERSION
+            _cls = getattr(mod, _cls_name, None)
+            _fm544_patch_live_refresh(_cls, mod)
+            _fm544_patch_batch_done_class(_cls, mod)
+        mod.BATCH_DONE_PERFORMANCE_VERSION = BATCH_DONE_PERFORMANCE_VERSION
     except Exception:
         pass
     return mod
 
-_FM543_PREV_LOAD_EMBEDDED_MODULE = _load_embedded_module
+_FM544_PREV_LOAD_EMBEDDED_MODULE = _load_embedded_module
 
 def _load_embedded_module(module_key: str):
-    mod = _FM543_PREV_LOAD_EMBEDDED_MODULE(module_key)
-    mod = _fm543_patch_module(module_key, mod)
+    mod = _FM544_PREV_LOAD_EMBEDDED_MODULE(module_key)
+    mod = _fm544_patch_module(module_key, mod)
+    _MODULE_CACHE[module_key] = mod
+    return mod
+
+
+# ------------------------------------------------------------------
+# v0.545 - Abschlusskalender: Auswahlrand, Bestätigung und schnellerer Zeitraumwechsel
+# ------------------------------------------------------------------
+# - Strg+Linksklick markiert Aufgaben mit dezentem weißem Rand.
+# - Normaler Linksklick ohne Strg verwirft vorhandene Auswahl, außer auf dem Erledigt-Button.
+# - Klick auf Erledigt bei einer markierten Aufgabe fragt gesammelt ab und erledigt alle markierten zulässigen Aufgaben.
+# - Nach dem Abhaken springt die Teamansicht nach oben.
+# - Zeitraumwechsel lädt die Daten im Hintergrund und blockiert die Oberfläche weniger.
+SELECTION_AND_PERIOD_PERFORMANCE_VERSION = "0.545-selection-confirm-scroll-period"
+APP_VERSION = "0.545-selection-confirm-scroll-period"
+
+import threading as _fm545_threading
+import time as _fm545_time
+
+
+def _fm545_task_key(ui, task):
+    try:
+        return str(task.get("id") or "") or "|".join(str(x) for x in ui.task_match_key(task))
+    except Exception:
+        return str(task.get("id") or task.get("title") or id(task))
+
+
+def _fm545_selected(ui):
+    if not hasattr(ui, "_fm545_selected_task_ids"):
+        ui._fm545_selected_task_ids = set()
+    return ui._fm545_selected_task_ids
+
+
+def _fm545_walk(widget):
+    yield widget
+    try:
+        children = widget.winfo_children()
+    except Exception:
+        children = []
+    for child in children:
+        yield from _fm545_walk(child)
+
+
+def _fm545_has_keep_selection(widget):
+    current = widget
+    for _ in range(8):
+        try:
+            if bool(getattr(current, "_fm545_keep_selection", False)):
+                return True
+            current = current.master
+            if current is None:
+                return False
+        except Exception:
+            return False
+    return False
+
+
+def _fm545_find_scroll_canvas(ui):
+    try:
+        c = getattr(getattr(ui, "app", None), "active_scroll_canvas", None)
+        if c is not None and c.winfo_exists():
+            return c
+    except Exception:
+        pass
+    candidates = []
+    def walk(w):
+        try:
+            for child in w.winfo_children():
+                try:
+                    if child.winfo_class().lower() == "canvas" and hasattr(child, "yview"):
+                        candidates.append(child)
+                except Exception:
+                    pass
+                walk(child)
+        except Exception:
+            pass
+    try:
+        walk(getattr(ui, "frame", None))
+    except Exception:
+        pass
+    return candidates[0] if candidates else None
+
+
+def _fm545_scroll_top(ui):
+    def run():
+        try:
+            c = _fm545_find_scroll_canvas(ui)
+            if c is not None and c.winfo_exists():
+                c.update_idletasks()
+                c.yview_moveto(0.0)
+        except Exception:
+            pass
+    try:
+        ui.root.after_idle(run)
+        ui.root.after(25, run)
+        ui.root.after(100, run)
+        ui.root.after(250, run)
+    except Exception:
+        run()
+
+
+def _fm545_main_bg(mod, task):
+    try:
+        if task.get("status") == mod.STATUS_DONE:
+            return "#ECFDF5"
+        if mod.warning_level(task) in ("overdue", "today", "orange"):
+            return "#FFF7ED"
+        return {"IDE":"#FFFFFF", "IDG":"#FBE4E6", "IMS":"#FFF4CC", "SPI":"#D6E0F0", "IHB":"#E2F2E6"}.get(task.get("booking_circle", "IDE"), mod.COLORS["white"])
+    except Exception:
+        return "#FFFFFF"
+
+
+def _fm545_destroy_marker_labels(widgets):
+    for widget in widgets or []:
+        for item in _fm545_walk(widget):
+            try:
+                if str(item.cget("text")) == "✓ markiert":
+                    item.destroy()
+            except Exception:
+                pass
+
+
+def _fm545_restore_no_blue_fill(widgets, bg):
+    for widget in widgets or []:
+        for item in _fm545_walk(widget):
+            try:
+                if str(item.cget("bg")).upper() == "#DBEAFE":
+                    item.configure(bg=bg)
+            except Exception:
+                pass
+
+
+def _fm545_apply_white_border(widgets):
+    for widget in widgets or []:
+        for item in _fm545_walk(widget):
+            try:
+                cls_name = item.winfo_class()
+                if cls_name in ("Frame", "Label", "Button", "Menubutton"):
+                    item.configure(highlightbackground="#FFFFFF", highlightcolor="#FFFFFF", highlightthickness=2)
+            except Exception:
+                pass
+
+
+def _fm545_patch_class(cls, mod):
+    if cls is None or getattr(cls, "_fm545_selection_period_patched", False):
+        return
+
+    old_render_task_row = getattr(cls, "render_task_row", None)
+    old_toggle_done = getattr(cls, "toggle_done", None)
+    old_render_team_detail = getattr(cls, "render_team_detail", None)
+    old_change_period = getattr(cls, "change_period", None)
+
+    def clear_task_selection(self, rerender=True):
+        selected = _fm545_selected(self)
+        if not selected:
+            return
+        selected.clear()
+        if rerender:
+            try:
+                if getattr(self, "selected_team", None):
+                    self.render_team_detail(self.selected_team)
+            except Exception:
+                pass
+
+    def toggle_task_selection(self, task, event=None):
+        selected = _fm545_selected(self)
+        key = _fm545_task_key(self, task)
+        if key in selected:
+            selected.remove(key)
+        else:
+            selected.add(key)
+        try:
+            self.render_team_detail(self.selected_team or task.get("team"))
+        except Exception:
+            pass
+        return "break"
+
+    def _normal_click_clear_handler(self, event=None):
+        try:
+            # Strg gedrückt: Auswahl nicht löschen.
+            if event is not None and (int(getattr(event, "state", 0) or 0) & 0x0004):
+                return None
+            # Erledigt-Buttons behalten die Auswahl bis zur Command-Ausführung.
+            if event is not None and _fm545_has_keep_selection(getattr(event, "widget", None)):
+                return None
+            if _fm545_selected(self):
+                clear_task_selection(self, rerender=True)
+        except Exception:
+            pass
+        return None
+
+    def _bind_normal_clear_recursive(self, widget):
+        for item in _fm545_walk(widget):
+            try:
+                if not _fm545_has_keep_selection(item):
+                    item.bind("<Button-1>", lambda e, ui=self: ui._fm545_normal_click_clear_handler(e), add="+")
+            except Exception:
+                pass
+
+    def _bind_ctrl_select_recursive(self, widgets, task):
+        def handler(event, t=task):
+            return self.toggle_task_selection(t, event)
+        for widget in widgets or []:
+            for item in _fm545_walk(widget):
+                try:
+                    if not _fm545_has_keep_selection(item):
+                        item.bind("<Control-Button-1>", handler, add="+")
+                except Exception:
+                    pass
+
+    if old_render_task_row:
+        def render_task_row(self, table, row_idx, task, headers, _old=old_render_task_row):
+            start_row = row_idx
+            result = _old(self, table, row_idx, task, headers)
+            try:
+                widgets = []
+                for r in range(start_row, result):
+                    widgets.extend(table.grid_slaves(row=r))
+                # Erledigt-Button der Hauptaufgabe darf die Auswahl nicht vor der Command-Ausführung löschen.
+                for w in table.grid_slaves(row=start_row, column=0):
+                    try:
+                        setattr(w, "_fm545_keep_selection", True)
+                    except Exception:
+                        pass
+                _bind_ctrl_select_recursive(self, widgets, task)
+                _fm545_destroy_marker_labels(widgets)
+                key = _fm545_task_key(self, task)
+                if key in _fm545_selected(self):
+                    base_bg = _fm545_main_bg(mod, task)
+                    _fm545_restore_no_blue_fill(widgets, base_bg)
+                    _fm545_apply_white_border(widgets)
+            except Exception:
+                pass
+            return result
+        cls.render_task_row = render_task_row
+
+    if old_render_team_detail:
+        def render_team_detail(self, team, _old=old_render_team_detail):
+            started = _fm545_time.perf_counter()
+            result = _old(self, team)
+            try:
+                _bind_normal_clear_recursive(self, getattr(self, "frame", None))
+            except Exception:
+                pass
+            try:
+                _fm544_log("render_team_detail_v545", ms=round((_fm545_time.perf_counter()-started)*1000,1), team=team)
+            except Exception:
+                pass
+            return result
+        cls.render_team_detail = render_team_detail
+
+    def _eligible_done(self, task):
+        try:
+            if not self.can_complete_task(task):
+                return False, "keine Berechtigung"
+            if task.get("subtasks") and not mod.all_subtasks_done(task):
+                return False, "offene Unteraufgaben"
+            return True, ""
+        except Exception:
+            return False, "technischer Fehler"
+
+    if old_toggle_done:
+        def toggle_done(self, task, _old=old_toggle_done):
+            if not self.require_unlocked("Diese Änderung"):
+                return
+            real = self.find_task(task.get("id")) if hasattr(self, "find_task") else task
+            if not real:
+                return
+            selected = set(_fm545_selected(self))
+            clicked_key = _fm545_task_key(self, real)
+            if clicked_key in selected and len(selected) >= 1:
+                selected_tasks = []
+                for candidate in self.data.get("tasks", []) or []:
+                    if isinstance(candidate, dict) and not candidate.get("deleted") and _fm545_task_key(self, candidate) in selected:
+                        selected_tasks.append(candidate)
+                if selected_tasks:
+                    try:
+                        ok = mod.messagebox.askyesno(
+                            "Abschlusskalender",
+                            f"Sollen alle {len(selected_tasks)} markierten Aufgaben als erledigt markiert werden?\n\n"
+                            "Aufgaben mit fehlender Berechtigung oder offenen Unteraufgaben werden übersprungen."
+                        )
+                    except Exception:
+                        ok = True
+                    if not ok:
+                        return
+                    to_update = []
+                    blocked = []
+                    legal = []
+                    for candidate in selected_tasks:
+                        allowed, reason = _eligible_done(self, candidate)
+                        if not allowed:
+                            blocked.append((candidate, reason)); continue
+                        if candidate.get("status") != mod.STATUS_DONE:
+                            to_update.append(candidate)
+                            if candidate.get("deadline_type") == "gesetzlich":
+                                legal.append(candidate)
+                    if legal:
+                        try:
+                            if not mod.messagebox.askyesno("Abschlusskalender", f"Unter den markierten Aufgaben sind {len(legal)} gesetzliche Frist(en). Trotzdem alle zulässigen markierten Aufgaben als erledigt markieren?"):
+                                return
+                        except Exception:
+                            pass
+                    if not to_update:
+                        try:
+                            mod.messagebox.showinfo("Abschlusskalender", "Keine markierte Aufgabe konnte als erledigt markiert werden.")
+                        except Exception:
+                            pass
+                        return
+                    now = mod.datetime.now().isoformat(timespec="seconds")
+                    done_by = getattr(self.app, "current_user_display", "") or ""
+                    for candidate in to_update:
+                        candidate.update({"status": mod.STATUS_DONE, "done_at": now, "done_by": done_by})
+                    started = _fm545_time.perf_counter()
+                    self.save()
+                    try:
+                        _fm544_log("batch_done_confirmed_v545", ms=round((_fm545_time.perf_counter()-started)*1000,1), count=len(to_update), blocked=len(blocked), period=getattr(self,"period",""))
+                    except Exception:
+                        pass
+                    clear_task_selection(self, rerender=False)
+                    self.render_team_detail(real.get("team"))
+                    _fm545_scroll_top(self)
+                    if blocked:
+                        try:
+                            mod.messagebox.showinfo("Abschlusskalender", f"{len(to_update)} Aufgabe(n) wurden erledigt. {len(blocked)} markierte Aufgabe(n) wurden übersprungen.")
+                        except Exception:
+                            pass
+                    return
+            # Einzelklick ohne markierte Sammelaktion: alte Logik beibehalten und anschließend oben positionieren.
+            result = _old(self, task)
+            try:
+                clear_task_selection(self, rerender=False)
+            except Exception:
+                pass
+            _fm545_scroll_top(self)
+            return result
+        cls.toggle_done = toggle_done
+
+    if old_change_period:
+        def change_period(self, period, _old=old_change_period):
+            try:
+                if not mod.period_allowed(period):
+                    mod.messagebox.showinfo("Abschlusskalender", "Dieser Zeitraum liegt außerhalb der freigegebenen Zeitraumlogik.")
+                    return
+            except Exception:
+                pass
+            clear_task_selection(self, rerender=False)
+            seq = int(getattr(self, "_fm545_period_change_seq", 0) or 0) + 1
+            self._fm545_period_change_seq = seq
+            old_period = getattr(self, "period", "")
+            started = _fm545_time.perf_counter()
+            try:
+                self.root.configure(cursor="watch")
+                self.clear_frame()
+                mod.tk.Label(self.frame, text="Zeitraum wird geladen...", bg=mod.COLORS["bg"], fg=mod.COLORS["text"], font=mod.zfont(self.app, 14, "bold")).pack(anchor="w", padx=24, pady=24)
+                self.root.update_idletasks()
+            except Exception:
+                pass
+
+            def worker():
+                data = None
+                error = None
+                try:
+                    data = mod.apply_catalog_to_period(period)
+                except Exception as exc:
+                    error = str(exc)
+                def apply_result():
+                    try:
+                        if seq != getattr(self, "_fm545_period_change_seq", seq):
+                            return
+                        if error:
+                            try:
+                                mod.messagebox.showerror("Abschlusskalender", "Zeitraum konnte nicht geladen werden:\n\n" + error)
+                            except Exception:
+                                pass
+                            self.period = old_period
+                            return
+                        self.period = period
+                        self.data = data if isinstance(data, dict) else mod.load_period(period)
+                        self.selected_team = None
+                        self.render_dashboard()
+                        _fm545_scroll_top(self)
+                    finally:
+                        try:
+                            self.root.configure(cursor="")
+                        except Exception:
+                            pass
+                        try:
+                            _fm544_log("change_period_async_v545", ms=round((_fm545_time.perf_counter()-started)*1000,1), period=period)
+                        except Exception:
+                            pass
+                try:
+                    self.root.after(0, apply_result)
+                except Exception:
+                    pass
+            try:
+                _fm545_threading.Thread(target=worker, daemon=True, name="FiBuMate-Abschlusskalender-PeriodLoad").start()
+            except Exception:
+                # Fallback: falls Threading nicht moeglich ist, alte Logik verwenden.
+                result = _old(self, period)
+                _fm545_scroll_top(self)
+                return result
+        cls.change_period = change_period
+
+    cls.clear_task_selection = clear_task_selection
+    cls.toggle_task_selection = toggle_task_selection
+    cls._fm545_normal_click_clear_handler = _normal_click_clear_handler
+    cls._fm545_selection_period_patched = True
+
+
+def _fm545_patch_module(module_key, mod):
+    try:
+        for _cls_name in ("MonthlyCloseUI", "QuarterlyCloseUI", "YearlyCloseUI"):
+            _fm545_patch_class(getattr(mod, _cls_name, None), mod)
+        mod.SELECTION_AND_PERIOD_PERFORMANCE_VERSION = SELECTION_AND_PERIOD_PERFORMANCE_VERSION
+    except Exception:
+        pass
+    return mod
+
+_FM545_PREV_LOAD_EMBEDDED_MODULE = _load_embedded_module
+
+def _load_embedded_module(module_key: str):
+    mod = _FM545_PREV_LOAD_EMBEDDED_MODULE(module_key)
+    mod = _fm545_patch_module(module_key, mod)
     _MODULE_CACHE[module_key] = mod
     return mod
