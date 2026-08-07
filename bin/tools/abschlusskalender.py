@@ -13699,3 +13699,155 @@ READABLE_CALENDAR_BUTTONS_VERSION = "0.540-readable-calendar-buttons"
 # v0.541: Aufgabenpopup - Fälligkeitsturnus korrekt positioniert; Dropdowntexte vergrößert.
 TASK_POPUP_DUE_FREQUENCY_LAYOUT_VERSION = "0.541-task-popup-due-frequency-layout"
 APP_VERSION = "0.541-task-popup-due-frequency-layout"
+
+# ------------------------------------------------------------------
+# v0.543 - Abschlusskalender Performance: Runtime-Korrektur Modulkontext
+# ------------------------------------------------------------------
+# Korrigiert v0.542: Der Hintergrundthread nutzt explizit das jeweils eingebettete Modul,
+# damit load_period/save_period/revision sauber aus dem Modulkontext kommen.
+PERFORMANCE_LIVE_REFRESH_CONTEXT_FIX_VERSION = "0.543-async-live-refresh-module-context"
+APP_VERSION = "0.543-async-live-refresh-module-context"
+
+
+def _fm543_patch_performance_class(cls, mod):
+    if cls is None or getattr(cls, "_fm543_async_live_refresh_context_patched", False):
+        return
+
+    def _fm543_schedule(self, delay_ms=3000):
+        try:
+            self.root.after(int(delay_ms), self._check_live_period_refresh)
+        except Exception:
+            pass
+
+    def _start_live_period_refresh(self):
+        if getattr(self, "_live_period_refresh_started", False):
+            return
+        self._live_period_refresh_started = True
+        self._fm542_live_poll_running = False
+        self._fm542_live_poll_seq = 0
+        _fm543_schedule(self, 3000)
+
+    def _check_live_period_refresh(self):
+        try:
+            if getattr(self, "_fm542_live_poll_running", False):
+                _fm542_perf_log("live_poll_skipped", reason="previous_running", period=getattr(self, "period", ""))
+                _fm543_schedule(self, 3000)
+                return
+            if getattr(self, "_live_period_popup_open", False):
+                _fm543_schedule(self, 3000)
+                return
+            period = str(getattr(self, "period", "") or "")
+            known_revision = getattr(self, "_live_period_mtime", 0) or 0
+            selected_team = getattr(self, "selected_team", None)
+            self._fm542_live_poll_running = True
+            self._fm542_live_poll_seq = int(getattr(self, "_fm542_live_poll_seq", 0) or 0) + 1
+            seq = self._fm542_live_poll_seq
+
+            def worker():
+                started = _fm542_time.perf_counter()
+                error = None
+                revision = 0
+                new_data = None
+                changed = False
+                try:
+                    revision = self._period_file_mtime()
+                    # Revision 0 steht für "nicht lesbar/locked/timeout" und darf keinen Render auslösen.
+                    if revision and known_revision and revision != known_revision:
+                        changed = True
+                        load_started = _fm542_time.perf_counter()
+                        new_data = mod.load_period(period)
+                        task_count, sub_count, subsub_count = _fm542_count_task_units(new_data or {})
+                        _fm542_perf_log("live_load_period", ms=round((_fm542_time.perf_counter() - load_started) * 1000, 1), period=period, tasks=task_count, subtasks=sub_count, subsubtasks=subsub_count)
+                except Exception as exc:
+                    error = str(exc)
+                poll_ms = round((_fm542_time.perf_counter() - started) * 1000, 1)
+
+                def apply_result():
+                    try:
+                        if seq != getattr(self, "_fm542_live_poll_seq", seq):
+                            return
+                        if str(getattr(self, "period", "") or "") != period:
+                            return
+                        if error:
+                            _fm542_perf_log("live_poll_error", ms=poll_ms, period=period, error=error[:240])
+                            return
+                        if revision:
+                            self._live_period_mtime = revision
+                        if changed and isinstance(new_data, dict):
+                            old_data = getattr(self, "data", {}) or {}
+                            try:
+                                old_structure = self._live_structure_signature(old_data)
+                                new_structure = self._live_structure_signature(new_data)
+                                old_status = self._live_status_signature(old_data)
+                                new_status = self._live_status_signature(new_data)
+                            except Exception:
+                                old_structure = object(); new_structure = None; old_status = object(); new_status = None
+                            if old_structure == new_structure and old_status != new_status and getattr(self, "selected_team", None):
+                                self._apply_smooth_status_update(new_data)
+                                _fm542_perf_log("live_apply_status_only", ms=poll_ms, period=period)
+                            elif old_structure == new_structure and old_status == new_status:
+                                self.data = new_data
+                                _fm542_perf_log("live_apply_no_visual_change", ms=poll_ms, period=period)
+                            else:
+                                try:
+                                    scroll_fraction = self._current_scroll_fraction()
+                                except Exception:
+                                    scroll_fraction = None
+                                expanded = set(getattr(self, "expanded_tasks", set()))
+                                self.data = new_data
+                                self.expanded_tasks = expanded
+                                if selected_team:
+                                    self.selected_team = selected_team
+                                    self.render_team_detail(selected_team)
+                                else:
+                                    self.render_dashboard()
+                                try:
+                                    self._restore_scroll_after_render(scroll_fraction)
+                                except Exception:
+                                    pass
+                                _fm542_perf_log("live_apply_structure_render", ms=poll_ms, period=period, team=selected_team or "")
+                        else:
+                            _fm542_perf_log("live_poll_ok_no_change", ms=poll_ms, period=period)
+                    finally:
+                        self._fm542_live_poll_running = False
+                        _fm543_schedule(self, 3000)
+
+                try:
+                    self.root.after(0, apply_result)
+                except Exception:
+                    try:
+                        self._fm542_live_poll_running = False
+                    except Exception:
+                        pass
+
+            t = _fm542_threading.Thread(target=worker, name="FiBuMate-Abschlusskalender-LivePoll", daemon=True)
+            t.start()
+        except Exception as exc:
+            try:
+                self._fm542_live_poll_running = False
+            except Exception:
+                pass
+            _fm542_perf_log("live_poll_outer_error", period=getattr(self, "period", ""), error=str(exc)[:240])
+            _fm543_schedule(self, 3000)
+
+    cls._start_live_period_refresh = _start_live_period_refresh
+    cls._check_live_period_refresh = _check_live_period_refresh
+    cls._fm543_async_live_refresh_context_patched = True
+
+
+def _fm543_patch_module(module_key, mod):
+    try:
+        for _cls_name in ("MonthlyCloseUI", "QuarterlyCloseUI", "YearlyCloseUI"):
+            _fm543_patch_performance_class(getattr(mod, _cls_name, None), mod)
+        mod.PERFORMANCE_LIVE_REFRESH_CONTEXT_FIX_VERSION = PERFORMANCE_LIVE_REFRESH_CONTEXT_FIX_VERSION
+    except Exception:
+        pass
+    return mod
+
+_FM543_PREV_LOAD_EMBEDDED_MODULE = _load_embedded_module
+
+def _load_embedded_module(module_key: str):
+    mod = _FM543_PREV_LOAD_EMBEDDED_MODULE(module_key)
+    mod = _fm543_patch_module(module_key, mod)
+    _MODULE_CACHE[module_key] = mod
+    return mod
